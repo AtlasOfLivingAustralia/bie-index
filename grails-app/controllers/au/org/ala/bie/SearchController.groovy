@@ -1,15 +1,20 @@
-package taxon.index
+package au.org.ala.bie
 
 import grails.converters.JSON
 import groovy.json.JsonSlurper
 import org.apache.commons.io.FilenameUtils
 
-class SolrController {
+class SearchController {
 
-    def index() { }
+    def grailsApplication
 
-    def solrBaseUrl = "http://130.56.248.115/solr/bie_denormed"
+    static defaultAction = "search"
 
+    /**
+     * Retrieve a classification for the supplied taxon.
+     *
+     * @return
+     */
     def classification(){
 
         def classification = []
@@ -17,6 +22,7 @@ class SolrController {
 
         classification.add(0, [
                 rank : taxon.rank,
+                rankId : taxon.rankId,
                 scientificName : taxon.scientificName,
                 guid:params.id
         ])
@@ -30,8 +36,9 @@ class SolrController {
             if(taxon) {
                 classification.add(0, [
                         rank : taxon.rank,
+                        rankId : taxon.rankId,
                         scientificName : taxon.scientificName,
-                        guid:params.id
+                        guid : taxon.guid
                 ])
                 parentGuid = taxon.parentGuid
             } else {
@@ -41,18 +48,23 @@ class SolrController {
         render classification as JSON
     }
 
+    /**
+     * Returns taxa with images.
+     *
+     * @return
+     */
     def imageSearch(){
 
-        def additionalParams = "&wt=json&fq=rank:Species&fq=image:[*%20TO%20*]"
+        def additionalParams = "&wt=json&fq=rank:species&fq=image:[*%20TO%20*]"
 
-        def rank = params.taxonRank
-        def scientificName = params.scientificName
+        def rank = params.taxonRank?:''.trim()
+        def scientificName = params.scientificName?:''.trim()
 
         def query = ""
 
         if(rank && scientificName){
             //append to query
-            query = "q=*:*&fq=rk_" + rank.toLowerCase() + ":" +  scientificName
+            query = "q=*:*&fq=rk_" + rank.toLowerCase() + ":\"" +  URLEncoder.encode(scientificName, "UTF-8") + "\""
         } else {
             query = "q=*:*"
         }
@@ -65,9 +77,8 @@ class SolrController {
             additionalParams = additionalParams + "&rows=" + params.rows
         }
 
-
-        println(solrBaseUrl + "/select?" + query + additionalParams)
-        def queryResponse = new URL(solrBaseUrl + "/select?" + query + additionalParams).text
+        println(grailsApplication.config.solrBaseUrl + "/select?" + query + additionalParams)
+        def queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + query + additionalParams).text
 
         def js = new JsonSlurper()
 
@@ -84,9 +95,14 @@ class SolrController {
         render (model as JSON)
     }
 
+    /**
+     * Retrieves child concepts for the supplied taxon ID
+     *
+     * @return
+     */
     def childConcepts(){
 
-        def solrServerUrl = solrBaseUrl + "/select?wt=json&q=parentGuid:" + params.id
+        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=parentGuid:" + params.id
         def queryResponse = new URL(solrServerUrl).text
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -108,18 +124,23 @@ class SolrController {
     }
 
     private def retrieveTaxon(taxonID){
-        def solrServerUrl = solrBaseUrl + "/select?wt=json&q=guid:" + taxonID
+        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=guid:" + taxonID
         def queryResponse = new URL(solrServerUrl).text
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json.response.docs[0]
     }
 
+    /**
+     * Retrieves a profile for a taxon.
+     *
+     * @return
+     */
     def taxon(){
 
         if(params.id == 'favicon') return; //not sure why this is happening....
 
-        def solrServerUrl = solrBaseUrl + "/select?wt=json&q=guid:" + params.id
+        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=guid:" + params.id
         def queryResponse = new URL(solrServerUrl).text
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -127,11 +148,13 @@ class SolrController {
         def taxon = json.response.docs[0]
 
         //retrieve any synonyms
-        def synonymQueryUrl = solrBaseUrl + "/select?wt=json&q=acceptedConceptID:" + params.id
+        def synonymQueryUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=acceptedConceptID:" + params.id
         def synonymQueryResponse = new URL(synonymQueryUrl).text
         def synJson = js.parseText(synonymQueryResponse)
 
         def synonyms = synJson.response.docs
+
+        def classification = extractClassification(taxon)
 
         def model = [
                 taxonConcept:[
@@ -144,7 +167,7 @@ class SolrController {
                         rankID:taxon.rankId
                 ],
                 taxonName:[],
-                classification:[],
+                classification:classification,
                 synonyms:[],
                 commonNames:{
                     def cn = []
@@ -156,7 +179,10 @@ class SolrController {
                     }
                     cn
                 }.call(),
-                conservationStatuses:[]
+                conservationStatuses:[],            //TODO need to be indexed from list tool
+                extantStatuses: [],
+                habitats: [],
+                identifiers: []
         ]
 
         synonyms.each { synonym ->
@@ -169,9 +195,11 @@ class SolrController {
         render (model as JSON)
     }
 
-    def search(){
+    def auto(){
 
-        def additionalParams = "&wt=json&facet.field=taxonGroup_s&facet.field=dataset&facet.field=rank&facet.field=dataProvider_s&facet.field=taxonomicStatus_s&facet.field=establishmentMeans_s&facet=true&facet.mincount=1"
+        println("auto called with q = " + params.q)
+        def autoCompleteList = []
+        def additionalParams = "&wt=json"
         def queryString = request.queryString
 
         if(queryString) {
@@ -184,24 +212,107 @@ class SolrController {
             queryString = "q=*:*"
         }
 
-        def queryResponse = new URL(solrBaseUrl + "/select?" + queryString + additionalParams).text
-
+        def queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams).text
         def js = new JsonSlurper()
-
         def json = js.parseText(queryResponse)
 
+        json.response.docs.each {
+            def result = [
+                "guid" : it.guid,
+                "name" : it.scientificName,
+                "occurrenceCount" : 0,
+                "georeferencedCount" : 0,
+                "scientificNameMatches" : [],
+                "commonNameMatches" : [],
+                "rankString": it.rank,
+                "rankId": it.rankId ?: -1,
+                "commonName" : [],
+                "commonNameSingle" : [],
+                "left" : -1,
+                "right" : -1
+            ]
+            autoCompleteList << result
+        }
+
+//        autoCompleteList: [
+//                {
+//                    guid: "urn:lsid:biodiversity.org.au:afd.taxon:c0da0b13-5d26-471f-9bf6-49af50896692",
+//                    name: "Bregmaceros mcclellandi",
+//                    occurrenceCount: 3,
+//                    georeferencedCount: 3,
+//                    scientificNameMatches: [
+//                            "Breg<b>mac</b>eros mcclellandi"
+//                    ],
+//                    commonNameMatches: [
+//                            "<b>Mac</b> Lelland's Unicorn-codfish",
+//                            "<b>Mac</b>clelland's Unicorn-cod"
+//                    ],
+//                    commonName: "Codlet, Mac Lelland's Unicorn-codfish, Macclelland's Unicorn-cod, Spotted Codlet, Unicorn Cod, Unicorn Codlet",
+//                    matchedNames: [
+//                            "Mac Lelland's Unicorn-codfish",
+//                            "Macclelland's Unicorn-cod",
+//                            "Bregmaceros mcclellandi"
+//                    ],
+//                    rankId: 7000,
+//                    rankString: "species",
+//                    left: 398264,
+//                    right: 398265
+//                },
+        println("results: " + autoCompleteList.size())
+        def payload = [autoCompleteList : autoCompleteList]
+        render payload as JSON
+    }
+
+
+    /**
+     * Main taxon search
+     *
+     * @return
+     */
+    def search(){
+
+
+
+        def additionalParams = "&wt=json&facet.field=taxonGroup_s&facet.field=imageAvailable_s&facet.field=dataset&facet.field=rank&facet.field=dataProvider_s&facet.field=taxonomicStatus_s&facet.field=establishmentMeans_s&facet=true&facet.mincount=1"
+        def queryString = request.queryString
+
+        if(queryString) {
+            if (!params.q) {
+                queryString = request.queryString.replaceFirst("q=", "q=*:*")
+            } else if (params.q.trim() == "*") {
+                queryString = request.queryString.replaceFirst("q=*", "q=*:*")
+            }
+        } else {
+            queryString = "q=*:*"
+        }
+
+        def queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams).text
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+
+        if(json.response.numFound as Integer == 0){
+
+            println(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams)
+            queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams).text
+            js = new JsonSlurper()
+            json = js.parseText(queryResponse)
+        }
+
         def model = [
-                searchResults:[
-                        totalRecords:json.response.numFound,
-                        facetResults: formatFacets(json.facet_counts?.facet_fields?:[]),
-                        results: formatDocs(json.response.docs)
-                ]
+            searchResults:[
+                totalRecords:json.response.numFound,
+                facetResults: formatFacets(json.facet_counts?.facet_fields?:[]),
+                results: formatDocs(json.response.docs)
+            ]
         ]
+
+        println("auto called with q = " + params.q + ", returning " + model.searchResults.totalRecords)
 
         render (model as JSON)
     }
 
-    def formatFacets(facetFields){
+    private def formatFacets(facetFields){
         def formatted = []
         facetFields.each { facetName, arrayValues ->
             def facetValues = []
@@ -216,11 +327,9 @@ class SolrController {
         formatted
     }
 
-    def formatDocs(docs){
+    private def formatDocs(docs){
 
         def formatted = []
-
-
 
         docs.each {
             if(it.idxtype == "TAXON"){
@@ -232,9 +341,10 @@ class SolrController {
                     commonNames = it.commonName.join(", ")
                 }
 
-                def doc = [
+                Map doc = [
                     "guid" : it.guid,
                     "idxType": "TAXON",
+                    "name" : it.scientificName,
                     "scientificName" : it.scientificName,
                     "author" : it.author,
                     "nameComplete" : it.nameComplete,
@@ -265,18 +375,27 @@ class SolrController {
                     }
                 }
 
-                //add denormalised fields
-                it.keySet().each { key ->
-                    if(key.startsWith("rk_")){
-                        doc.put(key.substring(3), it.get(key))
-                    }
-                    if(key.startsWith("rkid_")){
-                        doc.put(key.substring(5)+"ID", it.get(key))
-                    }
-                }
+                //add de-normalised fields
+                def map = extractClassification(it)
+
+                doc.putAll(map)
+
                 formatted << doc
             }
         }
         formatted
+    }
+
+    private def extractClassification(queryResult) {
+        def map = [:]
+        queryResult.keySet().each { key ->
+            if (key.startsWith("rk_")) {
+                map.put(key.substring(3), queryResult.get(key))
+            }
+            if (key.startsWith("rkid_")) {
+                map.put(key.substring(5) + "Guid", queryResult.get(key))
+            }
+        }
+        map
     }
 }

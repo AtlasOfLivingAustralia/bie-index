@@ -35,8 +35,9 @@ grails.mime.types = [ // the first one is the default format
     xml:           ['text/xml', 'application/xml']
 ]
 
-// URL Mapping Cache Max Size, defaults to 5000
-//grails.urlmapping.cache.maxsize = 1000
+if(!solrBaseUrl){
+    solrBaseUrl = "http://130.56.248.115/solr/bie_denormed"
+}
 
 // Legacy setting for codec used to encode data with ${}
 grails.views.default.codec = "html"

@@ -1,4 +1,4 @@
-package taxon.index
+package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
 import au.com.bytecode.opencsv.CSVWriter
@@ -8,7 +8,7 @@ import org.apache.solr.common.SolrInputDocument
 
 class ImportController {
 
-    def solrBaseUrl = "http://130.56.248.115/solr/bie_denormed"
+    def grailsApplication
 
     def index() {}
 
@@ -16,9 +16,7 @@ class ImportController {
      *
      * @return
      */
-    def denormalise(){
-
-        def dwcDir = "/data/uk/dwca"
+    def denormalise(dwcDir){
 
         //read inventory, creating entries in index....
         def csvReader = new CSVReader(new FileReader(new File(dwcDir + File.separatorChar + "taxa.csv")))
@@ -60,10 +58,7 @@ class ImportController {
         println("Parent-less: " + parentLess.size())
         println("Parent-child: " + childParentMap.size())
 
-//        def denormOutput = new CSVWriter(new FileWriter("/tmp/denormed"))
-
         def taxonDenormLookup = [:]
-
 
         childParentMap.keySet().each {
             //dont bother denormalising terminal taxa
@@ -73,9 +68,6 @@ class ImportController {
                 taxonDenormLookup.put(it, list)
             }
         }
-//        denormOutput.flush()
-//        denormOutput.close()
-
         taxonDenormLookup
     }
 
@@ -96,11 +88,14 @@ class ImportController {
         currentList
     }
 
-
-
     def importDwcA() {
 
-        def dwcDir = "/data/uk/dwca"
+        if(!params.dwca_dir){
+            render ([success: false, message:'Supply a dwca_dir parameter'] as JSON)
+            return
+        }
+
+        def dwcDir = params.dwca_dir  //"/data/uk/dwca"
 
         //todo validate the DWC-A
         //retrieve taxon rank mappings
@@ -122,12 +117,12 @@ class ImportController {
         println("Synonyms read: " + synonymMap.size())
 
         //initialise SOLR connection
-        def solrServer = new ConcurrentUpdateSolrServer(solrBaseUrl, 10, 4)
+        def solrServer = new ConcurrentUpdateSolrServer(grailsApplication.config.solrBaseUrl, 10, 4)
         println("Deleting existing entries in index...")
         solrServer.deleteByQuery("idxtype:TAXON")
 
         //retrieve the denormed taxon lookup
-        def denormalised =  denormalise()
+        def denormalised =  denormalise(dwcDir)
 
         //read inventory, creating entries in index....
         def csvReader = new CSVReader(new FileReader(new File(dwcDir + File.separatorChar + "taxa.csv")))
@@ -157,7 +152,7 @@ class ImportController {
 
             if(taxonID == acceptedNameUsageID || acceptedNameUsageID == "" ){
 
-                def taxonRank = record[taxonRankIdx]
+                def taxonRank = record[taxonRankIdx].toLowerCase()
                 def scientificName = record[scientificNameIdx]
                 def parentNameUsageID = record[parentNameUsageIDIdx]
                 def taxonRankID = taxonRanks.get(taxonRank.toLowerCase()) ? taxonRanks.get(taxonRank.toLowerCase()) as Integer : -1
@@ -192,6 +187,9 @@ class ImportController {
                 def image = imageMap.get(scientificName)
                 if(image) {
                     doc.addField("image", image)
+                    doc.addField("imageAvailable_s", "yes")
+                } else {
+                    doc.addField("imageAvailable_s", "no")
                 }
 
                 //common names
@@ -276,7 +274,7 @@ class ImportController {
         }
         csvReader.close()
 
-        render ([indexCount: counter] as JSON)
+        render ([success:true, indexCount: counter] as JSON)
     }
 
     /**
@@ -382,7 +380,7 @@ class ImportController {
         def iter = props.entrySet().iterator()
         while(iter.hasNext()){
             def entry = iter.next()
-            idMap.put(entry.getKey().toLowerCase(), entry.getValue())
+            idMap.put(entry.getKey().toLowerCase().trim(), entry.getValue())
         }
         idMap
     }
@@ -414,9 +412,6 @@ class ImportController {
         }
 
         println("Images loaded: " + imageMap.size())
-
-//        imageMap.each { name, url -> println("${name} ${url}")}
-
         imageMap
     }
 }

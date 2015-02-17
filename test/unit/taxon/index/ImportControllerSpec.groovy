@@ -1,5 +1,6 @@
 package taxon.index
 
+import au.org.ala.bie.ImportController
 import grails.test.mixin.TestFor
 import spock.lang.Specification
 

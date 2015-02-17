@@ -1,13 +1,14 @@
 package taxon.index
 
+import au.org.ala.bie.SearchController
 import grails.test.mixin.TestFor
 import spock.lang.Specification
 
 /**
  * See the API for {@link grails.test.mixin.web.ControllerUnitTestMixin} for usage instructions
  */
-@TestFor(SolrController)
-class SolrControllerSpec extends Specification {
+@TestFor(SearchController)
+class SearchControllerSpec extends Specification {
 
     def setup() {
     }
