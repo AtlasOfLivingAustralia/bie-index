@@ -5,8 +5,8 @@ class UrlMappings {
         "/taxon/$id"(controller: "search", action: "taxon")
         "/species/$id(.$format)?"(controller: "search", action: "taxon")
         "/search(.$format)?"(controller: "search", action: "search")
-        "/classification/$id(.$format)?"(controller: "search", action: "classification")
-        "/childConcepts/$id(.$format)?"(controller: "search", action: "childConcepts")
+        "/classification/$id"(controller: "search", action: "classification")
+        "/childConcepts/$id"(controller: "search", action: "childConcepts")
         "/imageSearch"(controller: "search", action: "imageSearch")
 
         "/$controller/$action?/$id?(.$format)?"{

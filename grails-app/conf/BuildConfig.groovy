@@ -38,6 +38,8 @@ grails.project.dependency.resolution = {
 
         runtime 'net.sf.opencsv:opencsv:2.3'
         runtime "org.apache.solr:solr-solrj:4.10.2"
+
+        runtime "org.gbif:dwca-io:1.24"
     }
 
     plugins {
@@ -47,11 +49,13 @@ grails.project.dependency.resolution = {
         // plugins for the compile step
         compile ":scaffolding:2.1.2"
         compile ':cache:1.1.7'
-        compile ":asset-pipeline:1.9.6"
+//        compile ":asset-pipeline:1.9.6"
 
         // plugins needed at runtime but not for compilation
         runtime ":jquery:1.11.1"
         runtime ":cors:1.1.6"
+
+        runtime ":ala-bootstrap3:1.1"
 
         // Uncomment these to enable additional asset-pipeline capabilities
         //compile ":sass-asset-pipeline:1.9.0"

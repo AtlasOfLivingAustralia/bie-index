@@ -36,8 +36,17 @@ grails.mime.types = [ // the first one is the default format
 ]
 
 if(!solrBaseUrl){
-    solrBaseUrl = "http://130.56.248.115/solr/bie_denormed"
+    solrBaseUrl = "http://localhost:8080/solr/bie"
+//    solrBaseUrl = "http://bie-dev.ala.org.au/solr/bie"
 }
+
+if(!biocache.solr.url){
+    biocache.solr.url = "http://ala-macropus.it.csiro.au/solr/"
+}
+defaultNameSourceAttribution = "National Species Lists"
+commonNameSourceAttribution = "National Species Lists"
+
+indexImages = true
 
 // Legacy setting for codec used to encode data with ${}
 grails.views.default.codec = "html"
@@ -63,7 +72,6 @@ grails {
         // filteringCodecForContentType.'text/html' = 'html'
     }
 }
-
 
 grails.converters.encoding = "UTF-8"
 // scaffolding templates configuration
@@ -99,24 +107,42 @@ environments {
         // TODO: grails.serverURL = "http://www.changeme.com"
     }
 }
-
 // log4j configuration
-log4j.main = {
+log4j = {
     // Example of changing the log pattern for the default console appender:
     //
-    //appenders {
-    //    console name:'stdout', layout:pattern(conversionPattern: '%c{2} %m%n')
-    //}
+    appenders {
+        environments {
+            production {
+                console name: "stdout", layout: pattern(conversionPattern: "%d %-5p [%c{1}]  %m%n"), threshold: org.apache.log4j.Level.WARN
+            }
+            development {
+                console name: "stdout", layout: pattern(conversionPattern: "%d %-5p [%c{1}]  %m%n"), threshold: org.apache.log4j.Level.DEBUG
+            }
+            test {
+                console name: "stdout", layout: pattern(conversionPattern: "%d %-5p [%c{1}]  %m%n"), threshold: org.apache.log4j.Level.INFO
+            }
+        }
+    }
+
+    root {
+        info 'stdout'
+    }
 
     error  'org.codehaus.groovy.grails.web.servlet',        // controllers
-           'org.codehaus.groovy.grails.web.pages',          // GSP
-           'org.codehaus.groovy.grails.web.sitemesh',       // layouts
-           'org.codehaus.groovy.grails.web.mapping.filter', // URL mapping
-           'org.codehaus.groovy.grails.web.mapping',        // URL mapping
-           'org.codehaus.groovy.grails.commons',            // core / classloading
-           'org.codehaus.groovy.grails.plugins',            // plugins
-           'org.codehaus.groovy.grails.orm.hibernate',      // hibernate integration
-           'org.springframework',
-           'org.hibernate',
-           'net.sf.ehcache.hibernate'
+            'org.codehaus.groovy.grails.web.pages',          // GSP
+            'org.codehaus.groovy.grails.web.sitemesh',       // layouts
+            'org.codehaus.groovy.grails.web.mapping.filter', // URL mapping
+            'org.codehaus.groovy.grails.web.mapping',        // URL mapping
+            'org.codehaus.groovy.grails.commons',            // core / classloading
+            'org.codehaus.groovy.grails.plugins',            // plugins
+            'org.codehaus.groovy.grails.orm.hibernate',      // hibernate integration
+            'org.springframework',
+            'org.hibernate',
+            'net.sf.ehcache.hibernate'
+    info   'grails.app'
+    debug  'grails.app.controllers',
+            'grails.app.services',
+            'grails.web.pages',
+            'au.org.ala.bie'
 }

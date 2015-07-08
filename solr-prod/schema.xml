@@ -615,7 +615,6 @@
 
    <!-- Australian states, supports the region functionality -->
    <field name="state" type="string" indexed="true" stored="true" multiValued="true" omitNorms="false" />
-   <field name="imageAvailable" type="string" indexed="true" stored="true" multiValued="false" omitNorms="true" />
    <field name="image" type="string" indexed="true" stored="true" multiValued="false" omitNorms="true" />
    <!-- the resource UID of the preferrred image -->
    <field name="imageSource" type="string" indexed="true" stored="true" multiValued="false" omitNorms="true" />
