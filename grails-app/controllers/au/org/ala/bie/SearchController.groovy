@@ -102,7 +102,7 @@ class SearchController {
      */
     def childConcepts(){
 
-        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=parentGuid:\"" + params.id + "\""
+        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&rows=1000&q=parentGuid:\"" + params.id + "\""
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
