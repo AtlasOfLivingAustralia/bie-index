@@ -15,7 +15,13 @@ if (new File(default_config).exists()) {
 
 println "[${appName}] (*) grails.config.locations = ${grails.config.locations}"
 println "default_config = ${default_config}"
-grails.project.groupId = appName // change this to alter the default package name and Maven publishing destination
+
+
+solrBaseUrl = "http://localhost:8080/solr/bie"
+biocache.solr.url = "http://ala-macropus.it.csiro.au/solr/"
+defaultNameSourceAttribution = "National Species Lists"
+commonNameSourceAttribution = "National Species Lists"
+indexImages = true
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)
 grails.mime.disable.accept.header.userAgents = ['Gecko', 'WebKit', 'Presto', 'Trident']
@@ -34,19 +40,6 @@ grails.mime.types = [ // the first one is the default format
     hal:           ['application/hal+json','application/hal+xml'],
     xml:           ['text/xml', 'application/xml']
 ]
-
-if(!solrBaseUrl){
-    solrBaseUrl = "http://localhost:8080/solr/bie"
-//    solrBaseUrl = "http://bie-dev.ala.org.au/solr/bie"
-}
-
-if(!biocache.solr.url){
-    biocache.solr.url = "http://ala-macropus.it.csiro.au/solr/"
-}
-defaultNameSourceAttribution = "National Species Lists"
-commonNameSourceAttribution = "National Species Lists"
-
-indexImages = true
 
 // Legacy setting for codec used to encode data with ${}
 grails.views.default.codec = "html"

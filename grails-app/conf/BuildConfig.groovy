@@ -47,25 +47,9 @@ grails.project.dependency.resolution = {
                 ":rest-client-builder:2.0.3") {
             export = false
         }
-
-        // plugins for the build system only
         build ":tomcat:7.0.55"
-
-        // plugins for the compile step
-        compile ":scaffolding:2.1.2"
-        compile ':cache:1.1.7'
-//        compile ":asset-pipeline:1.9.6"
-
-        // plugins needed at runtime but not for compilation
-        runtime ":jquery:1.11.1"
+        compile ':cache:1.1.8'
         runtime ":cors:1.1.6"
-
         runtime ":ala-bootstrap3:1.1"
-
-        // Uncomment these to enable additional asset-pipeline capabilities
-        //compile ":sass-asset-pipeline:1.9.0"
-        //compile ":less-asset-pipeline:1.10.0"
-        //compile ":coffee-asset-pipeline:1.8.0"
-        //compile ":handlebars-asset-pipeline:1.3.0.3"
     }
 }
