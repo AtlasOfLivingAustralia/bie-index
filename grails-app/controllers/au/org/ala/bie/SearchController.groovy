@@ -146,6 +146,10 @@ class SearchController {
         def json = js.parseText(queryResponse)
 
         def taxon = json.response.docs[0]
+        if(!taxon){
+            response.sendError(404, "Taxon identifier not recognised")
+            return
+        }
 
         //retrieve any synonyms
         def synonymQueryUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=acceptedConceptID:\"" + params.id + "\""
