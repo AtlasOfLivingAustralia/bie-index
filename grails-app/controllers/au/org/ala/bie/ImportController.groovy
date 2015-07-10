@@ -171,28 +171,16 @@ class ImportController {
             log.info("Denormalised map..." + denormalised.size())
 
             log.info("Creating entries in index...")
+
             //read inventory, creating entries in index....
-//            def csvReader = new CSVReader(new FileReader(taxaFile), taxaArchiveFile.getFieldsTerminatedBy())
-//
-//            def headers = csvReader.readNext() as List //ignore header
-//
-//            get field indicies
-//            def taxonIDIdx = headers.indexOf("taxonID")
-//            def datasetIDIdx = headers.indexOf("datasetID")
-//            def acceptedNameUsageIDIdx = headers.indexOf("acceptedNameUsageID")
-//            def parentNameUsageIDIdx = headers.indexOf("parentNameUsageID")
-//            def scientificNameIdx = headers.indexOf("scientificName")
-//            def scientificNameAuthorshipIdx = headers.indexOf("scientificNameAuthorship")
-//            def taxonRankIdx = headers.indexOf("taxonRank")
-//
-//            def alreadyIndexed = [taxonIDIdx,
-//                                  datasetIDIdx,
-//                                  acceptedNameUsageIDIdx,
-//                                  parentNameUsageIDIdx,
-//                                  scientificNameIdx,
-//                                  taxonRankIdx,
-//                                  scientificNameAuthorshipIdx
-//            ]
+            def alreadyIndexed = [DwcTerm.taxonID,
+                                  DwcTerm.datasetID,
+                                  DwcTerm.acceptedNameUsageID,
+                                  DwcTerm.parentNameUsageID,
+                                  DwcTerm.scientificName,
+                                  DwcTerm.taxonRank,
+                                  DwcTerm.scientificNameAuthorship
+            ]
 
             def buffer = []
             def counter = 0
@@ -232,20 +220,18 @@ class ImportController {
                         doc.addField("nameComplete", scientificName)
                     }
 
-                    def inSchema = ["establishmentMeans", "speciesGroup", "taxonomicStatus", "scientificNameAuthorship", "taxonConceptID"]
+                    def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID]
 
-
-//                    record.terms().eachWithIndex { term ->
-//                        if (idx > 0 && !alreadyIndexed.contains(idx) && record.length > idx) {
-//
-//                            if(inSchema.contains(header)){
-//                                doc.addField(header, record[idx])
-//                            } else {
-//                                //use a dynamic field extension
-//                                doc.addField(header + DYNAMIC_FIELD_EXTENSION, record[idx])
-//                            }
-//                        }
-//                    }
+                    record.terms().each { term ->
+                        if (!alreadyIndexed.contains(term)) {
+                            if(inSchema.contains(term)){
+                                doc.addField(term.simpleName(), record.value(term))
+                            } else {
+                                //use a dynamic field extension
+                                doc.addField(term.simpleName() + DYNAMIC_FIELD_EXTENSION, record.value(term))
+                            }
+                        }
+                    }
 
                     def attribution = attributionMap.get(record.value(DwcTerm.datasetID))
                     if (attribution) {
