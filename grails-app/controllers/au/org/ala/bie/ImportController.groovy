@@ -55,7 +55,7 @@ class ImportController {
 
             Record record = iter.next()
 
-            def taxonID = record.value(DwcTerm.taxonID)
+            def taxonID = record.id()
             def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
             def scientificName = record.value(DwcTerm.scientificName)
@@ -342,7 +342,6 @@ class ImportController {
                 solrServer.commit(true, false, true)
                 buffer.clear()
             }
-//            csvReader.close()
             log.info "Import finished"
         }
 
@@ -467,7 +466,6 @@ class ImportController {
      */
     private def indexImages(){
 
-//        return [:]
         if(!grailsApplication.config.indexImages.toBoolean()){
             return [:]
         }
