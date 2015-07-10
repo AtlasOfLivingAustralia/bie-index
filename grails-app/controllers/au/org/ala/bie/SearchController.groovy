@@ -55,7 +55,7 @@ class SearchController {
      */
     def imageSearch(){
 
-        def additionalParams = "&wt=json&fq=rank:species&fq=image:[*%20TO%20*]"
+        def additionalParams = "&wt=json&fq=rankID:%5B7000%20TO%20*%5D&fq=imageAvailable:yes"
 
         def rank = params.taxonRank?:''.trim()
         def scientificName = params.scientificName?:''.trim()
