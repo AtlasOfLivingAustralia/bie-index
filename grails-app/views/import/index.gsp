@@ -19,33 +19,31 @@
     </p>
 
     <div>
-        <form>
-            <table class="table">
-                <g:each in="${filePaths}" var="filePath">
-                    <tr>
-                        <td>${filePath}</td>
-                        <td><button class="btn btn-primary" onclick="javascript:loadDwCA('${filePath}', false);">Import DwCA</button></td>
-                        <td><button class="btn btn-primary" onclick="javascript:loadDwCA('${filePath}', true);">Clean & Import DwCA</button></td>
-                    </tr>
-                </g:each>
-            </table>
+        <table class="table">
+            <g:each in="${filePaths}" var="filePath">
+                <tr>
+                    <td>${filePath}</td>
+                    <td><button class="btn btn-primary" onclick="javascript:loadDwCA('${filePath}', false);">Import DwCA</button></td>
+                    <td><button class="btn btn-primary" onclick="javascript:loadDwCA('${filePath}', true);">Clean & Import DwCA</button></td>
+                </tr>
+            </g:each>
+        </table>
 
-            <h2>Or..</h2>
+        <h2>Or..</h2>
 
-            <div class="form-group">
-                <label for="dwca_dir">Absolute file system path to expanded (unzipped) DwC-A</label>
-                <input type="text" id="dwca_dir" name="dwca_dir" value="/data/bie/import/dwc-a" class="form-control"/>
+        <div class="form-group">
+            <label for="dwca_dir">Absolute file system path to expanded (unzipped) DwC-A</label>
+            <input type="text" id="dwca_dir" name="dwca_dir" value="/data/bie/import/dwc-a" class="form-control"/>
+        </div>
+
+        <div class="form-group">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" id="clear_index" name="clear_index"/> Clear existing data taxonomic data
+                </label>
             </div>
-
-            <div class="form-group">
-                <div class="checkbox">
-                    <label>
-                        <input type="checkbox" id="clear_index" name="clear_index"/> Clear existing data taxonomic data
-                    </label>
-                </div>
-            </div>
-        </form>
-        <button id="start-import" class="btn btn-primary">Import DwC-A</button>
+        </div>
+        <button id="start-import" onclick="javascript:loadDwCAFromDir()" class="btn btn-primary">Import DwC-A</button>
     </div>
 
     <div class="well import-info alert-info hide" style="margin-top:20px;">
@@ -53,8 +51,9 @@
     </div>
 
     <r:script>
-        $('#start-import').click(function() {
-            $.get("${createLink(controller:'import', action:'importDwcA' )}?dwca_dir=" + $('#dwca_dir').val() + "&clear_index=" + $('#clear_index').val() + "&field_delimiter=" + $('#field_delimiter').val(), function( data ) {
+
+        function loadDwCAFromDir(){
+            $.get("${createLink(controller: 'import', action: 'importDwcA')}?dwca_dir=" + $('#dwca_dir').val() + "&clear_index=" + $('#clear_index').val() + "&field_delimiter=" + $('#field_delimiter').val(), function( data ) {
               if(data.success){
                 $('.import-info p').html('Import successfully started....')
                 $('#start-import').prop('disabled', true);
@@ -63,7 +62,7 @@
               }
               $('.import-info').removeClass('hide');
             });
-        });
+        }
 
         function loadDwCA(filePath, clearIndex) {
             $.get("${createLink(controller:'import', action:'importDwcA' )}?dwca_dir=" + filePath + "&clear_index=" + clearIndex, function( data ) {
