@@ -22,6 +22,7 @@ biocache.solr.url = "http://ala-macropus.it.csiro.au/solr/"
 defaultNameSourceAttribution = "National Species Lists"
 commonNameSourceAttribution = "National Species Lists"
 indexImages = true
+importDir = "/data/bie/import"
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)
 grails.mime.disable.accept.header.userAgents = ['Gecko', 'WebKit', 'Presto', 'Trident']
@@ -133,8 +134,8 @@ log4j = {
             'org.springframework',
             'org.hibernate',
             'net.sf.ehcache.hibernate'
-    info   'grails.app'
-    debug  'grails.app.controllers',
+    debug   'grails.app',
+            'grails.app.controllers',
             'grails.app.services',
             'grails.web.pages',
             'au.org.ala.bie'

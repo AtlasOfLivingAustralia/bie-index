@@ -1,5 +1,6 @@
 package bie.index
 
+import au.org.ala.bie.ImportService
 import grails.test.mixin.TestFor
 import spock.lang.Specification
 
