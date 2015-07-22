@@ -57,10 +57,10 @@ Below is an example meta.xml that would be provided in a darwin core archive.
 
 In addition to indexing the content of the darwin core archive, the ingestion & index creation (optionally) indexes data from the following ALA components.
 
-- Layers & regions - http://spatial.ala.org.au/layers
-- Collectory - http://collections.ala.org.au
-- Lists and traits - http://lists.ala.org.au
-- Biocache services - http://biocache.ala.org.au/ws
+- Layers & regions - http://spatial.ala.org.au/layers - spatial layers available in the system and regions (e.g. states, countries)
+- Collectory - http://collections.ala.org.au - data resource, collections, institutions
+- Lists and traits - http://lists.ala.org.au - conservation lists, sensitive species lists, traits
+- Biocache services - http://biocache.ala.org.au/ws - images, occurrence record counts
 
 ## Architecture
 
