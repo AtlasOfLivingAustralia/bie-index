@@ -47,8 +47,7 @@ class SearchController {
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        def model = searchService.getChildConcepts(params.id)
-        render (model as JSON)
+        asJson searchService.getChildConcepts(params.id)
     }
 
     /**

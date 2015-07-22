@@ -199,7 +199,7 @@ class ImportService {
                 doc["id"] = UUID.randomUUID().toString()
                 doc["guid"] = taxonID
                 doc["parentGuid"] = parentNameUsageID
-                doc["rank"] = taxonRank
+                doc["rank"] = taxonRank?.toLowerCase()
                 doc["rankID"] = taxonRankID
                 doc["scientificName"] = scientificName
                 doc["scientificNameAuthorship"] = scientificNameAuthorship
