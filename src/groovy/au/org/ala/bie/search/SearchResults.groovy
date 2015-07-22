@@ -18,10 +18,9 @@ public class SearchResults {
     /** Status code to be set by Controller (e.g. OK) */
     String status;
     /** List of results from search */
-    List<SearchResult> searchResults = []
+    List results = []
     /** List of facet results from search */
-    List<FacetResult> facetResults = []
+    List facetResults = []
     /** The query that was used */
     String query
-
 }

@@ -1,9 +1,7 @@
 package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
-import grails.transaction.Transactional
-import org.apache.solr.client.solrj.impl.ConcurrentUpdateSolrServer
-import org.apache.solr.common.SolrInputDocument
+import au.org.ala.bie.search.IndexDocType
 import org.gbif.dwc.terms.DwcTerm
 import org.gbif.dwc.terms.GbifTerm
 import org.gbif.dwca.io.Archive
@@ -18,6 +16,8 @@ class ImportService {
 
     def serviceMethod() {}
 
+    def indexService
+
     def grailsApplication
 
     def static DYNAMIC_FIELD_EXTENSION = "_s"
@@ -25,7 +25,7 @@ class ImportService {
     def synonymCheckingEnabled = false
 
     /**
-     * Load import index page.
+     * Retrieve a set of file paths from the import directory.
      */
     def retrieveAvailableDwCAPaths() {
 
@@ -128,7 +128,7 @@ class ImportService {
         Archive archive = ArchiveFactory.openArchive(new File(dwcDir));
         ArchiveFile taxaArchiveFile = archive.getCore()
 
-        //vernacular names extension?
+        //vernacular names extension available?
         ArchiveFile vernacularArchiveFile = archive.getExtension(GbifTerm.VernacularName)
 
         //retrieve taxon rank mappings
@@ -149,17 +149,13 @@ class ImportService {
         def synonymMap = readSynonyms(taxaArchiveFile)
         log.info("Synonyms read: " + synonymMap.size())
 
-        //initialise SOLR connection
-        def solrServer = new ConcurrentUpdateSolrServer(grailsApplication.config.solrBaseUrl, 10, 4)
-
+        //clear
         if (clearIndex) {
             log.info("Deleting existing entries in index...")
-            solrServer.deleteByQuery("idxtype:TAXON")
+            indexService.deleteFromIndex(IndexDocType.TAXON)
         } else {
             log.info("Skipping deleting existing entries in index...")
         }
-
-        log.info("Index server: " + grailsApplication.config.solrBaseUrl)
 
         //retrieve the denormed taxon lookup
         def denormalised = denormalise(taxaArchiveFile)
@@ -199,20 +195,18 @@ class ImportService {
                 def taxonRankID = taxonRanks.get(taxonRank.toLowerCase()) ? taxonRanks.get(taxonRank.toLowerCase()) as Integer : -1
 
                 //common name
-                def doc = new SolrInputDocument()
-                doc.addField("idxtype", "TAXON")
-
-                doc.addField("id", UUID.randomUUID().toString())
-                doc.addField("guid", taxonID)
-                doc.addField("parentGuid", parentNameUsageID)
-                doc.addField("rank", taxonRank)
-                doc.addField("rankID", taxonRankID)
-                doc.addField("scientificName", scientificName)
-                doc.addField("scientificNameAuthorship", scientificNameAuthorship)
+                def doc = ["idxtype" : IndexDocType.TAXON.name()]
+                doc["id"] = UUID.randomUUID().toString()
+                doc["guid"] = taxonID
+                doc["parentGuid"] = parentNameUsageID
+                doc["rank"] = taxonRank
+                doc["rankID"] = taxonRankID
+                doc["scientificName"] = scientificName
+                doc["scientificNameAuthorship"] = scientificNameAuthorship
                 if (scientificNameAuthorship) {
-                    doc.addField("nameComplete", scientificName + " " + scientificNameAuthorship)
+                    doc["nameComplete"] = scientificName + " " + scientificNameAuthorship
                 } else {
-                    doc.addField("nameComplete", scientificName)
+                    doc["nameComplete"] = scientificName
                 }
 
                 def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID]
@@ -220,35 +214,33 @@ class ImportService {
                 record.terms().each { term ->
                     if (!alreadyIndexed.contains(term)) {
                         if (inSchema.contains(term)) {
-                            doc.addField(term.simpleName(), record.value(term))
+                            doc[term.simpleName()] = record.value(term)
                         } else {
                             //use a dynamic field extension
-                            doc.addField(term.simpleName() + DYNAMIC_FIELD_EXTENSION, record.value(term))
+                            doc[term.simpleName() + DYNAMIC_FIELD_EXTENSION] = record.value(term)
                         }
                     }
                 }
 
                 def attribution = attributionMap.get(record.value(DwcTerm.datasetID))
                 if (attribution) {
-                    doc.addField("dataset", attribution["name"])
-                    doc.addField("dataProvider", attribution["dataProvider"])
+                    doc["dataset"] = attribution["name"]
+                    doc["dataProvider"] = attribution["dataProvider"]
                 }
 
                 //retrieve images via scientific name - FIXME should be looking up with taxonID
                 def image = imageMap.get(scientificName)
                 if (image) {
-                    doc.addField("image", image)
-                    doc.addField("imageAvailable", "yes")
+                    doc["image"] = image
+                    doc["imageAvailable"] = "yes"
                 } else {
-                    doc.addField("imageAvailable", "no")
+                    doc["imageAvailable"] = "no"
                 }
 
                 //common names
                 def commonNames = commonNamesMap.get(taxonID)
                 if (commonNames) {
-                    commonNames.each {
-                        doc.addField("commonName", it)
-                    }
+                    doc["commonName"] = commonNames
                 }
 
                 //denormed taxonomy
@@ -269,8 +261,8 @@ class ImportService {
                                 log.info("Duplicated rank: " + normalisedRank + " - " + taxa)
                             } else {
                                 processedRanks << normalisedRank
-                                doc.addField("rk_" + normalisedRank, name)
-                                doc.addField("rkid_" + normalisedRank, tID)
+                                doc["rk_" + normalisedRank] = name
+                                doc["rkid_" + normalisedRank] = tID
                             }
                         }
                     }
@@ -281,26 +273,25 @@ class ImportService {
                 if (synonyms) {
                     synonyms.each { synonym ->
 
-                        def synonymDoc = new SolrInputDocument()
-                        synonymDoc.addField("id", UUID.randomUUID().toString())
-                        synonymDoc.addField("guid", synonym["taxonID"])
-                        synonymDoc.addField("idxtype", "TAXON")
-                        synonymDoc.addField("rank", taxonRank)
-                        synonymDoc.addField("rankID", taxonRankID)
-                        synonymDoc.addField("scientificName", synonym['name'])
-                        synonymDoc.addField("nameComplete", synonym['name'])
-                        synonymDoc.addField("acceptedConceptName", scientificName + ' ' + scientificNameAuthorship)
-                        synonymDoc.addField("acceptedConceptID", taxonID)
-                        synonymDoc.addField("taxonomicStatus", "synonym")
+                        def sdoc = ["idxtype": "TAXON"]
+                        sdoc["id"] = UUID.randomUUID().toString()
+                        sdoc["guid"] = synonym["taxonID"]
+                        sdoc["rank"] = taxonRank
+                        sdoc["rankID"] = taxonRankID
+                        sdoc["scientificName"] = synonym['name']
+                        sdoc["nameComplete"] = synonym['name']
+                        sdoc["acceptedConceptName"] = scientificName + ' ' + scientificNameAuthorship
+                        sdoc["acceptedConceptID"] = taxonID
+                        sdoc["taxonomicStatus"] = "synonym"
 
                         def synAttribution = attributionMap.get(synonym['dataset'])
                         if (synAttribution) {
-                            synonymDoc.addField("dataset", synAttribution["name"])
-                            synonymDoc.addField("dataProvider", synAttribution["dataProvider"])
+                            sdoc["dataset"] = synAttribution["name"]
+                            sdoc["dataProvider"] = synAttribution["dataProvider"]
                         }
 
                         counter++
-                        buffer << synonymDoc
+                        buffer << sdoc
                     }
                 }
 
@@ -310,8 +301,7 @@ class ImportService {
             if (counter > 0 && counter % 1000 == 0) {
                 if (!buffer.isEmpty()) {
                     log.info("Adding docs: ${counter}")
-                    solrServer.add(buffer)
-                    solrServer.commit(true, false, true)
+                    indexService.indexBatch(buffer)
                     buffer.clear()
                 }
             }
@@ -319,8 +309,7 @@ class ImportService {
 
         //commit remainder
         if (!buffer.isEmpty()) {
-            solrServer.add(buffer)
-            solrServer.commit(true, false, true)
+            indexService.indexBatch(buffer)
             buffer.clear()
         }
         log.info "Import finished"

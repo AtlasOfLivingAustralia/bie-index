@@ -7,7 +7,7 @@
 	<body>
 		<div id="page-body" role="main">
 			<h1>BIE web services</h1>
-			<p>Here is a listing of prototype webservices for BIE</p>
+			<p>Here is a listing of  web services for BIE</p>
 
 			<table class="table">
 				<tr>
@@ -21,6 +21,18 @@
 				<tr>
 					<td>Autocomplete</td>
 					<td>${g.createLink(controller: 'search', action: 'auto')}?q={search terms}</td>
+				</tr>
+				<tr>
+					<td>Classification</td>
+					<td>${g.createLink(controller: 'search', action: 'classification')}?q={search terms}</td>
+				</tr>
+				<tr>
+					<td>Child concepts</td>
+					<td>${g.createLink(controller: 'search', action: 'childConcepts')}?q={search terms}</td>
+				</tr>
+				<tr>
+					<td>Image search</td>
+					<td>${g.createLink(controller: 'search', action: 'imageSearch')}?scientificName={scientificName}&taxonRank={taxonRank}</td>
 				</tr>
 			</table>
 
