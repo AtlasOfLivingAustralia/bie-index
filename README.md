@@ -12,12 +12,12 @@ This includes:
 
 This application currently supports the ingestion of DwC archives with the following mandatory darwin core fields in the core file:
 
-- taxonID
-- parentNameUsageID
-- acceptedNameUsageID
-- scientificName
-- scientificNameAuthorship
-- taxonRank
+- [taxonID](http://rs.tdwg.org/dwc/terms/#taxonID)
+- [parentNameUsageID](http://rs.tdwg.org/dwc/terms/#parentNameUsageID)
+- [acceptedNameUsageID](http://rs.tdwg.org/dwc/terms/#acceptedNameUsageID)
+- [scientificName](http://rs.tdwg.org/dwc/terms/#scientificName)
+- [scientificNameAuthorship](http://rs.tdwg.org/dwc/terms/#scientificNameAuthorship)
+- [taxonRank](http://rs.tdwg.org/dwc/terms/#taxonRank)
 
 Additional fields added to the core file e.g. establishmentMeans or any other field will also be indexed and available for facetted searching.
 
@@ -25,6 +25,8 @@ In addition to this, an extension file of vernacular names is also supported.
 The format support here aligns with the same format supported by the [ala-names-matching API](https://travis-ci.org/AtlasOfLivingAustralia/ala-name-matching).
 
 ### Basic example meta.xml
+
+Below is an example meta.xml that would be provided in a darwin core archive.
 
 ```xml
 <archive xmlns="http://rs.tdwg.org/dwc/text/" metadata="eml.xml">
@@ -50,6 +52,15 @@ The format support here aligns with the same format supported by the [ala-names-
   </extension>
 </archive>
 ```
+
+## Integration points
+
+In addition to indexing the content of the darwin core archive, the ingestion & index creation (optionally) indexes data from the following ALA components.
+
+- Layers & regions - http://spatial.ala.org.au/layers
+- Collectory - http://collections.ala.org.au
+- Lists and traits - http://lists.ala.org.au
+- Biocache services - http://biocache.ala.org.au/ws
 
 ## Architecture
 
