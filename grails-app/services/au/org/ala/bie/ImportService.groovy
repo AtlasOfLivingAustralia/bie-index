@@ -2,6 +2,7 @@ package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
+import groovy.json.JsonSlurper
 import org.gbif.dwc.terms.DwcTerm
 import org.gbif.dwc.terms.GbifTerm
 import org.gbif.dwca.io.Archive
@@ -115,6 +116,42 @@ class ImportService {
             denormaliseTaxon(info['p'], currentList, childParentMap, stackLevel + 1)
         }
         currentList
+    }
+
+    def importCollectory(){
+       [
+                "dataResource" : IndexDocType.DATARESOURCE,
+                "dataProvider" : IndexDocType.DATAPROVIDER,
+                "institution" : IndexDocType.INSTITUTION,
+                "collection" : IndexDocType.COLLECTION
+        ].each { entityType, indexDocType ->
+           def js = new JsonSlurper()
+           def entities = []
+           def drLists = js.parseText(new URL(grailsApplication.config.collectoryUrl + "/${entityType}").getText("UTF-8"))
+           log.info("About to import ${drLists.size()} ${entityType}")
+           log.info("Clearing existing: ${entityType}")
+           indexService.deleteFromIndex(indexDocType)
+
+           drLists.each {
+               def details = js.parseText(new URL(it.uri).getText("UTF-8"))
+               def doc = [:]
+               doc["id"] = it.uri
+               doc["guid"] = details.alaPublicUrl
+               doc["idxtype"] = indexDocType.name()
+               doc["name"] = details.name
+               doc["description"] = details.description
+
+               entities << doc
+
+               if(entities.size() > 10){
+                   indexService.indexBatch(entities)
+                   entities.clear()
+               }
+           }
+           log.info("Cleared")
+           indexService.indexBatch(entities)
+           log.info("Finished indexing ${drLists.size()} ${entityType}")
+       }
     }
 
     /**

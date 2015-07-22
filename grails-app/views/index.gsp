@@ -39,7 +39,8 @@
 			<h2>Admin</h2>
 
 			<ul>
-				<li><g:link controller="import">Taxonomy import tool</g:link> - import DwC-A with taxonomic information</li>
+				<li><g:link controller="import" action="index">Taxonomy import tool</g:link> - import DwC-A with taxonomic information</li>
+				<li><g:link controller="import" action="collectory">Collectory import tool</g:link> - import collectory information</li>
 			</ul>
 
 		</div>

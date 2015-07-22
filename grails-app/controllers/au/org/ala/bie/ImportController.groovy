@@ -18,6 +18,8 @@ class ImportController {
         [filePaths: filePaths]
     }
 
+    def collectory(){}
+
     /**
      * Import a DwC-A into this system.
      *
@@ -39,9 +41,27 @@ class ImportController {
                 importService.importDwcA(dwcDir, clearIndex)
                 log.info("Finished import of ${dwcDir}.")
             }
-            render ([success:true] as JSON)
+            asJson ([success:true])
         } else {
-            render ([success: false, message: 'Supplied directory path is not accessible'] as JSON)
+            asJson ([success: false, message: 'Supplied directory path is not accessible'])
         }
+    }
+
+    def importCollectory(){
+        if(grailsApplication.config.collectoryUrl){
+            Thread.start {
+                log.info("Starting import of collectory....")
+                importService.importCollectory()
+                log.info("Finished import of collectory.")
+            }
+            asJson ([success:true] )
+        } else {
+            asJson ([success: false, message: 'collectoryUrl not configured'] )
+        }
+    }
+
+    private def asJson = { model ->
+        response.setContentType("application/json;charset=UTF-8")
+        model
     }
 }

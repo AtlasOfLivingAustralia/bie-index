@@ -1,5 +1,6 @@
 package au.org.ala.bie
 
+import au.org.ala.bie.search.IndexDocType
 import grails.converters.JSON
 import groovy.json.JsonSlurper
 
@@ -254,7 +255,7 @@ class SearchService {
         def formatted = []
 
         docs.each {
-            if(it.idxtype == "TAXON"){
+            if(it.idxtype == IndexDocType.TAXON.name()){
 
                 def commonNameSingle = ""
                 def commonNames = ""
@@ -265,7 +266,7 @@ class SearchService {
 
                 Map doc = [
                         "guid" : it.guid,
-                        "idxType": "TAXON",
+                        "idxType": it.idxtype,
                         "name" : it.scientificName,
                         "kingdom" : it.rk_kingdom,
                         "scientificName" : it.scientificName,
@@ -296,6 +297,14 @@ class SearchService {
 
                 doc.putAll(map)
 
+                formatted << doc
+            } else {
+                Map doc = [
+                        "guid" : it.guid,
+                        "idxType": it.idxtype,
+                        "name" : it.name,
+                        "description" : it.description
+                ]
                 formatted << doc
             }
         }
