@@ -7,6 +7,12 @@ This includes:
 - search across other entities (regions, layers, datasets, institutions)
 - autocomplete services
 - download services (to be done)
+ 
+This project just provides JSON webservices (no HTML interface for end users). There is a set of front end components available providing the species pages listed here:
+
+- [bie-plugin](http://github.com/AtlasOfLivingAustralia/bie-plugin) - a grails plugin providing species pages & search interfaces
+- [ala-bie](http://github.com/AtlasOfLivingAustralia/ala-bie) - the ALA version of this front end
+- [generic-bie](http://github.com/AtlasOfLivingAustralia/generic-bie) - a generic version of this front end for use as a starting point for other countries reusing ALA components.
 
 ## Darwin Core archive format of taxonomic information
 
