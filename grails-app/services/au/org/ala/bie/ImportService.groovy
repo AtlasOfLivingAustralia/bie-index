@@ -118,6 +118,23 @@ class ImportService {
         currentList
     }
 
+    def importLayers(){
+        def js = new JsonSlurper()
+        def layers = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/layers").getText("UTF-8"))
+        def batch = []
+        layers.each { layer ->
+            def doc = [:]
+            doc["id"] = layer.name
+            doc["guid"] = layer.name
+            doc["idxtype"] = IndexDocType.LAYER.name()
+            doc["name"] = layer.displayname
+            doc["description"] = layer.description
+            batch << doc
+        }
+        indexService.indexBatch(batch)
+        log.info("Finished indexing ${layers.size()} layers")
+    }
+
     def importCollectory(){
        [
                 "dataResource" : IndexDocType.DATARESOURCE,
@@ -462,6 +479,23 @@ class ImportService {
         }
         idMap
     }
+
+
+    private def indexLists(){
+
+        // http://lists.ala.org.au/ws/speciesList?isAuthoritative=eq:true&max=100
+
+        // http://lists.ala.org.au/speciesListItem/downloadList/dr2168
+
+            
+
+
+
+
+
+
+    }
+
 
     /**
      * Retrieve map of scientificName -> image details

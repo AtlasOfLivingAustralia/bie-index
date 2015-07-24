@@ -20,6 +20,8 @@ class ImportController {
 
     def collectory(){}
 
+    def layers(){}
+
     /**
      * Import a DwC-A into this system.
      *
@@ -53,6 +55,19 @@ class ImportController {
                 log.info("Starting import of collectory....")
                 importService.importCollectory()
                 log.info("Finished import of collectory.")
+            }
+            asJson ([success:true] )
+        } else {
+            asJson ([success: false, message: 'collectoryUrl not configured'] )
+        }
+    }
+
+    def importLayers(){
+        if(grailsApplication.config.collectoryUrl){
+            Thread.start {
+                log.info("Starting import of layers....")
+                importService.importLayers()
+                log.info("Finished import of layers.")
             }
             asJson ([success:true] )
         } else {
