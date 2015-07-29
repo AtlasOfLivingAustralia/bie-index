@@ -2,11 +2,13 @@ class UrlMappings {
 
 	static mappings = {
 
-        "/taxon/$id"(controller: "search", action: "taxon")
+
         "/species"(controller: "search", action: "taxon")
         "/species/"(controller: "search", action: "taxon")
         "/species/$id"(controller: "search", action: "taxon")
         "/species/$id(.json)?"(controller: "search", action: "taxon")
+        "/taxon/$id"(controller: "search", action: "taxon")
+        "/auto"(controller: "search", action: "auto")
         "/search(.$format)?"(controller: "search", action: "search")
         "/classification/"(controller: "search", action: "classification")
         "/classification/$id"(controller: "search", action: "classification")

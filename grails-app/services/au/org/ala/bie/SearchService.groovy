@@ -266,7 +266,7 @@ class SearchService {
 
                 Map doc = [
                         "guid" : it.guid,
-                        "idxType": it.idxtype,
+                        "idxtype": it.idxtype,
                         "name" : it.scientificName,
                         "kingdom" : it.rk_kingdom,
                         "scientificName" : it.scientificName,
@@ -301,7 +301,7 @@ class SearchService {
             } else {
                 Map doc = [
                         "guid" : it.guid,
-                        "idxType": it.idxtype,
+                        "idxtype": it.idxtype,
                         "name" : it.name,
                         "description" : it.description
                 ]
