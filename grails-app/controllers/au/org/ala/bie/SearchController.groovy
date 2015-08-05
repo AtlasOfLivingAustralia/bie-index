@@ -25,7 +25,8 @@ class SearchController {
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        asJson searchService.getClassification(params.id)
+        def classification = searchService.getClassification(params.id)
+        render (classification as JSON)
     }
 
     /**
@@ -47,7 +48,7 @@ class SearchController {
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        asJson searchService.getChildConcepts(params.id)
+        render (searchService.getChildConcepts(params.id) as JSON)
     }
 
     /**

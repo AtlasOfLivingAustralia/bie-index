@@ -24,7 +24,8 @@ commonNameSourceAttribution = "National Species Lists"
 indexImages = true
 importDir = "/data/bie/import"
 collectoryUrl = "http://collections.ala.org.au/ws"
-layersServicesUrl= "http://spatial.ala.org.au/ws"
+layersServicesUrl = "http://spatial.ala.org.au/ws"
+synonymCheckingEnabled = true
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)
 grails.mime.disable.accept.header.userAgents = ['Gecko', 'WebKit', 'Presto', 'Trident']

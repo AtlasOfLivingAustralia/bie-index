@@ -13,7 +13,7 @@ class JSONPFilters {
 
                 def ct = response.getContentType()
                 //println("content type: "  + ct)
-                if(ct?.contains("application/json")){
+                if(ct?.contains("application/json") && model){
                     String resp = model as JSON
                     if(params.callback) {
                         resp = params.callback + "(" + resp + ")"

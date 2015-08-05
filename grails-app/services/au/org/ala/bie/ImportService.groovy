@@ -3,6 +3,7 @@ package au.org.ala.bie
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
 import groovy.json.JsonSlurper
+import org.gbif.dwc.terms.DcTerm
 import org.gbif.dwc.terms.DwcTerm
 import org.gbif.dwc.terms.GbifTerm
 import org.gbif.dwca.io.Archive
@@ -22,8 +23,6 @@ class ImportService {
     def grailsApplication
 
     def static DYNAMIC_FIELD_EXTENSION = "_s"
-
-    def synonymCheckingEnabled = false
 
     /**
      * Retrieve a set of file paths from the import directory.
@@ -65,12 +64,12 @@ class ImportService {
             def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
             def scientificName = record.value(DwcTerm.scientificName)
-            def taxonRank = record.value(DwcTerm.taxonRank)
+            def taxonRank = record.value(DwcTerm.taxonRank)?:"".toLowerCase()
 
             parents << parentNameUsageID
 
             //if an accepted usage, add to map
-            if (!synonymCheckingEnabled || (acceptedNameUsageID == "" || taxonID == acceptedNameUsageID)) {
+            if (acceptedNameUsageID == null || acceptedNameUsageID == "" || taxonID == acceptedNameUsageID) {
                 if (parentNameUsageID) {
                     childParentMap.put(taxonID, [cn: scientificName, cr: taxonRank, p: parentNameUsageID])
                 } else {
@@ -118,6 +117,11 @@ class ImportService {
         currentList
     }
 
+    /**
+     * Import layer information into the index.
+     *
+     * @return
+     */
     def importLayers(){
         def js = new JsonSlurper()
         def layers = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/layers").getText("UTF-8"))
@@ -135,6 +139,11 @@ class ImportService {
         log.info("Finished indexing ${layers.size()} layers")
     }
 
+    /**
+     * Import collectory information into the index.
+     *
+     * @return
+     */
     def importCollectory(){
        [
                 "dataResource" : IndexDocType.DATARESOURCE,
@@ -185,6 +194,9 @@ class ImportService {
         //vernacular names extension available?
         ArchiveFile vernacularArchiveFile = archive.getExtension(GbifTerm.VernacularName)
 
+        //dataset extension available?
+        ArchiveFile datasetArchiveFile = archive.getExtension(DcTerm.rightsHolder)
+
         //retrieve taxon rank mappings
         def taxonRanks = readTaxonRankIDs()
 
@@ -196,7 +208,7 @@ class ImportService {
         log.info("Common names read: " + commonNamesMap.size())
 
         //retrieve datasets
-        def attributionMap = readAttribution(new File(dwcDir + File.separatorChar + "dataset.csv"))
+        def attributionMap = readAttribution(datasetArchiveFile)
         log.info("Datasets read: " + attributionMap.size())
 
         //compile a list of synonyms into memory....
@@ -240,20 +252,20 @@ class ImportService {
             def taxonID = record.id()
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
 
-            if (taxonID && !synonymCheckingEnabled || (taxonID == acceptedNameUsageID || acceptedNameUsageID == "")) {
+            if (taxonID || (taxonID == acceptedNameUsageID || acceptedNameUsageID == "")) {
 
-                def taxonRank = record.value(DwcTerm.taxonRank)
+                def taxonRank = (record.value(DwcTerm.taxonRank)?:"").toLowerCase()
                 def scientificName = record.value(DwcTerm.scientificName)
                 def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
                 def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
-                def taxonRankID = taxonRanks.get(taxonRank.toLowerCase()) ? taxonRanks.get(taxonRank.toLowerCase()) as Integer : -1
+                def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank) as Integer : -1
 
                 //common name
                 def doc = ["idxtype" : IndexDocType.TAXON.name()]
                 doc["id"] = UUID.randomUUID().toString()
                 doc["guid"] = taxonID
                 doc["parentGuid"] = parentNameUsageID
-                doc["rank"] = taxonRank?.toLowerCase()
+                doc["rank"] = taxonRank
                 doc["rankID"] = taxonRankID
                 doc["scientificName"] = scientificName
                 doc["scientificNameAuthorship"] = scientificNameAuthorship
@@ -278,8 +290,8 @@ class ImportService {
 
                 def attribution = attributionMap.get(record.value(DwcTerm.datasetID))
                 if (attribution) {
-                    doc["dataset"] = attribution["name"]
-                    doc["dataProvider"] = attribution["dataProvider"]
+                    doc["datasetName"] = attribution["datasetName"]
+                    doc["rightsHolder"] = attribution["rightsHolder"]
                 }
 
                 //retrieve images via scientific name - FIXME should be looking up with taxonID
@@ -340,8 +352,8 @@ class ImportService {
 
                         def synAttribution = attributionMap.get(synonym['dataset'])
                         if (synAttribution) {
-                            sdoc["dataset"] = synAttribution["name"]
-                            sdoc["dataProvider"] = synAttribution["dataProvider"]
+                            sdoc["datasetName"] = synAttribution["datasetName"]
+                            sdoc["rightsHolder"] = synAttribution["rightsHolder"]
                         }
 
                         counter++
@@ -390,7 +402,7 @@ class ImportService {
             def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
             def datasetID = record.value(DwcTerm.datasetID)
 
-            if (!synonymCheckingEnabled || (acceptedNameUsageID != taxonID && acceptedNameUsageID != "")) {
+            if (!grailsApplication.config.synonymCheckingEnabled.toBoolean() || (acceptedNameUsageID != taxonID && acceptedNameUsageID != "")) {
                 //we have a synonym
                 def synonymList = synonyms.get(acceptedNameUsageID)
                 if (!synonymList) {
@@ -413,28 +425,20 @@ class ImportService {
      * @param fileName
      * @return
      */
-    private def readAttribution(file, fieldDelimiter = ",") {
+    private def readAttribution(ArchiveFile datasetArchiveFile) {
 
         def datasets = [:]
-        if (!file.exists()) {
+        if (!datasetArchiveFile) {
             return datasets
         }
-
-        def csvReader = new CSVReader(new FileReader(file), fieldDelimiter)
-        def headers = csvReader.readNext() as List //ignore header
-
-        def nameIdx = headers.indexOf("name")
-        def datasetIDIdx = headers.indexOf("datasetID")
-        def dataProviderIdx = headers.indexOf("dataProvider")
-
-        def line = null
-        while ((line = csvReader.readNext()) != null) {
-            def datasetID = line[datasetIDIdx]
-            def name = line[nameIdx]
-            def dataProvider = line[dataProviderIdx]
-            datasets.put(datasetID, [name: name, dataProvider: dataProvider])
+        Iterator<Record> iter = datasetArchiveFile.iterator()
+        while (iter.hasNext()) {
+            Record record = iter.next()
+            def datasetID = record.id()
+            def datasetName = record.value(DwcTerm.datasetName)
+            def rightsHolder = record.value(DcTerm.rightsHolder)
+            datasets.put(datasetID, [datasetName: datasetName, rightsHolder: rightsHolder])
         }
-        csvReader.close()
         datasets
     }
 
@@ -447,6 +451,11 @@ class ImportService {
     private def readCommonNames(ArchiveFile vernacularArchiveFile) {
 
         def commonNames = [:]
+
+        if(!vernacularArchiveFile){
+            return commonNames
+        }
+
         Iterator<Record> iter = vernacularArchiveFile.iterator()
         while (iter.hasNext()) {
             Record record = iter.next()
@@ -480,22 +489,13 @@ class ImportService {
         idMap
     }
 
-
     private def indexLists(){
 
         // http://lists.ala.org.au/ws/speciesList?isAuthoritative=eq:true&max=100
-
-        // http://lists.ala.org.au/speciesListItem/downloadList/dr2168
-
-            
-
-
-
-
-
-
+        //for each list
+            // download http://lists.ala.org.au/speciesListItem/downloadList/{0}
+            // read, and add to map
     }
-
 
     /**
      * Retrieve map of scientificName -> image details
