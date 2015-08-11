@@ -51,6 +51,21 @@ class SearchController {
         render (searchService.getChildConcepts(params.id) as JSON)
     }
 
+    def shortProfile(){
+        if(params.id == 'favicon') return; //not sure why this is happening....
+        if(!params.id){
+            response.sendError(404, "Please provide a GUID")
+            return null
+        }
+        def model = searchService.getShortProfile(params.id)
+        if(!model){
+            response.sendError(404,"GUID not recognised ${params.id}")
+            return null
+        } else {
+            asJson model
+        }
+    }
+
     /**
      * Retrieves a profile for a taxon.
      *

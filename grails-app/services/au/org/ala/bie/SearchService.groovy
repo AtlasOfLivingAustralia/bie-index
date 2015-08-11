@@ -141,6 +141,29 @@ class SearchService {
         json.response.docs[0]
     }
 
+    def getShortProfile(taxonID){
+        def taxon = lookupTaxon(taxonID)
+        if(!taxon){
+            return null
+        }
+        def classification = extractClassification(taxon)
+        def model = [
+                taxonID:taxon.guid,
+                scientificName: taxon.scientificName,
+                scientificNameAuthorship: taxon.scientificNameAuthorship,
+                author: taxon.scientificNameAuthorship,
+                rank: taxon.rank,
+                rankID:taxon.rankID,
+                kingdom: classification.kingdom?:"",
+                family: classification.family?:""
+        ]
+        if(taxon.image){
+            model.put("thumbnail", grailsApplication.config.imageThumbnailUrl + taxon.image)
+            model.put("imageURL", grailsApplication.config.imageLargeUrl + taxon.image)
+        }
+        model
+    }
+
     def getTaxon(taxonID){
 
         def taxon = lookupTaxon(taxonID)

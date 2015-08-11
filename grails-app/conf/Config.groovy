@@ -16,9 +16,8 @@ if (new File(default_config).exists()) {
 println "[${appName}] (*) grails.config.locations = ${grails.config.locations}"
 println "default_config = ${default_config}"
 
-
 solrBaseUrl = "http://localhost:8080/solr/bie"
-biocache.solr.url = "http://ala-macropus.it.csiro.au/solr/"
+biocache.solr.url = "http://index.als.scot/solr/"
 defaultNameSourceAttribution = "National Species Lists"
 commonNameSourceAttribution = "National Species Lists"
 indexImages = true
@@ -26,6 +25,8 @@ importDir = "/data/bie/import"
 collectoryUrl = "http://collections.ala.org.au/ws"
 layersServicesUrl = "http://spatial.ala.org.au/ws"
 synonymCheckingEnabled = true
+imageThumbnailUrl = "http://images.als.scot/image/proxyImageThumbnail?imageId="
+imageLargeUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)
 grails.mime.disable.accept.header.userAgents = ['Gecko', 'WebKit', 'Presto', 'Trident']
@@ -101,7 +102,6 @@ environments {
     }
     production {
         grails.logging.jul.usebridge = false
-        // TODO: grails.serverURL = "http://www.changeme.com"
     }
 }
 // log4j configuration
