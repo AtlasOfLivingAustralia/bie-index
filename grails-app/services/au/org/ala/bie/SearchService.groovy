@@ -179,6 +179,11 @@ class SearchService {
                 kingdom: classification.kingdom?:"",
                 family: classification.family?:""
         ]
+
+        if(taxon.commonName){
+            model.put("commonName",  taxon.commonName.first())
+        }
+
         if(taxon.image){
             model.put("thumbnail", grailsApplication.config.imageThumbnailUrl + taxon.image)
             model.put("imageURL", grailsApplication.config.imageLargeUrl + taxon.image)
