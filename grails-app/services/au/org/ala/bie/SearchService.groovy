@@ -141,6 +141,28 @@ class SearchService {
         json.response.docs[0]
     }
 
+    def getProfileForName(name){
+
+        def additionalParams = "&wt=json"
+        def queryString = "q=" + URLEncoder.encode(name, "UTF-8")
+
+        def queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        def model = []
+        if(json.response.numFound > 0){
+            json.response.docs.each { result ->
+                model << [
+                    "identifier": result.guid,
+                    "name": result.scientificName,
+                    "acceptedIdentifier": result.acceptedConceptID,
+                    "acceptedName": result.acceptedConceptName
+                ]
+            }
+        }
+        model
+    }
+
     def getShortProfile(taxonID){
         def taxon = lookupTaxon(taxonID)
         if(!taxon){

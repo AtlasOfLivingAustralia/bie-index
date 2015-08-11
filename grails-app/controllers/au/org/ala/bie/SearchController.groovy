@@ -51,6 +51,21 @@ class SearchController {
         render (searchService.getChildConcepts(params.id) as JSON)
     }
 
+    def guid(){
+        if(params.name == 'favicon') return; //not sure why this is happening....
+        if(!params.name){
+            response.sendError(404, "Please provide a name for lookups")
+            return null
+        }
+        def model = searchService.getProfileForName(params.name)
+        if(!model){
+            response.sendError(404,"Name not recognised ${params.name}")
+            return null
+        } else {
+            render (model as JSON)
+        }
+    }
+
     def shortProfile(){
         if(params.id == 'favicon') return; //not sure why this is happening....
         if(!params.id){

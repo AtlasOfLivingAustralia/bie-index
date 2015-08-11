@@ -9,6 +9,7 @@ class UrlMappings {
         "/species/$id(.json)?"(controller: "search", action: "taxon")
         "/species/shortProfile/$id(.$format)?"(controller: "search", action: "shortProfile")
         "/taxon/$id"(controller: "search", action: "taxon")
+        "/guid/$name"(controller: "search", action: "guid")
         "/auto"(controller: "search", action: "auto")
         "/search(.$format)?"(controller: "search", action: "search")
         "/classification/"(controller: "search", action: "classification")
