@@ -81,6 +81,18 @@ class SearchController {
         }
     }
 
+    def bulkGuidLookup(){
+        def guidList = request.JSON
+        def results = searchService.getTaxa(guidList)
+        if(!results){
+            response.sendError(404,"GUID not recognised ${params.id}")
+            return null
+        } else {
+            def dto = [searchDTOList: results]
+            asJson dto
+        }
+    }
+
     /**
      * Retrieves a profile for a taxon.
      *

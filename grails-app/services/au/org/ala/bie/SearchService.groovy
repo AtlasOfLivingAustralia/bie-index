@@ -1,7 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.search.IndexDocType
-import grails.converters.JSON
+import grails.converters.deep.JSON
 import groovy.json.JsonSlurper
 
 /**
@@ -191,6 +191,40 @@ class SearchService {
         model
     }
 
+    def getTaxa(List guidList){
+
+        def postBody = [ q: "guid:(\"" + guidList.join( '","') + "\")", wt: "json" ] // will be url-encoded
+        def resp = doPostWithParams(grailsApplication.config.solrBaseUrl +  "/select", postBody)
+
+        //create the docs....
+        if(resp.resp.response){
+
+            def matchingTaxa = []
+
+            resp.resp.response.docs.each { doc ->
+               def taxon = [
+                       guid: doc.guid,
+                       name: doc.scientificName,
+                       scientificName: doc.scientificName,
+                       author: doc.scientificNameAuthorship
+               ]
+               if(doc.image){
+                   taxon.put("thumbnailUrl", grailsApplication.config.imageThumbnailUrl + doc.image)
+                   taxon.put("smallImageUrl", grailsApplication.config.imageSmallUrl + doc.image)
+                   taxon.put("largeImageUrl", grailsApplication.config.imageLargeUrl + doc.image)
+               }
+               if(doc.commonName){
+                   taxon.put("commonNameSingle", doc.commonName.first())
+               }
+
+               matchingTaxa << taxon
+            }
+            matchingTaxa
+        } else {
+            resp
+        }
+    }
+
     def getTaxon(taxonID){
 
         def taxon = lookupTaxon(taxonID)
@@ -247,7 +281,6 @@ class SearchService {
         model
     }
 
-
     /**
      * Retrieve a classification for the supplied taxonID.
      *
@@ -290,7 +323,7 @@ class SearchService {
         facetFields.each { facetName, arrayValues ->
             def facetValues = []
             for (int i =0; i < arrayValues.size(); i+=2){
-                facetValues << [label:arrayValues[i], count: arrayValues[i+1], fieldValue:arrayValues[i] ]  //todo internationalise label
+                facetValues << [label:arrayValues[i], count: arrayValues[i+1], fieldValue:arrayValues[i] ]
             }
             formatted << [
                     fieldName: facetName,
@@ -350,10 +383,10 @@ class SearchService {
                 formatted << doc
             } else {
                 Map doc = [
-                        "guid" : it.guid,
-                        "idxtype": it.idxtype,
-                        "name" : it.name,
-                        "description" : it.description
+                        guid : it.guid,
+                        idxtype: it.idxtype,
+                        name : it.name,
+                        description : it.description
                 ]
                 formatted << doc
             }
@@ -382,5 +415,41 @@ class SearchService {
             }
         }
         map
+    }
+
+    def doPostWithParams(String url, Map params) {
+        def conn = null
+        def charEncoding = 'utf-8'
+        try {
+            String query = ""
+            boolean first = true
+            for (String name : params.keySet()) {
+                query += first ? "?" : "&"
+                first = false
+                query += name.encodeAsURL()+"="+params.get(name).encodeAsURL()
+            }
+            log.debug(url + query)
+            conn = new URL(url + query).openConnection()
+            conn.setRequestMethod("POST")
+            conn.setDoOutput(true)
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream(), charEncoding)
+
+            wr.flush()
+            def resp = conn.inputStream.text
+            wr.close()
+            return [resp: JSON.parse(resp?:"{}")] // fail over to empty json object if empty response string otherwise JSON.parse fails
+        } catch (SocketTimeoutException e) {
+            def error = [error: "Timed out calling web service. URL= ${url}."]
+            log.error(error, e)
+            return error
+        } catch (Exception e) {
+            def error = [error: "Failed calling web service. ${e.getMessage()} URL= ${url}.",
+                         statusCode: conn?.responseCode?:"",
+                         detail: conn?.errorStream?.text]
+            log.error(error, e)
+            return error
+        }
     }
 }

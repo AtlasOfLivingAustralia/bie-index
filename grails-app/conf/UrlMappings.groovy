@@ -18,6 +18,8 @@ class UrlMappings {
         "/imageSearch/$id"(controller: "search", action: "imageSearch")
         "/imageSearch/"(controller: "search", action: "imageSearch")
         "/imageSearch"(controller: "search", action: "imageSearch")
+        "/species/guids/bulklookup(.$format)?"(controller: "search", action: "bulkGuidLookup")
+
 
         "/$controller/$action?/$id?(.$format)?"{
             constraints {

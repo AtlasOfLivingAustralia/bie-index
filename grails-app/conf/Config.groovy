@@ -27,6 +27,7 @@ layersServicesUrl = "http://spatial.ala.org.au/ws"
 synonymCheckingEnabled = true
 imageThumbnailUrl = "http://images.als.scot/image/proxyImageThumbnail?imageId="
 imageLargeUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
+imageSmallUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)
 grails.mime.disable.accept.header.userAgents = ['Gecko', 'WebKit', 'Presto', 'Trident']
