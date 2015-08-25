@@ -35,10 +35,8 @@ grails.project.dependency.resolution = {
         // runtime 'mysql:mysql-connector-java:5.1.29'
         // runtime 'org.postgresql:postgresql:9.3-1101-jdbc41'
         test "org.grails:grails-datastore-test-support:1.0-grails-2.4"
-
         runtime 'net.sf.opencsv:opencsv:2.3'
         runtime "org.apache.solr:solr-solrj:4.10.2"
-
         runtime "org.gbif:dwca-io:1.24"
     }
 
@@ -50,6 +48,6 @@ grails.project.dependency.resolution = {
         build ":tomcat:7.0.55"
         compile ':cache:1.1.8'
         runtime ":cors:1.1.6"
-        runtime ":ala-bootstrap3:1.1"
+        runtime ":ala-bootstrap3:1.2.1"
     }
 }

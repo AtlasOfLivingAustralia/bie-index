@@ -225,7 +225,7 @@ class ImportService {
 
         //retrieve the denormed taxon lookup
         def denormalised = denormalise(taxaArchiveFile)
-        log.info("Denormalised map..." + denormalised.size())
+        log.info("De-normalised map..." + denormalised.size())
 
         log.info("Creating entries in index...")
 
@@ -252,7 +252,7 @@ class ImportService {
             def taxonID = record.id()
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
 
-            if (taxonID || (taxonID == acceptedNameUsageID || acceptedNameUsageID == "")) {
+            if (taxonID == acceptedNameUsageID || acceptedNameUsageID == "" || acceptedNameUsageID == null) {
 
                 def taxonRank = (record.value(DwcTerm.taxonRank)?:"").toLowerCase()
                 def scientificName = record.value(DwcTerm.scientificName)
@@ -339,25 +339,32 @@ class ImportService {
                 if (synonyms) {
                     synonyms.each { synonym ->
 
-                        def sdoc = ["idxtype": "TAXON"]
-                        sdoc["id"] = UUID.randomUUID().toString()
-                        sdoc["guid"] = synonym["taxonID"]
-                        sdoc["rank"] = taxonRank
-                        sdoc["rankID"] = taxonRankID
-                        sdoc["scientificName"] = synonym['name']
-                        sdoc["nameComplete"] = synonym['name']
-                        sdoc["acceptedConceptName"] = scientificName + ' ' + scientificNameAuthorship
-                        sdoc["acceptedConceptID"] = taxonID
-                        sdoc["taxonomicStatus"] = "synonym"
+                        //dont add the synonym if it is lexographically the same
+                        if(!synonym['scientificName'].equalsIgnoreCase(scientificName)) {
 
-                        def synAttribution = attributionMap.get(synonym['dataset'])
-                        if (synAttribution) {
-                            sdoc["datasetName"] = synAttribution["datasetName"]
-                            sdoc["rightsHolder"] = synAttribution["rightsHolder"]
+                            def sdoc = ["idxtype": "TAXON"]
+                            sdoc["id"] = UUID.randomUUID().toString()
+                            sdoc["guid"] = synonym["taxonID"]
+                            sdoc["rank"] = taxonRank
+                            sdoc["rankID"] = taxonRankID
+                            sdoc["scientificName"] = synonym['scientificName']
+                            sdoc["scientificNameAuthorship"] = synonym['scientificNameAuthorship']
+                            sdoc["nameComplete"] = synonym['scientificName'] + " " +  synonym['scientificNameAuthorship']
+                            sdoc["acceptedConceptName"] = scientificName + ' ' + scientificNameAuthorship
+                            sdoc["acceptedConceptID"] = taxonID
+                            sdoc["taxonomicStatus"] = "synonym"
+
+                            def synAttribution = attributionMap.get(synonym['dataset'])
+                            if (synAttribution) {
+                                sdoc["datasetName"] = synAttribution["datasetName"]
+                                sdoc["rightsHolder"] = synAttribution["rightsHolder"]
+                            }
+
+                            counter++
+                            buffer << sdoc
+                        } else {
+                            log.debug("Skipping lexographically the same synonym for " + scientificName)
                         }
-
-                        counter++
-                        buffer << sdoc
                     }
                 }
 
@@ -402,16 +409,19 @@ class ImportService {
             def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
             def datasetID = record.value(DwcTerm.datasetID)
 
-            if (!grailsApplication.config.synonymCheckingEnabled.toBoolean() || (acceptedNameUsageID != taxonID && acceptedNameUsageID != "")) {
+            if (acceptedNameUsageID != taxonID && acceptedNameUsageID != "" && acceptedNameUsageID != null) {
                 //we have a synonym
                 def synonymList = synonyms.get(acceptedNameUsageID)
                 if (!synonymList) {
                     synonymList = []
                     synonyms.put(acceptedNameUsageID, synonymList)
                 }
+
+                //lets ignore lexicographically the same names....
                 synonymList << [
                         taxonID: taxonID,
-                        name   : scientificName + ' ' + scientificNameAuthorship,
+                        scientificName : scientificName,
+                        scientificNameAuthorship : scientificNameAuthorship,
                         datasetID: datasetID
                 ]
             }
