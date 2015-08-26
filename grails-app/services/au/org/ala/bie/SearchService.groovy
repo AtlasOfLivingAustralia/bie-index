@@ -143,12 +143,31 @@ class SearchService {
     }
 
     /**
-     * Retrieve details of a taxon
+     * Retrieve details of a taxon by taxonID
      * @param taxonID
      * @return
      */
     private def lookupTaxon(taxonID){
-        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=guid:\"" + taxonID + "\""
+        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\""
+        def queryResponse = new URL(solrServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        json.response.docs[0]
+    }
+
+    /**
+     * Retrieve details of a taxon by common name or scientific name
+     * @param taxonID
+     * @return
+     */
+    private def lookupTaxonByName(taxonName){
+
+        def encodedName = URLEncoder.encode(taxonName, 'UTF-8')
+
+        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=" +URLEncoder.encode(
+                "commonNameExact:\"" + taxonName + "\" OR scientificName:\"" + taxonName + "\"",
+                "UTF-8"
+        )
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -239,15 +258,19 @@ class SearchService {
         }
     }
 
-    def getTaxon(taxonID){
+    def getTaxon(taxonLookup){
 
-        def taxon = lookupTaxon(taxonID)
+        def taxon = lookupTaxon(taxonLookup)
         if(!taxon){
-            return null
+            taxon = lookupTaxonByName(taxonLookup)
+            if(!taxon){
+                return null
+            }
         }
 
         //retrieve any synonyms
-        def synonymQueryUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=acceptedConceptID:\"" + taxonID + "\""
+        def synonymQueryUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=" +
+                URLEncoder.encode("acceptedConceptID:\"" + taxon.guid + "\"", "UTF-8")
         def synonymQueryResponse = new URL(synonymQueryUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def synJson = js.parseText(synonymQueryResponse)
@@ -258,7 +281,7 @@ class SearchService {
 
         def model = [
                 taxonConcept:[
-                        guid:taxon.guid,
+                        guid: taxon.guid,
                         parentGuid: taxon.parentGuid,
                         nameString: taxon.scientificName,
                         author: taxon.scientificNameAuthorship,
