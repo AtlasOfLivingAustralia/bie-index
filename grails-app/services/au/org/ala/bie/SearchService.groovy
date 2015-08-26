@@ -80,6 +80,20 @@ class SearchService {
                 queryString = queryString.replaceFirst("q=", "q=*:*")
             } else if (q.trim() == "*") {
                 queryString = queryString.replaceFirst("q=*", "q=*:*")
+            } else {
+                //remove the exist query param
+                queryString = queryString.replaceAll("q\\=[\\w\\+ ]*", "")
+                //append a wildcard to the search term
+                queryString = queryString +
+                        "&q=" + URLEncoder.encode(
+                        "commonNameExact:\"" + q + "\"^10000000000" +
+                                " OR commonName:\"" + q.replaceAll(" ","") + "\"^100000" +
+                                " OR commonName:\"" + q + "\"^100000" +
+                                " OR rk_genus:\"" + q.capitalize() + "\"" +
+                                " OR exact_text:\"" + q + "\"" +
+                                " OR auto_text:\"" + q + "\"" +
+                                " OR auto_text:\"" + q + "*\"",
+                        "UTF-8")
             }
         } else {
             queryString = "q=*:*"

@@ -36,8 +36,16 @@ class AutoCompleteService {
                 //remove the exist query param
                 queryString = queryString.replaceAll("q\\=[\\w\\+ ]*", "")
                 //append a wildcard to the search term
-                queryString = queryString + "&q=" + URLEncoder.encode(q + "*", 'UTF-8')
-//                queryString = queryString + "&q=" + enhanceQuery(q)
+                queryString = queryString +
+                        "&q=" + URLEncoder.encode(
+                        "commonNameExact:\"" + q + "\"^10000000000" +
+                        " OR commonName:\"" + q.replaceAll(" ","") + "\"^100000" +
+                        " OR commonName:\"" + q + "\"^100000" +
+                        " OR rk_genus:\"" + q.capitalize() + "\"" +
+                        " OR exact_text:\"" + q + "\"" +
+                        " OR auto_text:\"" + q + "\"" +
+                        " OR auto_text:\"" + q + "*\"",
+                "UTF-8")
             }
         } else {
             queryString = "q=*:*"
@@ -45,7 +53,9 @@ class AutoCompleteService {
 
         log.info(queryString)
 
-        def queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
+        def queryUrl = grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams
+
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
 
@@ -59,33 +69,6 @@ class AutoCompleteService {
         log.debug("results: " + autoCompleteList.size())
         autoCompleteList
     }
-
-//    def enhanceQuery(query){
-//        if(!query){
-//            return query
-//        }
-//
-//        if(query){
-//            def queryString = new StringBuffer()
-//            def cleanQuery = ClientUtils.escapeQueryChars(query);//.toLowerCase();
-////            queryString.append(" AND ");
-//            queryString.append("");
-//            queryString.append("commonName:\""+cleanQuery+"\"");
-////            queryString.append(" OR ");
-////            queryString.append(" text:"+cleanQuery);
-//            queryString.append(" OR ");
-//            queryString.append(" scientificName:\""+cleanQuery+"\"");
-//            //check to see if it represents an id
-//            queryString.append(" OR ");
-//            queryString.append(" id:\"").append(query).append("\"");
-////            String canonicalSciName = retrieveCanonicalForm(query);
-////            if(canonicalSciName!=null){
-////                queryString.append(" OR ");
-////                queryString.append(" text:"+canonicalSciName);
-////            }
-//            queryString.append("");
-//        }
-//    }
 
     /**
      * Creates an auto complete DTO from the supplied result.
@@ -107,9 +90,6 @@ class AutoCompleteService {
         autoDto.rankString = doc.rank
         autoDto.rankID = doc.rankID
 
-//        autoDto.setOccurrenceCount((Integer)doc.getFirstValue("occurrenceCount"));
-//        autoDto.setGeoreferencedCount((Integer)doc.getFirstValue("georeferencedCount"));
-
         List<String> matchedNames = [] // temp list to stored matched names
 
         if(doc.commonName ){
@@ -124,22 +104,18 @@ class AutoCompleteService {
                 name1 = ((String)o).split(",");
             }
             else if (o instanceof ArrayList){
-                name1 = ((List<String>)o).toArray(name1);
+                name1 = ((List<String>) o).toArray(name1);
             }
         }
-        String[] name2 = new String[0];
-        if(doc.get("nameComplete")){
-            name2 = doc.get("nameComplete").split(",");
-        }
+
         ArrayList<String> scientificNames = new ArrayList<String>();
         for(String name : name1){
             scientificNames.add(name);
         }
-        for(String name : name2){
-            scientificNames.add(name);
-        }
 
-        autoDto.setScientificNameMatches(getHighlightedNames(scientificNames, value, "<b>", "</b>"));
+        scientificNames.add(doc.get("nameComplete"));
+
+        autoDto.setScientificNameMatches(getHighlightedNames([doc.get("nameComplete")], value, "<b>", "</b>"));
         matchedNames.addAll(getHighlightedNames(scientificNames, value, "", ""));
 
         if(!matchedNames){

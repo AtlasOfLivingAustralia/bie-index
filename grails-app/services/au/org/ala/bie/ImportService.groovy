@@ -307,6 +307,7 @@ class ImportService {
                 def commonNames = commonNamesMap.get(taxonID)
                 if (commonNames) {
                     doc["commonName"] = commonNames
+                    doc["commonNameExact"] = commonNames
                 }
 
                 //denormed taxonomy
