@@ -15,6 +15,10 @@
 					<td>${g.createLink(controller: 'search', action: 'taxon')}/{GUID}</td>
 				</tr>
 				<tr>
+					<td>Taxon details - simple</td>
+					<td>${g.createLink(controller: 'search', action: 'shortProfile')}/{GUID}</td>
+				</tr>
+				<tr>
 					<td>Search</td>
 					<td>${g.createLink(controller: 'search', action: 'search')}?q={search terms}</td>
 				</tr>
@@ -32,7 +36,11 @@
 				</tr>
 				<tr>
 					<td>Image search</td>
-					<td>${g.createLink(controller: 'search', action: 'imageSearch')}?scientificName={scientificName}&taxonRank={taxonRank}</td>
+					<td>${g.createLink(controller: 'search', action: 'imageSearch')}/{GUID}</td>
+				</tr>
+				<tr>
+					<td>Bulk lookup by GUID</td>
+					<td>${g.createLink(controller: 'search', action: 'bulkGuidLookup')}/{GUID}</td>
 				</tr>
 			</table>
 
