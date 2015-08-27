@@ -1,6 +1,5 @@
 package au.org.ala.bie
 
-import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
 import groovy.json.JsonSlurper
 import org.gbif.dwc.terms.DcTerm
@@ -310,7 +309,7 @@ class ImportService {
                     doc["commonNameExact"] = commonNames
                 }
 
-                //denormed taxonomy
+                //de-normalised taxonomy
                 if (parentNameUsageID) {
                     def taxa = denormalised.get(parentNameUsageID)
                     def processedRanks = []

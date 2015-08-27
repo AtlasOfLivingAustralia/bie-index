@@ -3,6 +3,7 @@ package au.org.ala.bie
 import au.org.ala.bie.search.IndexDocType
 import grails.converters.deep.JSON
 import groovy.json.JsonSlurper
+import org.gbif.nameparser.NameParser
 
 /**
  * A set of search services for the BIE.
@@ -75,6 +76,8 @@ class SearchService {
             additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
         }
 
+
+
         if (queryString) {
             if (!q) {
                 queryString = queryString.replaceFirst("q=", "q=*:*")
@@ -92,7 +95,8 @@ class SearchService {
                                 " OR rk_genus:\"" + q.capitalize() + "\"" +
                                 " OR exact_text:\"" + q + "\"" +
                                 " OR auto_text:\"" + q + "\"" +
-                                " OR auto_text:\"" + q + "*\"",
+                                " OR auto_text:\"" + q + "*\"" +
+                                " OR text:\"" + q + "*\"",
                         "UTF-8")
             }
         } else {
@@ -105,10 +109,17 @@ class SearchService {
 
         if (json.response.numFound as Integer == 0) {
 
-            println(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams)
-            queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
-            js = new JsonSlurper()
-            json = js.parseText(queryResponse)
+            //attempt to parse the name
+            def nameParser = new NameParser()
+            def parsedName = nameParser.parse(q)
+            if(parsedName && parsedName.canonicalName()){
+                def canonical = parsedName.canonicalName()
+                def sciNameQuery = grailsApplication.config.solrBaseUrl + "/select?q=scientificName:\"" + URLEncoder.encode(canonical, "UTF-8") + "\"" + additionalParams
+                log.debug(sciNameQuery)
+                queryResponse = new URL(sciNameQuery).getText("UTF-8")
+                js = new JsonSlurper()
+                json = js.parseText(queryResponse)
+            }
         }
 
         log.debug("auto called with q = ${q}, returning ${json.response.numFound}")

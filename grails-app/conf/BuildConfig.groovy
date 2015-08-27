@@ -38,15 +38,15 @@ grails.project.dependency.resolution = {
         runtime 'net.sf.opencsv:opencsv:2.3'
         runtime "org.apache.solr:solr-solrj:4.10.2"
         runtime "org.gbif:dwca-io:1.24"
+        runtime "au.org.ala:ala-name-matching:2.3.1"
     }
 
     plugins {
-        build(":release:3.0.1",
-                ":rest-client-builder:2.0.3") {
+        build(":release:3.0.1", ":rest-client-builder:2.0.3") {
             export = false
         }
         build ":tomcat:7.0.55"
-        compile ':cache:1.1.8'
+        compile ":cache:1.1.8"
         runtime ":cors:1.1.6"
         runtime ":ala-bootstrap3:1.2.1"
     }
