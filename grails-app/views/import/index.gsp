@@ -2,7 +2,7 @@
 <html>
 <head>
   <title></title>
-  <meta name="layout" content="main"/>
+  <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
 </head>
 <body>
 <div>

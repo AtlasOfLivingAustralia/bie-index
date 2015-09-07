@@ -76,8 +76,6 @@ class SearchService {
             additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
         }
 
-
-
         if (queryString) {
             if (!q) {
                 queryString = queryString.replaceFirst("q=", "q=*:*")
@@ -85,18 +83,18 @@ class SearchService {
                 queryString = queryString.replaceFirst("q=*", "q=*:*")
             } else {
                 //remove the exist query param
-                queryString = queryString.replaceAll("q\\=[\\w\\+ ]*", "")
+                queryString = queryString.replaceAll("[?|&]q\\=[\\w\\+ ]*", "")
                 //append a wildcard to the search term
                 queryString = queryString +
                         "&q=" + URLEncoder.encode(
                         "commonNameExact:\"" + q + "\"^10000000000" +
-                                " OR commonName:\"" + q.replaceAll(" ","") + "\"^100000" +
-                                " OR commonName:\"" + q + "\"^100000" +
-                                " OR rk_genus:\"" + q.capitalize() + "\"" +
-                                " OR exact_text:\"" + q + "\"" +
-                                " OR auto_text:\"" + q + "\"" +
-                                " OR auto_text:\"" + q + "*\"" +
-                                " OR text:\"" + q + "*\"",
+                        " OR commonName:\"" + q.replaceAll(" ","") + "\"^100000" +
+                        " OR commonName:\"" + q + "\"^100000" +
+                        " OR rk_genus:\"" + q.capitalize() + "\"" +
+                        " OR exact_text:\"" + q + "\"" +
+                        " OR auto_text:\"" + q + "\"" +
+                        " OR auto_text:\"" + q + "*\"" +
+                        " OR text:\"" + q + "*\"",
                         "UTF-8")
             }
         } else {
@@ -109,16 +107,21 @@ class SearchService {
 
         if (json.response.numFound as Integer == 0) {
 
-            //attempt to parse the name
-            def nameParser = new NameParser()
-            def parsedName = nameParser.parse(q)
-            if(parsedName && parsedName.canonicalName()){
-                def canonical = parsedName.canonicalName()
-                def sciNameQuery = grailsApplication.config.solrBaseUrl + "/select?q=scientificName:\"" + URLEncoder.encode(canonical, "UTF-8") + "\"" + additionalParams
-                log.debug(sciNameQuery)
-                queryResponse = new URL(sciNameQuery).getText("UTF-8")
-                js = new JsonSlurper()
-                json = js.parseText(queryResponse)
+            try {
+
+                //attempt to parse the name
+                def nameParser = new NameParser()
+                def parsedName = nameParser.parse(q)
+                if (parsedName && parsedName.canonicalName()) {
+                    def canonical = parsedName.canonicalName()
+                    def sciNameQuery = grailsApplication.config.solrBaseUrl + "/select?q=scientificName:\"" + URLEncoder.encode(canonical, "UTF-8") + "\"" + additionalParams
+                    log.debug(sciNameQuery)
+                    queryResponse = new URL(sciNameQuery).getText("UTF-8")
+                    js = new JsonSlurper()
+                    json = js.parseText(queryResponse)
+                }
+            } catch(Exception e){
+                //expected behaviour for non scientific name matches
             }
         }
 

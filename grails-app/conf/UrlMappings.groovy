@@ -11,6 +11,7 @@ class UrlMappings {
         "/taxon/$id"(controller: "search", action: "taxon")
         "/guid/$name"(controller: "search", action: "guid")
         "/auto"(controller: "search", action: "auto")
+        "/search/auto(.$format)?"(controller: "search", action: "auto")
         "/search(.$format)?"(controller: "search", action: "search")
         "/classification/"(controller: "search", action: "classification")
         "/classification/$id"(controller: "search", action: "classification")
@@ -20,12 +21,10 @@ class UrlMappings {
         "/imageSearch"(controller: "search", action: "imageSearch")
         "/species/guids/bulklookup(.$format)?"(controller: "search", action: "bulkGuidLookup")
 
+        "/admin"(controller: "admin")
+        "/admin/"(controller: "admin")
 
-        "/$controller/$action?/$id?(.$format)?"{
-            constraints {
-                // apply constraints here
-            }
-        }
+        "/admin/import/$action?/$id?(.$format)?"(controller: "import")
 
         "/"(view:"/index")
         "500"(view:'/error')

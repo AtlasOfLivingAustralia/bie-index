@@ -174,7 +174,9 @@ class ImportService {
                }
            }
            log.info("Cleared")
-           indexService.indexBatch(entities)
+           if(entities) {
+               indexService.indexBatch(entities)
+           }
            log.info("Finished indexing ${drLists.size()} ${entityType}")
        }
     }

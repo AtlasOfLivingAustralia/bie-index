@@ -2,10 +2,11 @@ package au.org.ala.bie
 
 import grails.converters.JSON
 import org.apache.commons.lang.BooleanUtils
-
+import au.org.ala.web.AlaSecured
 /**
  * Controller for data import into the system.
  */
+@AlaSecured(value = "ROLE_ADMIN", redirectUri = "/")
 class ImportController {
 
     def importService
@@ -49,6 +50,11 @@ class ImportController {
         }
     }
 
+    /**
+     * Import information from the collectory into the main index.
+     *
+     * @return
+     */
     def importCollectory(){
         if(grailsApplication.config.collectoryUrl){
             Thread.start {
@@ -62,8 +68,13 @@ class ImportController {
         }
     }
 
+    /**
+     * Import information from layers.
+     *
+     * @return
+     */
     def importLayers(){
-        if(grailsApplication.config.collectoryUrl){
+        if(grailsApplication.config.layersServicesUrl){
             Thread.start {
                 log.info("Starting import of layers....")
                 importService.importLayers()
@@ -71,7 +82,7 @@ class ImportController {
             }
             asJson ([success:true] )
         } else {
-            asJson ([success: false, message: 'collectoryUrl not configured'] )
+            asJson ([success: false, message: 'layersServicesUrl not configured'] )
         }
     }
 

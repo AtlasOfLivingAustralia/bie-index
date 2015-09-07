@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<meta name="layout" content="main"/>
-		<title>BIE Web services | Atlas of Living Australia</title>
+		<meta name="layout" content="${grailsApplication.config.skin.layout}"/>
+		<title>BIE Web services | ${grailsApplication.config.skin.orgNameLong}</title>
 	</head>
 	<body>
 		<div id="page-body" role="main">
 			<h1>BIE web services</h1>
-			<p>Here is a listing of  web services for BIE</p>
-
+			<p>Here is a listing of web services for BIE</p>
 			<table class="table">
 				<tr>
 					<td>Taxon details</td>
@@ -43,14 +42,6 @@
 					<td>${g.createLink(controller: 'search', action: 'bulkGuidLookup')}/{GUID}</td>
 				</tr>
 			</table>
-
-			<h2>Admin</h2>
-
-			<ul>
-				<li><g:link controller="import" action="index">Taxonomy import tool</g:link> - import DwC-A with taxonomic information</li>
-				<li><g:link controller="import" action="collectory">Collectory import tool</g:link> - import collectory information</li>
-				<li><g:link controller="import" action="layers">Layer import tool</g:link> - import layer information</li>
-			</ul>
 		</div>
 	</body>
 </html>
