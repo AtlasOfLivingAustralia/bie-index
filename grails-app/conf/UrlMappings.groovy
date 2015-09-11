@@ -20,6 +20,7 @@ class UrlMappings {
         "/imageSearch/"(controller: "search", action: "imageSearch")
         "/imageSearch"(controller: "search", action: "imageSearch")
         "/species/guids/bulklookup(.$format)?"(controller: "search", action: "bulkGuidLookup")
+        "/download"(controller: "search", action: "download")
 
         "/admin"(controller: "admin")
         "/admin/"(controller: "admin")

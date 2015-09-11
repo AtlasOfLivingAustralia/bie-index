@@ -11,7 +11,7 @@ class SearchController {
 
     def grailsApplication
 
-    def searchService, autoCompleteService
+    def searchService, autoCompleteService, downloadService
 
     static defaultAction = "search"
 
@@ -35,7 +35,7 @@ class SearchController {
      * @return
      */
     def imageSearch(){
-        asJson ([searchResults:searchService.imageSearch(params.id, params.start, params.rows)])
+        asJson ([searchResults:searchService.imageSearch(params.id, params.start, params.rows, params.qc)])
     }
 
     /**
@@ -112,6 +112,14 @@ class SearchController {
         } else {
             asJson model
         }
+    }
+
+    def download(){
+        response.setHeader("Cache-Control", "must-revalidate");
+        response.setHeader("Pragma", "must-revalidate");
+        response.setHeader("Content-Disposition", "attachment;filename=species.csv");
+        response.setContentType("text/csv");
+        downloadService.download(request.queryString, params.q, response.outputStream)
     }
 
     /**

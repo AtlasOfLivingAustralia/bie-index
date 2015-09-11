@@ -42,7 +42,10 @@ class ImportService {
     }
 
     /**
-     * Return a denormalised map lookup.
+     * Return a denormalised map lookup. This contains a map from genus level and upwards like so:
+     *
+     * genusID -> [familyID, orderID,.....]
+     * familyID -> [orderID, classID,.....]
      *
      * @return
      */
@@ -95,7 +98,9 @@ class ImportService {
     }
 
     /**
-     * Recursive function.
+     * Recursive function that constructs the lineage.
+     *
+     * genus, family..., kingdom, null
      *
      * @param id
      * @param currentList
@@ -110,7 +115,6 @@ class ImportService {
         def info = childParentMap.get(id)
         if (info && info['p'] && !currentList.contains(id + '|' + info['cn'] + '|' + info['cr'])) {
             currentList << id + '|' + info['cn'] + '|' + info['cr']
-            //cn:scientificName, cr:taxonRank, p:parentNameUsageID
             denormaliseTaxon(info['p'], currentList, childParentMap, stackLevel + 1)
         }
         currentList
@@ -165,6 +169,11 @@ class ImportService {
                doc["idxtype"] = indexDocType.name()
                doc["name"] = details.name
                doc["description"] = details.description
+               doc["distribution"] = "N/A"
+
+               if(details.acronym){
+                   doc["acronym"] = details.acronym
+               }
 
                entities << doc
 
@@ -198,6 +207,9 @@ class ImportService {
         //dataset extension available?
         ArchiveFile datasetArchiveFile = archive.getExtension(DcTerm.rightsHolder)
 
+        //dataset extension available?
+        ArchiveFile distributionArchiveFile = archive.getExtension(GbifTerm.Distribution)
+
         //retrieve taxon rank mappings
         def taxonRanks = readTaxonRankIDs()
 
@@ -227,6 +239,9 @@ class ImportService {
         //retrieve the denormed taxon lookup
         def denormalised = denormalise(taxaArchiveFile)
         log.info("De-normalised map..." + denormalised.size())
+
+        //compile a list of synonyms into memory....
+        def distributionMap = readDistributions(distributionArchiveFile, denormalised)
 
         log.info("Creating entries in index...")
 
@@ -278,6 +293,7 @@ class ImportService {
 
                 def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID]
 
+                //index additional fields that are supplied in the core
                 record.terms().each { term ->
                     if (!alreadyIndexed.contains(term)) {
                         if (inSchema.contains(term)) {
@@ -295,13 +311,26 @@ class ImportService {
                     doc["rightsHolder"] = attribution["rightsHolder"]
                 }
 
-                //retrieve images via scientific name - FIXME should be looking up with taxonID
-                def image = imageMap.get(scientificName)
+                //retrieve images via scientific name
+                def image = null
+//                if(taxonRankID < 6000){
+                    image = imageMap.get(scientificName)
+//                } else {
+//                    image = imageMap.get(taxonID)
+//                }
+
                 if (image) {
                     doc["image"] = image
                     doc["imageAvailable"] = "yes"
                 } else {
                     doc["imageAvailable"] = "no"
+                }
+
+                def distributions = distributionMap.get(taxonID)
+                if(distributions){
+                    distributions.each {
+                        doc["distribution"] = it
+                    }
                 }
 
                 //common names
@@ -311,7 +340,7 @@ class ImportService {
                     doc["commonNameExact"] = commonNames
                 }
 
-                //de-normalised taxonomy
+                //get de-normalised taxonomy, and add it to the document
                 if (parentNameUsageID) {
                     def taxa = denormalised.get(parentNameUsageID)
                     def processedRanks = []
@@ -341,7 +370,7 @@ class ImportService {
                 if (synonyms) {
                     synonyms.each { synonym ->
 
-                        //dont add the synonym if it is lexographically the same
+                        //don't add the synonym if it is lexicographically the same
                         if(!synonym['scientificName'].equalsIgnoreCase(scientificName)) {
 
                             def sdoc = ["idxtype": "TAXON"]
@@ -388,6 +417,67 @@ class ImportService {
             buffer.clear()
         }
         log.info "Import finished"
+    }
+
+    /**
+     * Read synonyms into taxonID -> [synonym1, synonym2]
+     *
+     * @param fileName
+     * @return
+     */
+    private def readDistributions(ArchiveFile distributionsFile, Map denormalisedTaxa) {
+
+        def distributions = [:]
+
+        if(!distributionsFile){
+            return distributions
+        }
+
+        def iter = distributionsFile.iterator()
+
+        while (iter.hasNext()) {
+            def record = iter.next()
+            def taxonID = record.id()
+            def stateProvince = record.value(DwcTerm.stateProvince)
+
+            def stateProvinces = distributions.get(taxonID)
+            if(stateProvinces == null){
+                distributions.put(taxonID, [stateProvince])
+            } else {
+                stateProvinces << stateProvince
+            }
+        }
+
+        //iterate through these IDs and add the parent IDs to the distributions
+        def taxonIDs = distributions.keySet().toArray()
+        log.info("Distributions for child taxa: " + taxonIDs.size())
+
+        taxonIDs.each {
+            def taxa = denormalisedTaxa.get(it)
+            def processedRanks = []
+            taxa.each { taxon ->
+                //check we have only one value for each rank...
+                def parts = taxon.split('\\|')
+                if (parts.length == 3) {
+                    String tID = parts[0]
+                    def stateProvinces = distributions.get(tID)
+                    if(stateProvinces == null){
+                        distributions.put(tID, distributions.get(it))
+                    } else {
+                        def distributionsValues = distributions.get(it)
+                        distributionsValues.each {
+                            if(!stateProvinces.contains(it)){
+                                stateProvinces << it
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        log.info("Distributions for child & parent taxa: " + distributions.keySet().size())
+
+        distributions
     }
 
     /**
@@ -443,6 +533,7 @@ class ImportService {
         if (!datasetArchiveFile) {
             return datasets
         }
+
         Iterator<Record> iter = datasetArchiveFile.iterator()
         while (iter.hasNext()) {
             Record record = iter.next()

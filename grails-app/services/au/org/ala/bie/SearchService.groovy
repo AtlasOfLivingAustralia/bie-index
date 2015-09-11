@@ -22,7 +22,7 @@ class SearchService {
      * @param rows
      * @return
      */
-    def imageSearch(taxonID, start, rows){
+    def imageSearch(taxonID, start, rows, queryContext){
 
         def query = "q=*:*"
 
@@ -43,6 +43,10 @@ class SearchService {
 
         if(rows){
             additionalParams = additionalParams + "&rows=" + rows
+        }
+
+        if(queryContext){
+            additionalParams = additionalParams + queryContext
         }
 
         log.debug(grailsApplication.config.solrBaseUrl + "/select?" + query + additionalParams)
