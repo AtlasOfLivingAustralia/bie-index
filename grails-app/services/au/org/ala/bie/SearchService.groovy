@@ -49,8 +49,10 @@ class SearchService {
             additionalParams = additionalParams + queryContext
         }
 
-        log.debug(grailsApplication.config.solrBaseUrl + "/select?" + query + additionalParams)
-        def queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + query + additionalParams).getText("UTF-8")
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + query + additionalParams
+
+        log.debug(queryUrl)
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
 
         def js = new JsonSlurper()
 
@@ -103,7 +105,7 @@ class SearchService {
             queryString = "q=*:*"
         }
 
-        def queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
+        def queryResponse = new URL(grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
 
@@ -116,7 +118,7 @@ class SearchService {
                 def parsedName = nameParser.parse(q)
                 if (parsedName && parsedName.canonicalName()) {
                     def canonical = parsedName.canonicalName()
-                    def sciNameQuery = grailsApplication.config.solrBaseUrl + "/select?q=scientificName:\"" + URLEncoder.encode(canonical, "UTF-8") + "\"" + additionalParams
+                    def sciNameQuery = grailsApplication.config.indexLiveBaseUrl + "/select?q=scientificName:\"" + URLEncoder.encode(canonical, "UTF-8") + "\"" + additionalParams
                     log.debug(sciNameQuery)
                     queryResponse = new URL(sciNameQuery).getText("UTF-8")
                     js = new JsonSlurper()
@@ -158,7 +160,7 @@ class SearchService {
 
     def getChildConcepts(taxonID, queryString){
 
-        def queryUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&rows=1000&q=parentGuid:\"" + taxonID + "\""
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1000&q=parentGuid:\"" + taxonID + "\""
 
         if(queryString){
             queryUrl = queryUrl + "&" + queryString
@@ -189,8 +191,8 @@ class SearchService {
      * @return
      */
     private def lookupTaxon(taxonID){
-        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\""
-        def queryResponse = new URL(solrServerUrl).getText("UTF-8")
+        def indexServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\""
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json.response.docs[0]
@@ -205,7 +207,7 @@ class SearchService {
 
         def encodedName = URLEncoder.encode(taxonName, 'UTF-8')
 
-        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=" +URLEncoder.encode(
+        def solrServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +URLEncoder.encode(
                 "commonNameExact:\"" + taxonName + "\" OR scientificName:\"" + taxonName + "\"",
                 "UTF-8"
         )
@@ -220,7 +222,7 @@ class SearchService {
         def additionalParams = "&wt=json"
         def queryString = "q=" + URLEncoder.encode(name, "UTF-8")
 
-        def queryResponse = new URL(grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
+        def queryResponse = new URL(grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         def model = []
@@ -268,7 +270,7 @@ class SearchService {
     def getTaxa(List guidList){
 
         def postBody = [ q: "guid:(\"" + guidList.join( '","') + "\")", wt: "json" ] // will be url-encoded
-        def resp = doPostWithParams(grailsApplication.config.solrBaseUrl +  "/select", postBody)
+        def resp = doPostWithParams(grailsApplication.config.indexLiveBaseUrl +  "/select", postBody)
 
         //create the docs....
         if(resp.resp.response){
@@ -310,7 +312,7 @@ class SearchService {
         }
 
         //retrieve any synonyms
-        def synonymQueryUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=" +
+        def synonymQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
                 URLEncoder.encode("acceptedConceptID:\"" + taxon.guid + "\"", "UTF-8")
         def synonymQueryResponse = new URL(synonymQueryUrl).getText("UTF-8")
         def js = new JsonSlurper()
@@ -473,7 +475,7 @@ class SearchService {
     }
 
     private def retrieveTaxon(taxonID){
-        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&q=guid:\"" + taxonID + "\""
+        def solrServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + taxonID + "\""
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -504,7 +506,7 @@ class SearchService {
             for (String name : params.keySet()) {
                 query += first ? "?" : "&"
                 first = false
-                query += name.encodeAsURL()+"="+params.get(name).encodeAsURL()
+                query += name.encodeAsURL() + "=" + params.get(name).encodeAsURL()
             }
             log.debug(url + query)
             conn = new URL(url + query).openConnection()

@@ -53,7 +53,7 @@ class AutoCompleteService {
 
         log.info(queryString)
 
-        def queryUrl = grailsApplication.config.solrBaseUrl + "/select?" + queryString + additionalParams
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams
 
         def queryResponse = new URL(queryUrl).getText("UTF-8")
         def js = new JsonSlurper()

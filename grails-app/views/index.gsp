@@ -7,7 +7,9 @@
 	<body>
 		<div id="page-body" role="main">
 			<h1>BIE web services</h1>
-			<p>Here is a listing of web services for BIE</p>
+			<p class="lead">
+				Web services for searching taxonomic concepts and general search across the system.
+			</p>
 			<table class="table">
 				<tr>
 					<td>Taxon details</td>
@@ -27,11 +29,11 @@
 				</tr>
 				<tr>
 					<td>Classification</td>
-					<td>${g.createLink(controller: 'search', action: 'classification')}?q={search terms}</td>
+					<td>${g.createLink(controller: 'search', action: 'classification')}/{GUID}</td>
 				</tr>
 				<tr>
 					<td>Child concepts</td>
-					<td>${g.createLink(controller: 'search', action: 'childConcepts')}?q={search terms}</td>
+					<td>${g.createLink(controller: 'search', action: 'childConcepts')}/{GUID}</td>
 				</tr>
 				<tr>
 					<td>Image search</td>

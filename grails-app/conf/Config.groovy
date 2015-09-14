@@ -16,7 +16,8 @@ if (new File(default_config).exists()) {
 println "[${appName}] (*) grails.config.locations = ${grails.config.locations}"
 println "default_config = ${default_config}"
 
-solrBaseUrl = "http://localhost:8080/solr/bie"
+indexLiveBaseUrl = "http://localhost:8080/solr/bie"
+indexOfflineBaseUrl = "http://localhost:8080/solr/bie-offine"
 biocache.solr.url = "http://index.als.scot/solr/"
 defaultNameSourceAttribution = "National Species Lists"
 commonNameSourceAttribution = "National Species Lists"

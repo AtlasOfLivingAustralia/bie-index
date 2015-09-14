@@ -12,7 +12,7 @@ class DownloadService {
 
         def fields = "guid,rank,scientificName,establishmentMeans,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
 
-        def queryUrl = grailsApplication.config.solrBaseUrl + "/select?wt=csv&fl=" +
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=csv&fl=" +
                 fields + "&csv.header=false&rows=" + Integer.MAX_VALUE +
                 "&" + queryString
 
@@ -28,6 +28,5 @@ class DownloadService {
 
         outputStream << input
         outputStream.flush()
-
     }
 }

@@ -151,7 +151,7 @@ class SearchController {
             asJson([searchResults: searchService.search(params.q, request.queryString, facets)])
         } catch (Exception e){
             log.error(e.getMessage(), e)
-            render(["error": e.getMessage(), indexServer: grailsApplication.config.solrBaseUrl] as JSON)
+            render(["error": e.getMessage(), indexServer: grailsApplication.config.indexLiveBaseUrl] as JSON)
         }
     }
 

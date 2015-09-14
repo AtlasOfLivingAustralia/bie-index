@@ -62,8 +62,8 @@ class IndexService {
 
     private SolrServer getSolrServer(){
         if(solrServer == null){
-            log.info("Initialising connection to solr server: ${grailsApplication.config.solrBaseUrl}")
-            solrServer = new ConcurrentUpdateSolrServer(grailsApplication.config.solrBaseUrl, 10, 4)
+            log.info("Initialising connection to solr server: ${grailsApplication.config.indexOfflineBaseUrl}")
+            solrServer = new ConcurrentUpdateSolrServer(grailsApplication.config.indexOfflineBaseUrl, 10, 4)
         }
         solrServer
     }
