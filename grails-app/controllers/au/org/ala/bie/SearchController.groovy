@@ -48,7 +48,7 @@ class SearchController {
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        render (searchService.getChildConcepts(params.id) as JSON)
+        render (searchService.getChildConcepts(params.id, request.queryString) as JSON)
     }
 
     def guid(){

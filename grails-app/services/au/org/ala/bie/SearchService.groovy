@@ -65,9 +65,7 @@ class SearchService {
 
 
     /**
-     * General search service
-     *
-     * TODO - sorting and page size....
+     * General search service.
      *
      * @param requestedFacets
      * @return
@@ -129,19 +127,44 @@ class SearchService {
             }
         }
 
+        //rkid_family%3ANBNSYS0000003201
+        def queryTitle = q
+        def matcher = ( queryTitle =~ /(rkid_)([a-z]{1,})(:)(.*)/ )
+        if(matcher.matches()){
+            try {
+                def rankName = matcher[0][2]
+                def guid = matcher[0][4]
+                def shortProfile = getShortProfile(guid)
+                queryTitle = rankName + " " + shortProfile.scientificName
+            } catch (Exception e){
+
+            }
+        }
+
+        if(!queryTitle){
+            queryTitle = "all records"
+        }
+
+
         log.debug("auto called with q = ${q}, returning ${json.response.numFound}")
 
         [
             totalRecords: json.response.numFound,
             facetResults: formatFacets(json.facet_counts?.facet_fields ?: []),
-            results     : formatDocs(json.response.docs)
+            results     : formatDocs(json.response.docs),
+            queryTitle  : queryTitle
         ]
     }
 
-    def getChildConcepts(taxonID){
+    def getChildConcepts(taxonID, queryString){
 
-        def solrServerUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&rows=1000&q=parentGuid:\"" + taxonID + "\""
-        def queryResponse = new URL(solrServerUrl).getText("UTF-8")
+        def queryUrl = grailsApplication.config.solrBaseUrl + "/select?wt=json&rows=1000&q=parentGuid:\"" + taxonID + "\""
+
+        if(queryString){
+            queryUrl = queryUrl + "&" + queryString
+        }
+
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         def children = []
@@ -157,7 +180,7 @@ class SearchService {
                     rankID:taxon.rankID
             ]
         }
-        children
+        children.sort { it.name }
     }
 
     /**
