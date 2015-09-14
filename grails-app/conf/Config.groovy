@@ -17,7 +17,7 @@ println "[${appName}] (*) grails.config.locations = ${grails.config.locations}"
 println "default_config = ${default_config}"
 
 indexLiveBaseUrl = "http://localhost:8080/solr/bie"
-indexOfflineBaseUrl = "http://localhost:8080/solr/bie-offine"
+indexOfflineBaseUrl = "http://localhost:8080/solr/bie-offline"
 biocache.solr.url = "http://index.als.scot/solr/"
 defaultNameSourceAttribution = "National Species Lists"
 commonNameSourceAttribution = "National Species Lists"
