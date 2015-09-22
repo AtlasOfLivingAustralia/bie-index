@@ -399,7 +399,7 @@ class ImportService {
                                 counter++
                                 buffer << sdoc
                             } else {
-                                log.debug("Skipping lexographically the same synonym for " + scientificName)
+                                log.debug("Skipping lexicographically the same synonym for " + scientificName)
                             }
                         }
                     }
