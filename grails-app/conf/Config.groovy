@@ -1,3 +1,7 @@
+import org.apache.log4j.Level
+
+def appName = "bie-index"
+
 grails.project.groupId = "au.org.ala" // change this to alter the default package name and Maven publishing destination
 
 default_config = "/data/${appName}/config/${appName}-config.properties"
@@ -109,41 +113,41 @@ environments {
         grails.logging.jul.usebridge = false
     }
 }
+
 // log4j configuration
+def loggingDir = (System.getProperty('catalina.base') ? System.getProperty('catalina.base') + '/logs' : './logs')
+
 log4j = {
-    // Example of changing the log pattern for the default console appender:
-    //
     appenders {
         environments {
             production {
-                console name: "stdout", layout: pattern(conversionPattern: "%d %-5p [%c{1}]  %m%n"), threshold: org.apache.log4j.Level.WARN
+                println "BIE index logs will be written to : ${loggingDir}"
+                rollingFile name: "tomcatLog", maxFileSize: '1MB', file: "${loggingDir}/${appName}.log", threshold: Level.INFO, layout: pattern(conversionPattern: "%d %-5p [%c{1}] %m%n")
             }
             development {
-                console name: "stdout", layout: pattern(conversionPattern: "%d %-5p [%c{1}]  %m%n"), threshold: org.apache.log4j.Level.DEBUG
+                console name: "stdout", layout: pattern(conversionPattern: "%d %-5p [%c{1}] %m%n"), threshold: Level.DEBUG
             }
             test {
-                console name: "stdout", layout: pattern(conversionPattern: "%d %-5p [%c{1}]  %m%n"), threshold: org.apache.log4j.Level.INFO
+                console name: "stdout", layout: pattern(conversionPattern: "%d %-5p [%c{1}] %m%n"), threshold: Level.DEBUG
             }
         }
     }
-
     root {
-        info 'stdout'
+        // change the root logger to my tomcatLog file
+        error 'tomcatLog'
+        warn 'tomcatLog'
+        additivity = true
     }
 
-    error  'org.codehaus.groovy.grails.web.servlet',         // controllers
-            'org.codehaus.groovy.grails.web.pages',          // GSP
-            'org.codehaus.groovy.grails.web.sitemesh',       // layouts
-            'org.codehaus.groovy.grails.web.mapping.filter', // URL mapping
-            'org.codehaus.groovy.grails.web.mapping',        // URL mapping
-            'org.codehaus.groovy.grails.commons',            // core / classloading
-            'org.codehaus.groovy.grails.plugins',            // plugins
-            'org.codehaus.groovy.grails.orm.hibernate',      // hibernate integration
-            'org.springframework',
-            'org.hibernate',
-            'net.sf.ehcache.hibernate'
-    debug   'grails.app.controllers',
-            'grails.app.services',
-            'grails.web.pages',
-            'au.org.ala.bie'
+    error   'au.org.ala.cas.client',
+            "au.org.ala",
+            'grails.spring.BeanBuilder',
+            'grails.plugin.webxml',
+            'grails.plugin.cache.web.filter',
+            'grails.app.services.org.grails.plugin.resource',
+            'grails.app.taglib.org.grails.plugin.resource',
+            'grails.app.resourceMappers.org.grails.plugin.resource'
+
+    debug   "grails.app",
+            "au.org.ala"
 }

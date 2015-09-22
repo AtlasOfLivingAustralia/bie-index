@@ -9,7 +9,7 @@ grails.project.source.level = 1.7
 
 grails.project.fork = [
         test: false,
-        run: false
+        run: true
 ]
 
 grails.project.dependency.resolver = "maven" // or ivy
@@ -52,5 +52,6 @@ grails.project.dependency.resolution = {
         runtime(":ala-auth:1.3.1") {
             excludes "servlet-api"
         }
+        compile ":spring-websocket:1.3.0"
     }
 }

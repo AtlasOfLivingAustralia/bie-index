@@ -21,6 +21,8 @@ class ImportService {
 
     def grailsApplication
 
+    def brokerMessagingTemplate
+
     def static DYNAMIC_FIELD_EXTENSION = "_s"
 
     /**
@@ -80,11 +82,11 @@ class ImportService {
             }
         }
 
-        log.info("Parent-less: ${parentLess.size()}, Parent-child: ${childParentMap.size()}")
+        log("Parent-less: ${parentLess.size()}, Parent-child: ${childParentMap.size()}")
 
         def taxonDenormLookup = [:]
 
-        log.info("Starting denorm lookups")
+        log("Starting denormalisation lookups")
         childParentMap.keySet().each {
             //don't bother de-normalising terminal taxa
             if (parents.contains(it)) {
@@ -93,7 +95,7 @@ class ImportService {
                 taxonDenormLookup.put(it, list)
             }
         }
-        log.info("Finished denorm lookups")
+        log("Finished denormalisation lookups")
         taxonDenormLookup
     }
 
@@ -139,7 +141,7 @@ class ImportService {
             batch << doc
         }
         indexService.indexBatch(batch)
-        log.info("Finished indexing ${layers.size()} layers")
+        log("Finished indexing ${layers.size()} layers")
     }
 
     /**
@@ -157,8 +159,8 @@ class ImportService {
            def js = new JsonSlurper()
            def entities = []
            def drLists = js.parseText(new URL(grailsApplication.config.collectoryUrl + "/${entityType}").getText("UTF-8"))
-           log.info("About to import ${drLists.size()} ${entityType}")
-           log.info("Clearing existing: ${entityType}")
+           log("About to import ${drLists.size()} ${entityType}")
+           log("Clearing existing: ${entityType}")
            indexService.deleteFromIndex(indexDocType)
 
            drLists.each {
@@ -182,11 +184,11 @@ class ImportService {
                    entities.clear()
                }
            }
-           log.info("Cleared")
+           log("Cleared")
            if(entities) {
                indexService.indexBatch(entities)
            }
-           log.info("Finished indexing ${drLists.size()} ${entityType}")
+           log("Finished indexing ${drLists.size()} ${entityType}")
        }
     }
 
@@ -197,226 +199,234 @@ class ImportService {
      */
     def importDwcA(dwcDir, clearIndex){
 
-        //read the DwC metadata
-        Archive archive = ArchiveFactory.openArchive(new File(dwcDir));
-        ArchiveFile taxaArchiveFile = archive.getCore()
+        try {
+            log("Importing archive from path.." + dwcDir)
 
-        //vernacular names extension available?
-        ArchiveFile vernacularArchiveFile = archive.getExtension(GbifTerm.VernacularName)
+            //read the DwC metadata
+            Archive archive = ArchiveFactory.openArchive(new File(dwcDir));
+            ArchiveFile taxaArchiveFile = archive.getCore()
 
-        //dataset extension available?
-        ArchiveFile datasetArchiveFile = archive.getExtension(DcTerm.rightsHolder)
+            //vernacular names extension available?
+            ArchiveFile vernacularArchiveFile = archive.getExtension(GbifTerm.VernacularName)
+            log("Vernacular extension detected: " + (vernacularArchiveFile != null))
 
-        //dataset extension available?
-        ArchiveFile distributionArchiveFile = archive.getExtension(GbifTerm.Distribution)
+            //dataset extension available?
+            ArchiveFile datasetArchiveFile = archive.getExtension(DcTerm.rightsHolder)
+            log("Dataset extension detected: " + (datasetArchiveFile != null))
 
-        //retrieve taxon rank mappings
-        def taxonRanks = readTaxonRankIDs()
+            //dataset extension available?
+            ArchiveFile distributionArchiveFile = archive.getExtension(GbifTerm.Distribution)
+            log("Distribution extension detected: " + (distributionArchiveFile != null))
 
-        //retrieve images
-        def imageMap = indexImages()
+            //retrieve taxon rank mappings
+            log("Reading taxon ranks..")
+            def taxonRanks = readTaxonRankIDs()
+            log("Reading taxon ranks.." + taxonRanks.size() + " read.")
 
-        //retrieve common names
-        def commonNamesMap = readCommonNames(vernacularArchiveFile)
-        log.info("Common names read: " + commonNamesMap.size())
+            //retrieve images
+            def imageMap = indexImages()
 
-        //retrieve datasets
-        def attributionMap = readAttribution(datasetArchiveFile)
-        log.info("Datasets read: " + attributionMap.size())
+            //retrieve common names
+            def commonNamesMap = readCommonNames(vernacularArchiveFile)
+            log("Common names read: " + commonNamesMap.size())
 
-        //compile a list of synonyms into memory....
-        def synonymMap = readSynonyms(taxaArchiveFile)
-        log.info("Synonyms read: " + synonymMap.size())
+            //retrieve datasets
+            def attributionMap = readAttribution(datasetArchiveFile)
+            log("Datasets read: " + attributionMap.size())
 
-        //clear
-        if (clearIndex) {
-            log.info("Deleting existing entries in index...")
-            indexService.deleteFromIndex(IndexDocType.TAXON)
-        } else {
-            log.info("Skipping deleting existing entries in index...")
-        }
+            //compile a list of synonyms into memory....
+            def synonymMap = readSynonyms(taxaArchiveFile)
+            log("Synonyms read: " + synonymMap.size())
 
-        //retrieve the denormed taxon lookup
-        def denormalised = denormalise(taxaArchiveFile)
-        log.info("De-normalised map..." + denormalised.size())
+            //clear
+            if (clearIndex) {
+                log("Deleting existing entries in index...")
+                indexService.deleteFromIndex(IndexDocType.TAXON)
+            } else {
+                log("Skipping deleting existing entries in index...")
+            }
 
-        //compile a list of synonyms into memory....
-        def distributionMap = readDistributions(distributionArchiveFile, denormalised)
+            //retrieve the denormed taxon lookup
+            def denormalised = denormalise(taxaArchiveFile)
+            log("De-normalised map..." + denormalised.size())
 
-        log.info("Creating entries in index...")
+            //compile a list of synonyms into memory....
+            def distributionMap = readDistributions(distributionArchiveFile, denormalised)
 
-        //read inventory, creating entries in index....
-        def alreadyIndexed = [DwcTerm.taxonID,
-                              DwcTerm.datasetID,
-                              DwcTerm.acceptedNameUsageID,
-                              DwcTerm.parentNameUsageID,
-                              DwcTerm.scientificName,
-                              DwcTerm.taxonRank,
-                              DwcTerm.scientificNameAuthorship
-        ]
+            log("Creating entries in index...")
 
-        def buffer = []
-        def counter = 0
+            //read inventory, creating entries in index....
+            def alreadyIndexed = [DwcTerm.taxonID,
+                                  DwcTerm.datasetID,
+                                  DwcTerm.acceptedNameUsageID,
+                                  DwcTerm.parentNameUsageID,
+                                  DwcTerm.scientificName,
+                                  DwcTerm.taxonRank,
+                                  DwcTerm.scientificNameAuthorship
+            ]
 
-        Iterator<Record> iter = taxaArchiveFile.iterator()
+            def buffer = []
+            def counter = 0
 
-        while (iter.hasNext()) {
+            Iterator<Record> iter = taxaArchiveFile.iterator()
 
-            Record record = iter.next()
+            while (iter.hasNext()) {
 
-            counter++
-            def taxonID = record.id()
-            def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
+                Record record = iter.next()
 
-            if (taxonID == acceptedNameUsageID || acceptedNameUsageID == "" || acceptedNameUsageID == null) {
+                counter++
+                def taxonID = record.id()
+                def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
 
-                def taxonRank = (record.value(DwcTerm.taxonRank)?:"").toLowerCase()
-                def scientificName = record.value(DwcTerm.scientificName)
-                def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
-                def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
-                def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank) as Integer : -1
+                if (taxonID == acceptedNameUsageID || acceptedNameUsageID == "" || acceptedNameUsageID == null) {
 
-                //common name
-                def doc = ["idxtype" : IndexDocType.TAXON.name()]
-                doc["id"] = UUID.randomUUID().toString()
-                doc["guid"] = taxonID
-                doc["parentGuid"] = parentNameUsageID
-                doc["rank"] = taxonRank
-                doc["rankID"] = taxonRankID
-                doc["scientificName"] = scientificName
-                doc["scientificNameAuthorship"] = scientificNameAuthorship
-                if (scientificNameAuthorship) {
-                    doc["nameComplete"] = scientificName + " " + scientificNameAuthorship
-                } else {
-                    doc["nameComplete"] = scientificName
-                }
+                    def taxonRank = (record.value(DwcTerm.taxonRank) ?: "").toLowerCase()
+                    def scientificName = record.value(DwcTerm.scientificName)
+                    def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
+                    def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
+                    def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank) as Integer : -1
 
-                def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID]
-
-                //index additional fields that are supplied in the core
-                record.terms().each { term ->
-                    if (!alreadyIndexed.contains(term)) {
-                        if (inSchema.contains(term)) {
-                            doc[term.simpleName()] = record.value(term)
-                        } else {
-                            //use a dynamic field extension
-                            doc[term.simpleName() + DYNAMIC_FIELD_EXTENSION] = record.value(term)
-                        }
+                    //common name
+                    def doc = ["idxtype": IndexDocType.TAXON.name()]
+                    doc["id"] = UUID.randomUUID().toString()
+                    doc["guid"] = taxonID
+                    doc["parentGuid"] = parentNameUsageID
+                    doc["rank"] = taxonRank
+                    doc["rankID"] = taxonRankID
+                    doc["scientificName"] = scientificName
+                    doc["scientificNameAuthorship"] = scientificNameAuthorship
+                    if (scientificNameAuthorship) {
+                        doc["nameComplete"] = scientificName + " " + scientificNameAuthorship
+                    } else {
+                        doc["nameComplete"] = scientificName
                     }
-                }
 
-                def attribution = attributionMap.get(record.value(DwcTerm.datasetID))
-                if (attribution) {
-                    doc["datasetName"] = attribution["datasetName"]
-                    doc["rightsHolder"] = attribution["rightsHolder"]
-                }
+                    def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID]
 
-                //retrieve images via scientific name
-                def image = null
-//                if(taxonRankID < 6000){
-                    image = imageMap.get(scientificName)
-//                } else {
-//                    image = imageMap.get(taxonID)
-//                }
-
-                if (image) {
-                    doc["image"] = image
-                    doc["imageAvailable"] = "yes"
-                } else {
-                    doc["imageAvailable"] = "no"
-                }
-
-                def distributions = distributionMap.get(taxonID)
-                if(distributions){
-                    distributions.each {
-                        doc["distribution"] = it
-                    }
-                }
-
-                //common names
-                def commonNames = commonNamesMap.get(taxonID)
-                if (commonNames) {
-                    doc["commonName"] = commonNames
-                    doc["commonNameExact"] = commonNames
-                }
-
-                //get de-normalised taxonomy, and add it to the document
-                if (parentNameUsageID) {
-                    def taxa = denormalised.get(parentNameUsageID)
-                    def processedRanks = []
-                    taxa.each { taxon ->
-
-                        //check we have only one value for each rank...
-                        def parts = taxon.split('\\|')
-
-                        if (parts.length == 3) {
-                            String tID = parts[0]
-                            String name = parts[1]
-                            String rank = parts[2]
-                            String normalisedRank = rank.replaceAll(" ", "_").toLowerCase()
-                            if (processedRanks.contains(normalisedRank)) {
-                                log.info("Duplicated rank: " + normalisedRank + " - " + taxa)
+                    //index additional fields that are supplied in the core
+                    record.terms().each { term ->
+                        if (!alreadyIndexed.contains(term)) {
+                            if (inSchema.contains(term)) {
+                                doc[term.simpleName()] = record.value(term)
                             } else {
-                                processedRanks << normalisedRank
-                                doc["rk_" + normalisedRank] = name
-                                doc["rkid_" + normalisedRank] = tID
+                                //use a dynamic field extension
+                                doc[term.simpleName() + DYNAMIC_FIELD_EXTENSION] = record.value(term)
                             }
                         }
                     }
-                }
 
-                //synonyms - add a separate doc for each
-                def synonyms = synonymMap.get(taxonID)
-                if (synonyms) {
-                    synonyms.each { synonym ->
+                    def attribution = attributionMap.get(record.value(DwcTerm.datasetID))
+                    if (attribution) {
+                        doc["datasetName"] = attribution["datasetName"]
+                        doc["rightsHolder"] = attribution["rightsHolder"]
+                    }
 
-                        //don't add the synonym if it is lexicographically the same
-                        if(!synonym['scientificName'].equalsIgnoreCase(scientificName)) {
+                    //retrieve images via scientific name
+                    def image = imageMap.get(scientificName)
 
-                            def sdoc = ["idxtype": "TAXON"]
-                            sdoc["id"] = UUID.randomUUID().toString()
-                            sdoc["guid"] = synonym["taxonID"]
-                            sdoc["rank"] = taxonRank
-                            sdoc["rankID"] = taxonRankID
-                            sdoc["scientificName"] = synonym['scientificName']
-                            sdoc["scientificNameAuthorship"] = synonym['scientificNameAuthorship']
-                            sdoc["nameComplete"] = synonym['scientificName'] + " " +  synonym['scientificNameAuthorship']
-                            sdoc["acceptedConceptName"] = scientificName + ' ' + scientificNameAuthorship
-                            sdoc["acceptedConceptID"] = taxonID
-                            sdoc["taxonomicStatus"] = "synonym"
+                    if (image) {
+                        doc["image"] = image
+                        doc["imageAvailable"] = "yes"
+                    } else {
+                        doc["imageAvailable"] = "no"
+                    }
 
-                            def synAttribution = attributionMap.get(synonym['dataset'])
-                            if (synAttribution) {
-                                sdoc["datasetName"] = synAttribution["datasetName"]
-                                sdoc["rightsHolder"] = synAttribution["rightsHolder"]
-                            }
-
-                            counter++
-                            buffer << sdoc
-                        } else {
-                            log.debug("Skipping lexographically the same synonym for " + scientificName)
+                    def distributions = distributionMap.get(taxonID)
+                    if (distributions) {
+                        distributions.each {
+                            doc["distribution"] = it
                         }
                     }
+
+                    //common names
+                    def commonNames = commonNamesMap.get(taxonID)
+                    if (commonNames) {
+                        doc["commonName"] = commonNames
+                        doc["commonNameExact"] = commonNames
+                    }
+
+                    //get de-normalised taxonomy, and add it to the document
+                    if (parentNameUsageID) {
+                        def taxa = denormalised.get(parentNameUsageID)
+                        def processedRanks = []
+                        taxa.each { taxon ->
+
+                            //check we have only one value for each rank...
+                            def parts = taxon.split('\\|')
+
+                            if (parts.length == 3) {
+                                String tID = parts[0]
+                                String name = parts[1]
+                                String rank = parts[2]
+                                String normalisedRank = rank.replaceAll(" ", "_").toLowerCase()
+                                if (processedRanks.contains(normalisedRank)) {
+                                    log.debug("Duplicated rank: " + normalisedRank + " - " + taxa)
+                                } else {
+                                    processedRanks << normalisedRank
+                                    doc["rk_" + normalisedRank] = name
+                                    doc["rkid_" + normalisedRank] = tID
+                                }
+                            }
+                        }
+                    }
+
+                    //synonyms - add a separate doc for each
+                    def synonyms = synonymMap.get(taxonID)
+                    if (synonyms) {
+                        synonyms.each { synonym ->
+
+                            //don't add the synonym if it is lexicographically the same
+                            if (!synonym['scientificName'].equalsIgnoreCase(scientificName)) {
+
+                                def sdoc = ["idxtype": "TAXON"]
+                                sdoc["id"] = UUID.randomUUID().toString()
+                                sdoc["guid"] = synonym["taxonID"]
+                                sdoc["rank"] = taxonRank
+                                sdoc["rankID"] = taxonRankID
+                                sdoc["scientificName"] = synonym['scientificName']
+                                sdoc["scientificNameAuthorship"] = synonym['scientificNameAuthorship']
+                                sdoc["nameComplete"] = synonym['scientificName'] + " " + synonym['scientificNameAuthorship']
+                                sdoc["acceptedConceptName"] = scientificName + ' ' + scientificNameAuthorship
+                                sdoc["acceptedConceptID"] = taxonID
+                                sdoc["taxonomicStatus"] = "synonym"
+
+                                def synAttribution = attributionMap.get(synonym['dataset'])
+                                if (synAttribution) {
+                                    sdoc["datasetName"] = synAttribution["datasetName"]
+                                    sdoc["rightsHolder"] = synAttribution["rightsHolder"]
+                                }
+
+                                counter++
+                                buffer << sdoc
+                            } else {
+                                log.debug("Skipping lexographically the same synonym for " + scientificName)
+                            }
+                        }
+                    }
+
+                    buffer << doc
                 }
 
-                buffer << doc
-            }
-
-            if (counter > 0 && counter % 1000 == 0) {
-                if (!buffer.isEmpty()) {
-                    log.info("Adding docs: ${counter}")
-                    indexService.indexBatch(buffer)
-                    buffer.clear()
+                if (counter > 0 && counter % 1000 == 0) {
+                    if (!buffer.isEmpty()) {
+                        log("Adding taxa: ${counter}")
+                        indexService.indexBatch(buffer)
+                        buffer.clear()
+                    }
                 }
             }
-        }
 
-        //commit remainder
-        if (!buffer.isEmpty()) {
-            indexService.indexBatch(buffer)
-            buffer.clear()
+            //commit remainder
+            if (!buffer.isEmpty()) {
+                indexService.indexBatch(buffer)
+                buffer.clear()
+            }
+            log("Import finished.")
+        } catch (Exception e){
+            log("There was problem with the import: " + e.getMessage())
+            log("See server logs for more details.")
+            log.error(e.getMessage(), e)
         }
-        log.info "Import finished"
     }
 
     /**
@@ -450,7 +460,7 @@ class ImportService {
 
         //iterate through these IDs and add the parent IDs to the distributions
         def taxonIDs = distributions.keySet().toArray()
-        log.info("Distributions for child taxa: " + taxonIDs.size())
+        log("Distributions for child taxa: " + taxonIDs.size())
 
         taxonIDs.each {
             def taxa = denormalisedTaxa.get(it)
@@ -475,8 +485,7 @@ class ImportService {
             }
         }
 
-        log.info("Distributions for child & parent taxa: " + distributions.keySet().size())
-
+        log("Distributions for child & parent taxa: " + distributions.keySet().size())
         distributions
     }
 
@@ -501,7 +510,7 @@ class ImportService {
             def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
             def datasetID = record.value(DwcTerm.datasetID)
 
-            if (acceptedNameUsageID != taxonID && acceptedNameUsageID != "" && acceptedNameUsageID != null) {
+            if (taxonID && scientificName && acceptedNameUsageID != taxonID && acceptedNameUsageID != "" && acceptedNameUsageID != null) {
                 //we have a synonym
                 def synonymList = synonyms.get(acceptedNameUsageID)
                 if (!synonymList) {
@@ -612,11 +621,11 @@ class ImportService {
         }
 
         def imageMap = [:]
-        log.info("Loading images for the each of the ranks")
+        log("Loading images for the each of the ranks")
         //load images against scientific name
         ["taxon_name", "genus", "family", "order", "class", "phylum"].each {
 
-            log.info("Loading images for the each of the ${it} ... total thus far ${imageMap.size()}")
+            log("Loading images for the each of the ${it} ... total thus far ${imageMap.size()}".toString())
 
             def imagesUrl = grailsApplication.config.biocache.solr.url + "/select?" +
                     "q=*%3A*" +
@@ -636,7 +645,12 @@ class ImportService {
             }
         }
 
-        log.info("Images loaded: " + imageMap.size())
+        log("Images loaded: " + imageMap.size())
         imageMap
+    }
+    
+    def log(msg){
+        log.info(msg)
+        brokerMessagingTemplate.convertAndSend "/topic/import-dwca", msg.toString()
     }
 }
