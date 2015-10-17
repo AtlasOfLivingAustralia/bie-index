@@ -129,8 +129,11 @@ class ImportService {
      */
     def importLayers(){
         def js = new JsonSlurper()
-        def layers = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/layers").getText("UTF-8"))
+        def url = grailsApplication.config.layersServicesUrl + "/layers"
+        log("Requesting layer list from : " +  url)
+        def layers = js.parseText(new URL(url).getText("UTF-8"))
         def batch = []
+        indexService.deleteFromIndex(IndexDocType.LAYER)
         layers.each { layer ->
             def doc = [:]
             doc["id"] = layer.name
@@ -138,10 +141,38 @@ class ImportService {
             doc["idxtype"] = IndexDocType.LAYER.name()
             doc["name"] = layer.displayname
             doc["description"] = layer.description
+            log("Importing layer: " +  layer.displayname)
             batch << doc
         }
         indexService.indexBatch(batch)
         log("Finished indexing ${layers.size()} layers")
+    }
+
+    def importRegions(){
+        def js = new JsonSlurper()
+        def layers = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/layers").getText("UTF-8"))
+        indexService.deleteFromIndex(IndexDocType.REGION)
+        layers.each { layer ->
+            if(layer.type == "Contextual") {
+                log("Loading regions from layer " + layer.name)
+                def batch = []
+                def objects = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/objects/cl" + layer.id).getText("UTF-8"))
+                objects.each { object ->
+
+                    def doc = [:]
+                    doc["id"] = object.id
+                    doc["guid"] = object.pid
+                    doc["idxtype"] = IndexDocType.REGION.name()
+                    doc["name"] = object.name
+                    doc["description"] = layer.displayname
+                    batch << doc
+                }
+                if(batch){
+                    indexService.indexBatch(batch)
+                }
+            }
+        }
+        log("Finished indexing ${layers.size()} region layers")
     }
 
     /**
@@ -651,6 +682,6 @@ class ImportService {
     
     def log(msg){
         log.info(msg)
-        brokerMessagingTemplate.convertAndSend "/topic/import-dwca", msg.toString()
+        brokerMessagingTemplate.convertAndSend "/topic/import-feedback", msg.toString()
     }
 }

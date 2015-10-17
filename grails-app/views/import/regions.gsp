@@ -3,7 +3,7 @@
 <head>
   <title></title>
   <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
-    <r:require modules="sockets" />
+  <r:require modules="sockets" />
 </head>
 <body>
 <div>
@@ -13,14 +13,14 @@
         <li class="font-xxsmall active" href="#">Import</li>
     </ol>
     <!-- End Breadcrumb -->
-    <h2 class="heading-medium">Collectory import</h2>
+    <h2 class="heading-medium">Regions import</h2>
 
     <p class="lead">
-        Reload collectory information into the main search index
+        Reload regions information into the main search index
     </p>
 
     <div>
-        <button id="start-import" onclick="javascript:loadCollectoryInfo()" class="btn btn-primary">Import collectory</button>
+        <button id="start-import" onclick="javascript:loadInfo()" class="btn btn-primary">Import regions information</button>
     </div>
 
     <div class="well import-info alert-info hide" style="margin-top:20px;">
@@ -29,8 +29,8 @@
     </div>
 
     <r:script>
-        function loadCollectoryInfo(){
-            $.get("${createLink(controller:'import', action:'importCollectory')}", function( data ) {
+        function loadInfo(){
+            $.get("${createLink(controller:'import', action:'importRegions')}", function( data ) {
               if(data.success){
                 $('.import-info p').html('Import successfully started....')
                 $('#start-import').prop('disabled', true);
@@ -41,7 +41,6 @@
             });
         }
     </r:script>
-
     <r:script>
         $(function() {
             var socket = new SockJS("${createLink(uri: '/stomp')}");

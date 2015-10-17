@@ -49,7 +49,6 @@
 
     <div class="well import-info alert-info hide" style="margin-top:20px;">
         <p></p>
-
         <p id="import-info-web-socket"></p>
     </div>
 
@@ -78,22 +77,19 @@
               $('.import-info').removeClass('hide');
             });
         }
-
     </r:script>
-
 
     <r:script>
         $(function() {
             var socket = new SockJS("${createLink(uri: '/stomp')}");
             var client = Stomp.over(socket);
             client.connect({}, function() {
-                client.subscribe("/topic/import-dwca", function(message) {
+                client.subscribe("/topic/import-feedback", function(message) {
                     $("#import-info-web-socket").append('<br/>' + message.body);
                 });
             });
         });
     </r:script>
-
 </div>
 </body>
 </html>

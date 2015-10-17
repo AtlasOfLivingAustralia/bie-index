@@ -23,6 +23,8 @@ class ImportController {
 
     def layers(){}
 
+    def regions(){}
+
     /**
      * Import a DwC-A into this system.
      *
@@ -78,6 +80,24 @@ class ImportController {
             Thread.start {
                 log.info("Starting import of layers....")
                 importService.importLayers()
+                log.info("Finished import of layers.")
+            }
+            asJson ([success:true] )
+        } else {
+            asJson ([success: false, message: 'layersServicesUrl not configured'] )
+        }
+    }
+
+    /**
+     * Import information from layers.
+     *
+     * @return
+     */
+    def importRegions(){
+        if(grailsApplication.config.layersServicesUrl){
+            Thread.start {
+                log.info("Starting import of layers....")
+                importService.importRegions()
                 log.info("Finished import of layers.")
             }
             asJson ([success:true] )
