@@ -141,6 +141,7 @@ class ImportService {
             doc["idxtype"] = IndexDocType.LAYER.name()
             doc["name"] = layer.displayname
             doc["description"] = layer.description
+            doc["distribution"] = "N/A"
             log("Importing layer: " +  layer.displayname)
             batch << doc
         }
@@ -165,6 +166,7 @@ class ImportService {
                     doc["idxtype"] = IndexDocType.REGION.name()
                     doc["name"] = object.name
                     doc["description"] = layer.displayname
+                    doc["distribution"] = "N/A"
                     batch << doc
                 }
                 if(batch){
