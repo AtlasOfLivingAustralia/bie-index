@@ -1,14 +1,22 @@
 # bie-index [![Build Status](https://travis-ci.org/AtlasOfLivingAustralia/bie-index.svg?branch=master)](https://travis-ci.org/AtlasOfLivingAustralia/bie-index)
 
-A webapp that indexes taxonomic content in DwC-A and provides search web services for this content.
+bie-index is a grails web application that indexes taxonomic content in DwC-A and provides search web services for this content.
 This includes:
 
-- facetted taxonomic search with synonymy support
-- search across other entities (regions, layers, datasets, institutions)
+- faceted taxonomic search with synonymy support
+- search across other entities including:
+    - regions
+    - spatial layers
+    - data resources
+    - institutions
+    - collections
 - autocomplete services
-- download services (to be done)
+- CSV download services
+- bulk taxonomic lookup services by name or GUID
+- retrieval of full classification (major and non-major taxonomic ranks e.g. sub-order, sub-family)
  
-This project just provides JSON webservices (no HTML interface for end users). There is a set of front end components available providing the species pages listed here:
+This project provides JSON webservices and an interface for admin users. It does not include a HTML interface for end users. 
+There is a set of front end components available providing the species pages listed here:
 
 - [bie-plugin](http://github.com/AtlasOfLivingAustralia/bie-plugin) - a grails plugin providing species pages & search interfaces
 - [ala-bie](http://github.com/AtlasOfLivingAustralia/ala-bie) - the ALA version of this front end
@@ -16,7 +24,7 @@ This project just provides JSON webservices (no HTML interface for end users). T
 
 ## Darwin Core archive format of taxonomic information
 
-This application currently supports the ingestion of DwC archives with the following mandatory darwin core fields in the core file:
+This application currently supports the ingestion of Darwin Core archive (DwC-A) with the following mandatory darwin core fields in the core file:
 
 - [taxonID](http://rs.tdwg.org/dwc/terms/#taxonID)
 - [parentNameUsageID](http://rs.tdwg.org/dwc/terms/#parentNameUsageID)
@@ -59,9 +67,14 @@ Below is an example meta.xml that would be provided in a darwin core archive.
 </archive>
 ```
 
+## Example archives
+
+- UK Species inventory
+
+
 ## Integration points
 
-In addition to indexing the content of the darwin core archive, the ingestion & index creation (optionally) indexes data from the following ALA components.
+In addition to indexing the content of the darwin core archive, the ingestion & index creation (optionally) indexes data from the following ALA components. It does this by harvesting JSON feeds from the listed components.
 
 - Layers & regions - http://spatial.ala.org.au/layers - spatial layers available in the system and regions (e.g. states, countries)
 - Collectory - http://collections.ala.org.au - data resource, collections, institutions
@@ -72,8 +85,9 @@ In addition to indexing the content of the darwin core archive, the ingestion & 
 
 This application makes use of the following technologies
 
-- Apache SOLR
-- Grails 2.4
-- Tomcat
+- Apache SOLR 4.10.x
+- Grails 2.4.x
+- Tomcat 7 or higher
+- Java 7 or higher
 
-![Architecture image](https://raw.githubusercontent.com/AtlasOfLivingAustralia/bie-index/master/architecture.jpg)
+![Architecture image](architecture.jpg)
