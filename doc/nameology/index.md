@@ -1,4 +1,4 @@
-# The Child's First Encyclopedia Nameology with numerous useful annotations by a gentleman
+# The Child's First Encyclopedia of Nameology with numerous useful annotations by a gentleman
 
 ### Or everything you wanted to know about names but were afraid to ask.
 
