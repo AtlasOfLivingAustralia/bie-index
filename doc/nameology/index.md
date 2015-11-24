@@ -5,6 +5,8 @@
 Actually, everything you never wanted to know about names and were too sensible to ask.
 But here you are ...
 
+Also known as the sequal to [Celestial Emporium of Benevolent Knowledge](https://en.wikipedia.org/wiki/Celestial_Emporium_of_Benevolent_Knowledge)
+
 Nameology describes the process by which different sources of names are collected and transformed into
 the sort of taxonomic Darwin Core Archives that the bie-index expects.
 
@@ -12,6 +14,9 @@ the sort of taxonomic Darwin Core Archives that the bie-index expects.
 
 * [The Goal](#thegoal)
 * [Conventions](conventions.md)
+* [Processing Basics](processing-basics.md)
+* Data Sources
+    * [Australian Faunal Directory (AFD)](afd.md)
 
 ## The Goal
 
