@@ -38,7 +38,7 @@ The common identifier for a taxonomic DwCA is the [taxonID](http://rs.tdwg.org/d
 
 LSIDs are preferred for identifiers, where possible, because they allow links to further information about the taxon.
 
-## Taxonomic Status
+## <a name="taxonomic-status"/> Taxonomic Status
 
 Taxonomic status indicates whether a name or taxon is currently accepted, a synonym or of some other, murkier status.
 
@@ -60,7 +60,7 @@ identification into two parts.
 | misapplied | no | A name incorrectly applied in a publication to a different species. However, the name itself is perfectly valid and has its own taxon. |
 | excluded | no | A name that shouldn't be used, since it refers to something not found in the region of the occurrence record. |
 
-## Taxon Rank
+## <a name="taxon-rank"/> Taxon Rank
 
 Taxonomic ranks give the level of the taxon in the taxonomic tree.
 The taxonomic ranks used are

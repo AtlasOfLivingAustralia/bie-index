@@ -57,6 +57,10 @@ Adding taxonIDs to the various taxa, along with notes as to whether they are to 
 Minor sources of names often duplicate taxa that have already been processed.
 Identification involves mapping taxa onto pre-existing identifiers, or building new identifiers for the incoming taxa.
 
+Where necessary, the supplied identifier is left in place  and a parallel `identifier` column is used
+to carry the final identifier.
+This process is useful 
+
 ### Annotation
 
 Annotation involves adding an any extra information, such as literature references, to a taxon description.
@@ -74,11 +78,20 @@ If it doesn't, then it probably provides the names of higher taxa.
 If that is the case, then it becomes necessary to work down through the list of higher taxa, providing
 the lowest rank parent taxon as the parent.
 
-### Correcting Parents
+
+### <a name="correncting-parents"/> Correcting Parents
 
 Some taxa may have non-current or incertae sedis parents.
 If these have been eliminated during pre-processing, then the parent taxon needs to be bumped up to the 
 current taxon of the next highest rank.
+
+Generally this is handled via iterative processing.
+A current list of taxa and parent identifiers is built.
+The parent identifiers are then checked against the list of accepted taxa.
+If the parent isn't in the list, then the parent of that parent is introduced as a candidate.
+This continues until no new parents are introduced, either because a valid parent has been found
+or because there isn't anything left in the tree.
+
 
 ## DwCA Construction
 
@@ -97,6 +110,17 @@ Validity checking consists of ensuring that:
 * A taxon with a parent respects the rank structure.
 There are a few complications with the rank structure, since hybrids are effectively of the same rank
 as the parent species.
+
+### Taxonomic Status Mapping
+
+Taxonomic status mapping involves translating the way the taxa are represented in the source data
+into the standard vocabulary described in [the conventions](conventions.md#taxonomic-status).
+
+
+### Taxon Rank Mapping
+
+Each data source tends to have its own taxon rank vocabulary.
+These need to be translated into the ALA vocabulary described in [the conventions]((conventions.md#taxon-rank).
 
 ### DwCA Packaging
 
