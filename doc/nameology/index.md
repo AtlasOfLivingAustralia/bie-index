@@ -20,6 +20,7 @@ the sort of taxonomic Darwin Core Archives that the bie-index expects.
     * [Australian Plant Name Index and Australian Plant Census (APNI/APC)](apni.md)
     * [AusFungi](ausfungi.md)
     * [AusMoss](ausmoss.md)
+    * [Catalogue of Life](col.md)
 
 ## The Goal
 

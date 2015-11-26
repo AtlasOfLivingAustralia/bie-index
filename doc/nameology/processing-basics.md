@@ -79,7 +79,7 @@ If that is the case, then it becomes necessary to work down through the list of 
 the lowest rank parent taxon as the parent.
 
 
-### <a name="correncting-parents"/> Correcting Parents
+### <a name="correcting-parents"/> Correcting Parents
 
 Some taxa may have non-current or incertae sedis parents.
 If these have been eliminated during pre-processing, then the parent taxon needs to be bumped up to the 
