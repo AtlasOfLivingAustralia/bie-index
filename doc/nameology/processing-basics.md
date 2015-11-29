@@ -61,9 +61,24 @@ Where necessary, the supplied identifier is left in place  and a parallel `ident
 to carry the final identifier.
 This process is useful 
 
+#### <a name="name-matching"/> Name Matching
+
+When matching names and authors from other sources, slight variations in spelling and punctuation
+mean that two names that are a match may not syntactically match.
+To ease matching, a *match name* and *match author* are often built.
+These are canonicalisations of the name and author with the following characteristics:
+
+* If the name has a subgenus element (eg. *Coniopteryx (Xeroconiopteryx) occidentalis*) then the subgenus element is removed.
+For example, the above name would become *Coniopteryx occidentalis*
+* Any " and " part of the author is replaced by an ampersand.
+* The name or author is made upper case.
+* Any punctuation is removed
+* Multiple spaces are normalised to a single space
+
 ### Annotation
 
 Annotation involves adding an any extra information, such as literature references, to a taxon description.
+
 
 ## Parent Taxa
 
