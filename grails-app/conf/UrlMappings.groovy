@@ -21,6 +21,10 @@ class UrlMappings {
         "/imageSearch"(controller: "search", action: "imageSearch")
         "/species/guids/bulklookup(.$format)?"(controller: "search", action: "bulkGuidLookup")
         "/download"(controller: "search", action: "download")
+        "/habitats"(controller: "search", action: "habitats")
+        "/habitats/tree"(controller: "search", action: "habitatTree")
+        "/habitat/$guid"(controller: "search", action: "getHabitat")
+        "/habitat/ids/$guid"(controller: "search", action: "getHabitatIDs")
 
         "/admin"(controller: "admin")
         "/admin/"(controller: "admin")

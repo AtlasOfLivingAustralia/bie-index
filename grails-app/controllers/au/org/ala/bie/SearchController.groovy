@@ -155,6 +155,22 @@ class SearchController {
         }
     }
 
+    def habitats(){
+        asJson([searchResults: searchService.getHabitats()])
+    }
+
+    def habitatTree(){
+        asJson([searchResults: searchService.getHabitatsTree()])
+    }
+
+    def getHabitat(){
+        asJson([searchResults: searchService.getHabitatByGuid(params.guid)])
+    }
+
+    def getHabitatIDs(){
+        asJson([searchResults: searchService.getHabitatsIDsByGuid(params.guid)])
+    }
+
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
         model

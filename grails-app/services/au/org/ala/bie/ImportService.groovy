@@ -1,10 +1,13 @@
 package au.org.ala.bie
 
+import au.org.ala.bie.search.BIETerms
 import au.org.ala.bie.search.IndexDocType
 import groovy.json.JsonSlurper
 import org.gbif.dwc.terms.DcTerm
 import org.gbif.dwc.terms.DwcTerm
 import org.gbif.dwc.terms.GbifTerm
+import org.gbif.dwc.terms.Term
+import org.gbif.dwc.terms.TermFactory
 import org.gbif.dwca.io.Archive
 import org.gbif.dwca.io.ArchiveFactory
 import org.gbif.dwca.io.ArchiveFile
@@ -177,6 +180,41 @@ class ImportService {
         log("Finished indexing ${layers.size()} region layers")
     }
 
+    def importHabitats(){
+
+        def batch = []
+        indexService.deleteFromIndex(IndexDocType.HABITAT)
+
+        //read the DwC metadata
+        Archive archive = ArchiveFactory.openArchive(new File("/data/habitat/"));
+        ArchiveFile habitatArchiveFile = archive.getCore()
+
+        Iterator<Record> iter = habitatArchiveFile.iterator()
+
+        //get terms
+        Term parentHabitatIDTerm = habitatArchiveFile.getField("http://ala.org.au/terms/1.0/parentHabitatID").getTerm()
+        Term habitatNameTerm = habitatArchiveFile.getField("http://ala.org.au/terms/1.0/habitatName").getTerm()
+
+        while (iter.hasNext()) {
+            Record record = iter.next()
+            def habitatID = record.id()
+            def parentHabitatID = record.value(parentHabitatIDTerm)
+            def habitatName = record.value(habitatNameTerm)
+            def doc = [:]
+            if(habitatID){
+                doc["id"] = habitatID
+                doc["guid"] = habitatID
+                if(parentHabitatID) {
+                    doc["parentGuid"] =  parentHabitatID
+                }
+                doc["idxtype"] = IndexDocType.HABITAT.name()
+                doc["name"] = habitatName
+                batch << doc
+            }
+        }
+        indexService.indexBatch(batch)
+    }
+
     /**
      * Import collectory information into the index.
      *
@@ -184,10 +222,10 @@ class ImportService {
      */
     def importCollectory(){
        [
-                "dataResource" : IndexDocType.DATARESOURCE,
-                "dataProvider" : IndexDocType.DATAPROVIDER,
-                "institution" : IndexDocType.INSTITUTION,
-                "collection" : IndexDocType.COLLECTION
+            "dataResource" : IndexDocType.DATARESOURCE,
+            "dataProvider" : IndexDocType.DATAPROVIDER,
+            "institution" : IndexDocType.INSTITUTION,
+            "collection" : IndexDocType.COLLECTION
         ].each { entityType, indexDocType ->
            def js = new JsonSlurper()
            def entities = []

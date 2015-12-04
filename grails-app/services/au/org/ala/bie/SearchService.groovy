@@ -158,6 +158,139 @@ class SearchService {
         ]
     }
 
+    def getHabitats(){
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1000&q=idxtype:" + IndexDocType.HABITAT.toString()
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        def children = []
+        def taxa = json.response.docs
+        taxa.each { taxon ->
+            children << [
+                    guid:taxon.guid,
+                    parentGuid: taxon.parentGuid,
+                    name: taxon.name
+            ]
+        }
+        children
+    }
+
+    def getHabitatsIDsByGuid(guid){
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1&q=idxtype:" + IndexDocType.HABITAT.toString() +
+                "&fq=guid:\"" + URLEncoder.encode(guid, 'UTF-8') + "\""
+
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        //construct a tree
+        def ids = []
+        if(json.response.docs){
+            def doc = json.response.docs[0]
+            ids << doc.name
+            ids << getChildHabitatIDs(doc.guid)
+        }
+
+        ids.flatten()
+    }
+
+    private def getChildHabitatIDs(guid){
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1000&q=idxtype:" + IndexDocType.HABITAT.toString() +
+                "&fq=parentGuid:\"" + URLEncoder.encode(guid, 'UTF-8') + "\""
+
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        def ids = []
+        //construct a tree
+        json.response.docs.each {
+            ids << it.name
+            ids << getChildHabitatIDs(it.guid)
+        }
+        ids
+    }
+
+    def getHabitatByGuid(guid){
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1&q=idxtype:" + IndexDocType.HABITAT.toString() +
+                "&fq=guid:\"" + URLEncoder.encode(guid, 'UTF-8') + "\""
+
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        //construct a tree
+        def root = [:]
+        if(json.response.docs){
+            def doc = json.response.docs[0]
+            return [
+                    guid:doc.guid,
+                    name: doc.name,
+                    children: getChildHabitats(doc.guid)
+            ]
+        }
+    }
+
+    private def getChildHabitats(guid){
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1000&q=idxtype:" + IndexDocType.HABITAT.toString() +
+                "&fq=parentGuid:\"" + URLEncoder.encode(guid, 'UTF-8') + "\""
+
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        def subTree = []
+        //construct a tree
+        json.response.docs.each {
+            subTree << [
+                    guid:it.guid,
+                    name: it.name,
+                    children: getChildHabitats(it.guid)
+            ]
+        }
+        subTree
+    }
+
+    def getHabitatsTree(){
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1000&q=idxtype:" + IndexDocType.HABITAT.toString()
+        def queryResponse = new URL(queryUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        //construct a tree
+        def root = [:]
+        json.response.docs.each {
+            if(!it.parentGuid){
+                root[it.guid] = [
+                    guid:it.guid,
+                    name: it.name
+                ]
+            }
+        }
+        //look for children of the root
+        def nodes = root.values()
+        nodes.each { addChildren(json.response.docs, it) }
+        root
+    }
+
+    private def addChildren(docs, node){
+        docs.each {
+            if(it.parentGuid && node.guid == it.parentGuid){
+                if(!node.children){
+                    node.children = [:]
+                }
+                def childNode = [
+                        guid:it.guid,
+                        name: it.name
+                ]
+
+                node.children[it.guid] = childNode
+                addChildren(docs, childNode)
+            }
+        }
+    }
+
+
     def getChildConcepts(taxonID, queryString){
 
         def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1000&q=parentGuid:\"" + taxonID + "\""

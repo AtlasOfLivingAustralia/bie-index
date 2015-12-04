@@ -106,6 +106,22 @@ class ImportController {
         }
     }
 
+    /**
+     * Import habitat information.
+     *
+     * @return
+     */
+    def importHabitats(){
+            Thread.start {
+                log.info("Starting import of habitats....")
+                importService.importHabitats()
+                log.info("Finished import of habitats.")
+            }
+            asJson ([success:true] )
+
+    }
+
+
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
         model

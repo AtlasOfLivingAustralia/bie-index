@@ -11,5 +11,6 @@ enum IndexDocType {
     DATAPROVIDER,
     COLLECTION,
     INSTITUTION,
-    SPECIESLIST
+    SPECIESLIST,
+    HABITAT
 }
