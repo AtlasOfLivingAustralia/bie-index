@@ -91,3 +91,11 @@ This application makes use of the following technologies
 - Java 7 or higher
 
 ![Architecture image](architecture.jpg)
+
+## Handling URLs as taxon IDs
+
+Some taxonIDs are now URLs, rather than LSIDs.
+When provided to the server un-encoded, everything is fine.
+However, if encoded with slashes being replaced by `%2F` then tomcat treats this as a security error and
+returns a 400 error.
+To allow encoded slashes in tomcat, start the server with `-Dorg.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH=true`
