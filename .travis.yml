@@ -6,7 +6,7 @@ branches:
   only:
   - master
 before_install:
-- wget -q https://raw.githubusercontent.com/AtlasOfLivingAustralia/travis-build-configuration/master/ala_common.sh
+- wget -q https://gist.githubusercontent.com/djtfmartin/220d74fc793695ff95c5/raw/ed23ec5ea18c099dd4edf3370de1104813c11c2c/ala_common.sh
 - chmod +x ala_common.sh
 - source ./ala_common.sh
 
