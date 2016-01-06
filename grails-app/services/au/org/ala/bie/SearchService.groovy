@@ -85,27 +85,14 @@ class SearchService {
                 queryString = queryString.replaceFirst("q=", "q=*:*")
             } else if (q.trim() == "*") {
                 queryString = queryString.replaceFirst("q=*", "q=*:*")
-            } else {
-                //remove the exist query param
-                queryString = queryString.replaceAll("[?|&]q\\=[\\w\\+ ]*", "")
-                //append a wildcard to the search term
-                queryString = queryString +
-                        "&q=" + URLEncoder.encode(
-                        "commonNameExact:\"" + q + "\"^10000000000" +
-                        " OR commonName:\"" + q.replaceAll(" ","") + "\"^100000" +
-                        " OR commonName:\"" + q + "\"^100000" +
-                        " OR rk_genus:\"" + q.capitalize() + "\"" +
-                        " OR exact_text:\"" + q + "\"" +
-                        " OR auto_text:\"" + q + "\"" +
-                        " OR auto_text:\"" + q + "*\"" +
-                        " OR text:\"" + q + "*\"",
-                        "UTF-8")
             }
         } else {
             queryString = "q=*:*"
         }
 
-        def queryResponse = new URL(grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
+        String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams
+        log.debug "solrUlr = ${solrUlr}"
+        def queryResponse = new URL(solrUlr).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
 
@@ -119,17 +106,17 @@ class SearchService {
                 if (parsedName && parsedName.canonicalName()) {
                     def canonical = parsedName.canonicalName()
                     def sciNameQuery = grailsApplication.config.indexLiveBaseUrl + "/select?q=scientificName:\"" + URLEncoder.encode(canonical, "UTF-8") + "\"" + additionalParams
-                    log.debug(sciNameQuery)
+                    log.debug "sciNameQuery = ${sciNameQuery}"
                     queryResponse = new URL(sciNameQuery).getText("UTF-8")
                     js = new JsonSlurper()
                     json = js.parseText(queryResponse)
                 }
             } catch(Exception e){
                 //expected behaviour for non scientific name matches
+                log.debug "expected behaviour for non scientific name matches: ${e}"
             }
         }
 
-        //rkid_family%3ANBNSYS0000003201
         def queryTitle = q
         def matcher = ( queryTitle =~ /(rkid_)([a-z]{1,})(:)(.*)/ )
         if(matcher.matches()){
