@@ -34,6 +34,13 @@ imageThumbnailUrl = "http://images.als.scot/image/proxyImageThumbnail?imageId="
 imageLargeUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
 imageSmallUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
 
+// SOLR additional params
+solr {
+    qf = "doc_name^1000+text"
+    bq = "taxonomicStatus:accepted^10000"
+    defType = "edismax"
+    qAlt = "text:*"
+}
 skin.layout = "main"
 skin.orgNameLong = "Atlas of Living Australia"
 

@@ -12,8 +12,6 @@ class SearchService {
 
     def grailsApplication
 
-    def serviceMethod() {}
-
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.
      *
@@ -72,11 +70,15 @@ class SearchService {
      * @param requestedFacets
      * @return
      */
-    def search(q, queryString, requestedFacets){
+    def search(q, queryString, requestedFacets) {
 
-        def additionalParams = "&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
+        String qf = grailsApplication.config.solr.qf // dismax query fields
+        String bq = grailsApplication.config.solr.bq  // dismax boost function
+        String defType = grailsApplication.config.solr.defType // query parser type
+        String qAlt = grailsApplication.config.solr.qAlt // if no query specified use this query
+        def additionalParams = "&qf=${qf}&bq=${bq}&defType=${defType}&q.alt=${qAlt}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
 
-        if(requestedFacets){
+        if (requestedFacets) {
             additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
         }
 
@@ -86,6 +88,7 @@ class SearchService {
             } else if (q.trim() == "*") {
                 queryString = queryString.replaceFirst("q=*", "q=*:*")
             }
+            // boost query syntax was removed from here. NdR.
         } else {
             queryString = "q=*:*"
         }
