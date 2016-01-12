@@ -309,7 +309,8 @@ class SearchService {
                     guid:taxon.guid,
                     parentGuid: taxon.parentGuid,
                     name: taxon.scientificName,
-                    nameComplete: taxon.scientificName,
+                    nameComplete: taxon.nameComplete ?: taxon.scientificName,
+                    nameFormatted: taxon.nameFormatted,
                     author: taxon.scientificNameAuthorship,
                     rank: taxon.rank,
                     rankID:taxon.rankID
@@ -460,6 +461,8 @@ class SearchService {
                         guid: taxon.guid,
                         parentGuid: taxon.parentGuid,
                         nameString: taxon.scientificName,
+                        nameComplete: taxon.nameComplete,
+                        nameFormatted: taxon.nameFormatted,
                         author: taxon.scientificNameAuthorship,
                         rankString: taxon.rank,
                         nameAuthority: taxon.dataset ?: grailsApplication.config.defaultNameSourceAttribution,
@@ -487,6 +490,8 @@ class SearchService {
         synonyms.each { synonym ->
             model.synonyms << [
                     nameString: synonym.scientificName,
+                    nameComplete: synonym.nameComplete,
+                    nameFormatted: synonym.nameFormatted,
                     nameGuid: synonym.guid
             ]
         }

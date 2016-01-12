@@ -1,0 +1,746 @@
+[
+    {
+        "branch": null,
+        "notes": "Not directly used",
+        "otherNames": [],
+        "rank": "root",
+        "rankGroup": "kingdom",
+        "rankID": 1
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "domain",
+            "superregnum",
+            "regio"
+        ],
+        "rank": "superkingdom",
+        "rankGroup": "kingdom",
+        "rankID": 800
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "regnum"
+        ],
+        "rank": "kingdom",
+        "rankGroup": "kingdom",
+        "rankID": 1000
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "subregnum"
+        ],
+        "rank": "subkingdom",
+        "rankGroup": "kingdom",
+        "rankID": 1200
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "superphylum",
+        "rankGroup": "phylum",
+        "rankID": 1800
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "divisio (botany)",
+            "division (botany)"
+        ],
+        "rank": "phylum",
+        "rankGroup": "phylum",
+        "rankID": 2000
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "subdivisio (botany)",
+            "subdivision (botany)",
+            "subphylum"
+        ],
+        "rank": "subplylum",
+        "rankGroup": "phylum",
+        "rankID": 2200
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "superclassis"
+        ],
+        "rank": "superclass",
+        "rankGroup": "class",
+        "rankID": 2800
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "classis"
+        ],
+        "rank": "class",
+        "rankGroup": "class",
+        "rankID": 3000
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "subclassis"
+        ],
+        "rank": "subclass",
+        "rankGroup": "class",
+        "rankID": 3200
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "infraclassis"
+        ],
+        "rank": "infraclass",
+        "rankGroup": "class",
+        "rankID": 3350
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "subinfraclass",
+        "rankGroup": "class",
+        "rankID": 3370
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [
+            "superdivision"
+        ],
+        "rank": "superdivison zoology",
+        "rankGroup": "class",
+        "rankID": 3450
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [
+            "division"
+        ],
+        "rank": "division zoology",
+        "rankGroup": "class",
+        "rankID": 3500
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [
+            "subdivision"
+        ],
+        "rank": "subdivision zoology",
+        "rankGroup": "class",
+        "rankID": 3550
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [],
+        "rank": "supercohort",
+        "rankGroup": "class",
+        "rankID": 3650
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [],
+        "rank": "cohort",
+        "rankGroup": "class",
+        "rankID": 3700
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [],
+        "rank": "subcohort",
+        "rankGroup": "class",
+        "rankID": 3750
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "superordo"
+        ],
+        "rank": "superorder",
+        "rankGroup": "order",
+        "rankID": 3800
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "ordo"
+        ],
+        "rank": "order",
+        "rankGroup": "order",
+        "rankID": 4000
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "subordo"
+        ],
+        "rank": "suborder",
+        "rankGroup": "order",
+        "rankID": 4200
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "infraordo"
+        ],
+        "rank": "infraorder",
+        "rankGroup": "order",
+        "rankID": 4350
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "parvorder",
+        "rankGroup": "order",
+        "rankID": 4400
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [
+            "superseries"
+        ],
+        "rank": "superseries zoology",
+        "rankGroup": "order",
+        "rankID": 4445
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [
+            "series"
+        ],
+        "rank": "series zoology",
+        "rankGroup": "order",
+        "rankID": 4450
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [
+            "subseries"
+        ],
+        "rank": "subseries zoology",
+        "rankGroup": "order",
+        "rankID": 4455
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [
+            "supersection"
+        ],
+        "rank": "supersection zoology",
+        "rankGroup": "order",
+        "rankID": 4465
+    },
+    {
+        "branch": "zooology",
+        "notes": null,
+        "otherNames": [
+            "section"
+        ],
+        "rank": "section zoology",
+        "rankGroup": "order",
+        "rankID": 4470
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [
+            "subsection"
+        ],
+        "rank": "subsection zoology",
+        "rankGroup": "order",
+        "rankID": 4475
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "superfamilia"
+        ],
+        "rank": "superfamily",
+        "rankGroup": "family",
+        "rankID": 4500
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "familia"
+        ],
+        "rank": "family",
+        "rankGroup": "family",
+        "rankID": 5000
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "subfamilia"
+        ],
+        "rank": "subfamily",
+        "rankGroup": "family",
+        "rankID": 5500
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "infrafamily",
+        "rankGroup": "family",
+        "rankID": 5550
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "supertribus"
+        ],
+        "rank": "supertribe",
+        "rankGroup": "family",
+        "rankID": 5580
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "tribus"
+        ],
+        "rank": "tribe",
+        "rankGroup": "family",
+        "rankID": 5600
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "subtribus"
+        ],
+        "rank": "subtribe",
+        "rankGroup": "family",
+        "rankID": 5700
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "supergenus",
+        "rankGroup": "genus",
+        "rankID": 5900
+    },
+    {
+        "branch": null,
+        "notes": "A named collection of closely related genera",
+        "otherNames": [
+            "aggregate genera"
+        ],
+        "rank": "genus group",
+        "rankGroup": "genus",
+        "rankID": 5950
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "genus",
+        "rankGroup": "genus",
+        "rankID": 6000
+    },
+    {
+        "branch": null,
+        "notes": "A genus denoting a hybrid or cross",
+        "otherNames": [],
+        "rank": "nothogenus",
+        "rankGroup": "genus",
+        "rankID": 6001
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "subgenus",
+        "rankGroup": "genus",
+        "rankID": 6500
+    },
+    {
+        "branch": "botany",
+        "notes": null,
+        "otherNames": [
+            "supersectio",
+            "supersection"
+        ],
+        "rank": "supersection botany",
+        "rankGroup": "genus",
+        "rankID": 6550
+    },
+    {
+        "branch": "botany",
+        "notes": null,
+        "otherNames": [
+            "sectio",
+            "section"
+        ],
+        "rank": "section botany",
+        "rankGroup": "genus",
+        "rankID": 6600
+    },
+    {
+        "branch": "botany",
+        "notes": null,
+        "otherNames": [
+            "subsection",
+            "subsectio"
+        ],
+        "rank": "subsection botany",
+        "rankGroup": "genus",
+        "rankID": 6700
+    },
+    {
+        "branch": "botany",
+        "notes": null,
+        "otherNames": [
+            "superseries"
+        ],
+        "rank": "superseries botany",
+        "rankGroup": "genus",
+        "rankID": 6750
+    },
+    {
+        "branch": "botany",
+        "notes": null,
+        "otherNames": [
+            "series"
+        ],
+        "rank": "series botany",
+        "rankGroup": "genus",
+        "rankID": 6800
+    },
+    {
+        "branch": "botany",
+        "notes": null,
+        "otherNames": [
+            "subseries"
+        ],
+        "rank": "subseries botany",
+        "rankGroup": "genus",
+        "rankID": 6900
+    },
+    {
+        "branch": null,
+        "notes": "A named collection of closely related species",
+        "otherNames": [
+            "aggregate species"
+        ],
+        "rank": "species group",
+        "rankGroup": "species",
+        "rankID": 6950
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "superspecies",
+        "rankGroup": "species",
+        "rankID": 6960
+    },
+    {
+        "branch": null,
+        "notes": "A named collection of very closely related species",
+        "otherNames": [],
+        "rank": "species subgroup",
+        "rankGroup": "species",
+        "rankID": 6975
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "species",
+        "rankGroup": "species",
+        "rankID": 7000
+    },
+    {
+        "branch": null,
+        "notes": "A hybrid formed by directly crossing two species",
+        "otherNames": [],
+        "rank": "nothospecies",
+        "rankGroup": "species",
+        "rankID": 7001
+    },
+    {
+        "branch": null,
+        "notes": "The whole of a fungus, including anamorph and teleomorph phases",
+        "otherNames": [],
+        "rank": "holomorph",
+        "rankGroup": "species",
+        "rankID": 7100
+    },
+    {
+        "branch": null,
+        "notes": "The asexual reproductive phase of a fungus",
+        "otherNames": [],
+        "rank": "anamorph",
+        "rankGroup": "species",
+        "rankID": 7120
+    },
+    {
+        "branch": null,
+        "notes": "The sexual reproductive phase of a fungus",
+        "otherNames": [],
+        "rank": "teleomorph",
+        "rankGroup": "species",
+        "rankID": 7140
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "subspecies",
+        "rankGroup": "subspecies",
+        "rankID": 8000
+    },
+    {
+        "branch": null,
+        "notes": "A hybrid formed by directly crossing two subspecies",
+        "otherNames": [],
+        "rank": "nothosubspecies",
+        "rankGroup": "subspecies",
+        "rankID": 8001
+    },
+    {
+        "branch": "zoology",
+        "notes": null,
+        "otherNames": [],
+        "rank": "infraspecies",
+        "rankGroup": "subspecies",
+        "rankID": 8005
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "varietas"
+        ],
+        "rank": "variety",
+        "rankGroup": "subspecies",
+        "rankID": 8010
+    },
+    {
+        "branch": null,
+        "notes": "A hybrid formed by directly crossing two varieties",
+        "otherNames": [
+            "nothovarietas"
+        ],
+        "rank": "nothovariety",
+        "rankGroup": "subspecies",
+        "rankID": 8011
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "subvarietas"
+        ],
+        "rank": "subvariety",
+        "rankGroup": "subspecies",
+        "rankID": 8015
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "form",
+        "rankGroup": "subspecies",
+        "rankID": 8020
+    },
+    {
+        "branch": null,
+        "notes": "A hybrid formed by directly crossing two forms",
+        "otherNames": [
+            "nothoforma"
+        ],
+        "rank": "nothoform",
+        "rankGroup": "subspecies",
+        "rankID": 8021
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "subforma"
+        ],
+        "rank": "subform",
+        "rankGroup": "subspecies",
+        "rankID": 8025
+    },
+    {
+        "branch": null,
+        "notes": "A variant prokaryotic strain that differs physiologically and/or biochemically from other strains in a particular species",
+        "otherNames": [],
+        "rank": "biovar",
+        "rankGroup": "subspecies",
+        "rankID": 8030
+    },
+    {
+        "branch": null,
+        "notes": "A variant prokaryotic strain that has antigenic properties that differ from other strains.",
+        "otherNames": [],
+        "rank": "serovar",
+        "rankGroup": "subspecies",
+        "rankID": 8040
+    },
+    {
+        "branch": null,
+        "notes": "A plant or grouping of plants selected for desirable characteristics that can be maintained by propagation",
+        "otherNames": [],
+        "rank": "cultivar",
+        "rankGroup": "subspecies",
+        "rankID": 8050
+    },
+    {
+        "branch": null,
+        "notes": "A bacterial strain or set of strains with the same or similar characteristics, that is differentiated at infrasubspecific level from other strains of the same species or subspecies on the basis of distinctive pathogenicity to one or more plant hosts.",
+        "otherNames": [],
+        "rank": "pathovar",
+        "rankGroup": "subspecies",
+        "rankID": 8080
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "infraspecific",
+        "rankGroup": "subspecies",
+        "rankID": 8090
+    },
+    {
+        "branch": null,
+        "notes": "A chromosome abnormality",
+        "otherNames": [],
+        "rank": "abberation",
+        "rankGroup": "subspecies",
+        "rankID": 8100
+    },
+    {
+        "branch": null,
+        "notes": " A chromosome abnormality",
+        "otherNames": [],
+        "rank": "mutation",
+        "rankGroup": "subspecies",
+        "rankID": 8110
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "race",
+        "rankGroup": "subspecies",
+        "rankID": 8120
+    },
+    {
+        "branch": null,
+        "notes": "This only seems to appear in the GBIF ranks",
+        "otherNames": [],
+        "rank": "confersubspecies",
+        "rankGroup": "subspecies",
+        "rankID": 8130
+    },
+    {
+        "branch": null,
+        "notes": "A parasite adapted to a specific host",
+        "otherNames": [],
+        "rank": "formaspecialis",
+        "rankGroup": "subspecies",
+        "rankID": 8140
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "hybrid",
+        "rankGroup": "subspecies",
+        "rankID": 8150
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "breed",
+        "rankGroup": "subspecies",
+        "rankID": 8150
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "un-positioned ranks"
+        ],
+        "rank": "unpositioned",
+        "rankGroup": "subspecies",
+        "rankID": 0
+    },
+    {
+        "branch": null,
+        "notes": "Of uncertain placement",
+        "otherNames": [],
+        "rank": "incertae sedis",
+        "rankGroup": "unknown",
+        "rankID": 0
+    },
+    {
+        "branch": null,
+        "notes": "A species of doubtful identity,requiring further investigation",
+        "otherNames": [
+            "species inquirenda"
+        ],
+        "rank": "species inquirenda ",
+        "rankGroup": "unknown",
+        "rankID": 0
+    },
+    {
+        "branch": null,
+        "notes": "Generic higher taxon",
+        "otherNames": [],
+        "rank": "higher taxon",
+        "rankGroup": "unknown",
+        "rankID": 0
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [
+            "unranked"
+        ],
+        "rank": "unknown",
+        "rankGroup": "unknown",
+        "rankID": 0
+    }
+]

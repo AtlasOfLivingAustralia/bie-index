@@ -155,6 +155,10 @@ difficulties and ending up with the author mysteriously repeated ad-nauseum when
 * **scientificNameAuthorship** Contains the authors names, without parentheses, quotation marks or ballet shoes.
 Keeping with the conventions, faunal authorship is *author, year* and floral (and other) authorship is just *author*.
 We do not used parenthesised names, since it makes name matching somewhat difficult; this may need to change.
+* **nameComplete** A non-DwC term used to contain the correct combination of scientific name and author.
+In some cases, the author may not be tacked onto the end, for example *Senecio productus subsp. productus* with
+author *I.Thomps.* has a nameComplete of *Senecio productus I.Thomps. subsp. productus* This is because the
+species ended up being revised.
 * **namePublishedIn** If assembled from indivudal reference fields, then the resulting reference roughly follows
 the APA reference style.
 
@@ -195,6 +199,7 @@ It contains the following columns
 | [namePublishedInID](http://rs.tdwg.org/dwc/terms/namePublishedInID) | no | no | A unique ID, preferably a DOI, referencing the publication of the name |
 | [namePublishedIn](http://rs.tdwg.org/dwc/terms/namePublishedIn) | no | no | A reference to the publication of the name  |
 | [namePublishedInYear](http://rs.tdwg.org/dwc/terms/namePublishedInYear) | no | no | The year of publication. Note that if this is not included there may be no indication of when the name was published, since the authorship column may not contain a year  |
+| [nameComplete](http://ala.org.au/terms/1.0/nameComplete) | no | no | The name with authorship information in the correct position  |
 
 
 senior- or self-synonyms are not included in taxon.csv.

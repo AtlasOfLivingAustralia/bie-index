@@ -121,6 +121,10 @@ class ImportController {
 
     }
 
+    def ranks() {
+        asJson(importService.ranks())
+    }
+
 
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
