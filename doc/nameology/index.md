@@ -39,7 +39,7 @@ This is because the ALA collects occurrence records from across time, space and 
 * Some records may come from the 19th century, or before, and contain names that no longer fit current biologial thinking. 
 In this case, the ALA processing tries to make the best fist of things.
 This can get complicated when splitters have been at work, since it may not be possible to deterministically
-decide which of the current taxa the occurrence record should be assigned to.
+decide which of the current taxa the occurrence record shsould be assigned to.
 * Some records may come from outside Australia, thanks to collecting expeditions, and refer to species that don't occur in Australia.
 The ALA is really only interested in Australian species; we can't import a world-wide taxonomic tree.
 The supplied name is always present, so people looking for those records will still be able to find them.
@@ -60,7 +60,7 @@ We know that there are a least as many taxonomic trees as there are taxonomists.
 The ALA, where possible, takes the "official" taxonomic trees of the 
 Australian Faunal Directory (AFD) and the Australian Plant Census (AFC) of the Australian Plant Name Index (APNI).
 These "official" trees are essentially the state of the art for anyone who doesn't have a dog in this fight.
-They have some holes in them, so they're supplimented by various other sources.
+They have some holes in them, so they're supplemented by various other sources.
 * Build an index of names where each name is mapped onto a place in the taxonomic tree. 
 These names include synonyms (names for species that now go by a different, correct name) and
 vernacular names (commonly used names for species)

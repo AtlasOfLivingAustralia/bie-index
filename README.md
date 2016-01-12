@@ -22,6 +22,8 @@ There is a set of front end components available providing the species pages lis
 - [ala-bie](http://github.com/AtlasOfLivingAustralia/ala-bie) - the ALA version of this front end
 - [generic-bie](http://github.com/AtlasOfLivingAustralia/generic-bie) - a generic version of this front end for use as a starting point for other countries reusing ALA components.
 
+For an introduction to the approach to names within the ALA, [nameology](https://github.com/AtlasOfLivingAustralia/bie-index/blob/master/doc/nameology/index.md) is a good place to start.
+
 ## Darwin Core archive format of taxonomic information
 
 This application currently supports the ingestion of Darwin Core archive (DwC-A) with the following mandatory darwin core fields in the core file:
