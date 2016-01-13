@@ -171,6 +171,7 @@ class SearchController {
         asJson([searchResults: searchService.getHabitatsIDsByGuid(params.guid)])
     }
 
+
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
         model

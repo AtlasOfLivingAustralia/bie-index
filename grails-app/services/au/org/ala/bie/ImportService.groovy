@@ -15,7 +15,10 @@ package au.org.ala.bie
 
 import au.org.ala.bie.search.BIETerms
 import au.org.ala.bie.search.IndexDocType
+import au.org.ala.names.parser.PhraseNameParser
+import au.org.ala.vocab.ALATerm
 import groovy.json.JsonSlurper
+import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
 import org.gbif.dwc.terms.DcTerm
 import org.gbif.dwc.terms.DwcTerm
@@ -434,7 +437,7 @@ class ImportService {
 
             //retrieve taxon rank mappings
             log("Reading taxon ranks..")
-            def taxonRanks = readTaxonRankIDs()
+            def taxonRanks = ranks()
             log("Reading taxon ranks.." + taxonRanks.size() + " read.")
 
             //retrieve images
@@ -449,7 +452,7 @@ class ImportService {
             log("Datasets read: " + attributionMap.size())
 
             //compile a list of synonyms into memory....
-            def synonymMap = readSynonyms(taxaArchiveFile)
+            def synonymMap = readSynonyms(taxaArchiveFile, taxonRanks)
             log("Synonyms read: " + synonymMap.size())
 
             //clear
@@ -482,6 +485,9 @@ class ImportService {
             def buffer = []
             def counter = 0
 
+            def nameCompleteTerm = taxaArchiveFile.getField(ALATerm.nameComplete.qualifiedName())?.term
+            def nameFormattedTerm = taxaArchiveFile.getField(ALATerm.nameFormatted.qualifiedName())?.term
+
             Iterator<Record> iter = taxaArchiveFile.iterator()
 
             while (iter.hasNext()) {
@@ -498,7 +504,9 @@ class ImportService {
                     def scientificName = record.value(DwcTerm.scientificName)
                     def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
                     def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
-                    def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank) as Integer : -1
+                    def nameComplete = nameCompleteTerm ? record.value(nameCompleteTerm) : null
+                    def nameFormatted = nameFormattedTerm ? record.value(nameFormattedTerm) : null
+                    def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
 
                     //common name
                     def doc = ["idxtype": IndexDocType.TAXON.name()]
@@ -509,12 +517,8 @@ class ImportService {
                     doc["rankID"] = taxonRankID
                     doc["scientificName"] = scientificName
                     doc["scientificNameAuthorship"] = scientificNameAuthorship
-                    if (scientificNameAuthorship) {
-                        doc["nameComplete"] = scientificName + " " + scientificNameAuthorship
-                    } else {
-                        doc["nameComplete"] = scientificName
-                    }
-
+                    doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
+                    doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
                     def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID]
 
                     //index additional fields that are supplied in the core
@@ -599,8 +603,9 @@ class ImportService {
                                 sdoc["rankID"] = taxonRankID
                                 sdoc["scientificName"] = synonym['scientificName']
                                 sdoc["scientificNameAuthorship"] = synonym['scientificNameAuthorship']
-                                sdoc["nameComplete"] = synonym['scientificName'] + " " + synonym['scientificNameAuthorship']
-                                sdoc["acceptedConceptName"] = scientificName + ' ' + scientificNameAuthorship
+                                sdoc["nameComplete"] = synonym['nameComplete']
+                                sdoc["nameFormatted"] = synonym['nameFormatted']
+                                sdoc["acceptedConceptName"] = doc['nameComplete']
                                 sdoc["acceptedConceptID"] = taxonID
                                 sdoc["taxonomicStatus"] = "synonym"
 
@@ -709,9 +714,11 @@ class ImportService {
      * @param fileName
      * @return
      */
-    private def readSynonyms(ArchiveFile taxaFile) {
+    private def readSynonyms(ArchiveFile taxaFile, Map taxonRanks) {
 
         def synonyms = [:]
+        def nameCompleteTerm = taxaFile.getField(ALATerm.nameComplete.qualifiedName())?.term
+        def nameFormattedTerm = taxaFile.getField(ALATerm.nameFormatted.qualifiedName())?.term
         def iter = taxaFile.iterator()
 
         while (iter.hasNext()) {
@@ -722,6 +729,9 @@ class ImportService {
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
             def scientificName = record.value(DwcTerm.scientificName)
             def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
+            def nameComplete = record.value(nameCompleteTerm)
+            def nameFormatted = record.value(nameFormattedTerm)
+            def taxonRank = record.value(DwcTerm.taxonRank)?.toLowerCase() ?: "unknown"
             def datasetID = record.value(DwcTerm.datasetID)
 
             if (taxonID && scientificName && acceptedNameUsageID != taxonID && acceptedNameUsageID != "" && acceptedNameUsageID != null) {
@@ -737,6 +747,8 @@ class ImportService {
                         taxonID: taxonID,
                         scientificName : scientificName,
                         scientificNameAuthorship : scientificNameAuthorship,
+                        nameComplete: buildNameComplete(nameComplete, scientificName, scientificNameAuthorship),
+                        nameFormatted: buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks),
                         datasetID: datasetID
                 ]
             }
@@ -798,19 +810,18 @@ class ImportService {
     }
 
     /**
-     * Read taxon rank IDs
+     * Get the taxon rank structure
      *
      * @return
      */
-    private def readTaxonRankIDs() {
-        Properties props = new Properties()
-        InputStream is = this.class.getResourceAsStream("/taxonRanks.properties")
-        props.load(is as InputStream)
+    def ranks() {
+        JsonSlurper slurper = new JsonSlurper()
+        def ranks = slurper.parse(this.class.getResource("/taxonRanks.json"))
         def idMap = [:]
-        def iter = props.entrySet().iterator()
+        def iter = ranks.iterator()
         while (iter.hasNext()) {
             def entry = iter.next()
-            idMap.put(entry.getKey().toLowerCase().trim(), entry.getValue())
+            idMap.put(entry.rank, entry)
         }
         idMap
     }
@@ -862,7 +873,69 @@ class ImportService {
         log("Images loaded: " + imageMap.size())
         imageMap
     }
-    
+
+    /**
+     * Build a complete name + author
+     * <p>
+     * Some names are funny. So if there is a name supplied used that.
+     * Otherwise try to build the name from scientific name + authorship
+     *
+     * @param nameComplete The supplied complete name, if available
+     * @param scientificName The scientific name
+     * @param scientificNameAuthorship The authorship
+     * @return
+     */
+    String buildNameComplete(String nameComplete, String scientificName, String scientificNameAuthorship) {
+        if (nameComplete)
+            return nameComplete
+        if (scientificNameAuthorship)
+            return scientificName + " " + scientificNameAuthorship
+        return scientificName
+    }
+
+    /**
+     * Build an HTML formatted name
+     * <p>
+     * If a properly formatted name is supplied, then use that.
+     * Otherwise, try yo build the name from the supplied information.
+     * The HTMLised name is escaped and uses spans to encode formatting information.
+     *
+     *
+     * @param nameFormatted The formatted name, if available
+     * @param nameComplete The complete name, if available
+     * @param scientificName The scientific name
+     * @param scientificNameAuthorship The name authorship
+     * @param rank The taxon rank
+     * @param rankMap The lookup table for ranks
+     *
+     * @return The formatted name
+     */
+    String buildNameFormatted(String nameFormatted, String nameComplete, String scientificName, String scientificNameAuthorship, String rank, Map rankMap) {
+        def rankGroup = rankMap.get(rank)?.rankGroup ?: "unknown"
+        def formattedCssClass = rank ? "scientific-name rank-${rankGroup}" : "scientific-name";
+
+        if (nameFormatted)
+            return nameFormatted
+        if (nameComplete) {
+            def authorIndex = scientificNameAuthorship ? nameComplete.indexOf(scientificNameAuthorship) : -1
+            if (authorIndex < 0)
+                return "<span class=\"${formattedCssClass}\">${StringEscapeUtils.escapeHtml(nameComplete)}</span>"
+            def preAuthor = nameComplete.substring(0, authorIndex - 1).trim()
+            def postAuthor = nameComplete.substring(authorIndex + scientificNameAuthorship.length()).trim()
+            def name = "<span class=\"${formattedCssClass}\">"
+            if (preAuthor && !preAuthor.isEmpty())
+                name = name + "<span class=\"name\">${StringEscapeUtils.escapeHtml(preAuthor)}</span> "
+            name = name + "<span class=\"author\">${StringEscapeUtils.escapeHtml(scientificNameAuthorship)}</span>"
+            if (postAuthor && !postAuthor.isEmpty())
+                name = name + " <span class=\"name\">${StringEscapeUtils.escapeHtml(postAuthor)}</span>"
+            name = name + "</span>"
+            return name
+        }
+        if (scientificNameAuthorship)
+            return "<span class=\"${formattedCssClass}\"><span class=\"name\">${StringEscapeUtils.escapeHtml(scientificName)}</span> <span class=\"author\">${StringEscapeUtils.escapeHtml(scientificNameAuthorship)}</span></span>"
+        return "<span class=\"${formattedCssClass}\"><span class=\"name\">${StringEscapeUtils.escapeHtml(scientificName)}</span></span>"
+    }
+
     def log(msg){
         log.info(msg)
         brokerMessagingTemplate.convertAndSend "/topic/import-feedback", msg.toString()

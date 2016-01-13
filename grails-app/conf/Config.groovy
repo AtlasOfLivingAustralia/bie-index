@@ -8,7 +8,6 @@ default_config = "/data/${appName}/config/${appName}-config.properties"
 if(!grails.config.locations || !(grails.config.locations instanceof List)) {
     grails.config.locations = []
 }
-grails.config.locations << "classpath:taxonRanks.properties"
 
 if (new File(default_config).exists()) {
     println "[${appName}] Including default configuration file: " + default_config;

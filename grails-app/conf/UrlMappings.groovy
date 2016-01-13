@@ -27,6 +27,8 @@ class UrlMappings {
         "/habitat/ids/$guid**"(controller: "search", action: "getHabitatIDs")
         "/habitat/$guid**"(controller: "search", action: "getHabitat")
 
+        "/ranks"(controller: "import", action: "ranks")
+
         "/admin"(controller: "admin")
         "/admin/"(controller: "admin")
 

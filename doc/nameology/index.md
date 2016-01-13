@@ -15,6 +15,7 @@ the sort of taxonomic Darwin Core Archives that the bie-index expects.
 * [The Goal](#thegoal)
 * [Conventions](conventions.md)
 * [Processing Basics](processing-basics.md)
+* [Name Formatting](name-formatting.md)
 * Data Sources
     * [Australian Faunal Directory (AFD)](afd.md)
     * [Australian Plant Name Index and Australian Plant Census (APNI/APC)](apni.md)

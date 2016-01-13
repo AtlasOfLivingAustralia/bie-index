@@ -35,6 +35,11 @@ This application currently supports the ingestion of Darwin Core archive (DwC-A)
 - [scientificNameAuthorship](http://rs.tdwg.org/dwc/terms/#scientificNameAuthorship)
 - [taxonRank](http://rs.tdwg.org/dwc/terms/#taxonRank)
 
+Additional fields can be added which will allow more sophisticated handling of names
+
+- [nameComplete](http://ala.org.au/terms/1.0/nameComplete) An explicit complete name. If not specified, the scientificNameAuthorship (if present) is appended to the scientificName to make the canonical name.
+- [nameFormatted](http://ala.org.au/terms/1.0/nameFormatted) An explicitly formatted name, with name, author and structural parts marked by `<span class="...">` elements. If not explicitly present, it is constructed from the information available. See [Name Formatting](doc/nameology/name-formatting.md) for details.
+
 Additional fields added to the core file e.g. establishmentMeans or any other field will also be indexed and available for facetted searching.
 
 In addition to this, an extension file of vernacular names is also supported.

@@ -394,6 +394,7 @@
    <field name="rankID" type="int" indexed="true" stored="true" multiValued="false" omitNorms="true" />
    <field name="scientificNameText" type="text_ws" indexed="true" stored="true" multiValued="true" omitNorms="false" />
    <field name="nameComplete" type="string" indexed="false" stored="true" multiValued="false" omitNorms="true" />
+   <field name="nameFormatted" type="string" indexed="false" stored="true" multiValued="false" omitNorms="true" />
    <field name="dataset" type="string" indexed="true" stored="true" required="false" omitNorms="true" multiValued="false" />
    <field name="dataProvider" type="string" indexed="true" stored="true" required="false" omitNorms="true" multiValued="false" />
    <field name="uid" type="string" indexed="true" stored="true" required="false" omitNorms="true" multiValued="true" />
