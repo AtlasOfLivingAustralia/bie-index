@@ -12,5 +12,6 @@ enum IndexDocType {
     COLLECTION,
     INSTITUTION,
     SPECIESLIST,
-    HABITAT
+    HABITAT,
+    WORDPRESS
 }

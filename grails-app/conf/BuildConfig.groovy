@@ -39,6 +39,7 @@ grails.project.dependency.resolution = {
         runtime "org.apache.solr:solr-solrj:4.10.2"
         runtime "org.gbif:dwca-io:1.24"
         runtime "au.org.ala:ala-name-matching:2.3.1"
+        runtime "org.jsoup:jsoup:1.8.3"
     }
 
     plugins {

@@ -1,3 +1,16 @@
+/*
+ * Copyright (C) 2016 Atlas of Living Australia
+ * All Rights Reserved.
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ */
+
 package au.org.ala.bie
 
 import au.org.ala.bie.search.BIETerms
@@ -6,6 +19,7 @@ import au.org.ala.names.parser.PhraseNameParser
 import au.org.ala.vocab.ALATerm
 import groovy.json.JsonSlurper
 import org.apache.commons.lang.StringEscapeUtils
+import org.apache.commons.lang.StringUtils
 import org.gbif.dwc.terms.DcTerm
 import org.gbif.dwc.terms.DwcTerm
 import org.gbif.dwc.terms.GbifTerm
@@ -15,6 +29,10 @@ import org.gbif.dwca.io.Archive
 import org.gbif.dwca.io.ArchiveFactory
 import org.gbif.dwca.io.ArchiveFile
 import org.gbif.dwca.record.Record
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
+import org.jsoup.select.Elements
 
 /**
  * Services for data importing.
@@ -265,6 +283,131 @@ class ImportService {
            log("Finished indexing ${drLists.size()} ${entityType}")
        }
     }
+
+    /**
+     * Index WordPress pages
+     */
+    def importWordPressPages() throws Exception {
+        // clear the existing WP index
+        indexService.deleteFromIndex(IndexDocType.WORDPRESS)
+        // WordPress variables
+        String wordPressSitemapUrl = grailsApplication.config.wordPress.sitemapUrl
+        String wordPressBaseUrl = grailsApplication.config.wordPress.baseUrl
+        List excludedCategories = grailsApplication.config.wordPress.excludedCategories
+        String contentOnlyParams = grailsApplication.config.wordPress.contentOnlyParams
+        // get List of WordPress document URLs (each page's URL)
+        List docUrls = crawlWordPressSite(wordPressSitemapUrl)
+        def documentCount = 0
+        def totalDocs = docUrls.size()
+        def buffer = []
+        log("WordPress pages found: ${totalDocs}") // update user via socket
+
+        // slurp and build each SOLR doc (add to buffer)
+        docUrls.each { pageUrl ->
+            log.debug "indexing url: ${pageUrl}"
+            try {
+                // Crawl and extract text from WP pages
+                Document document = Jsoup.connect(pageUrl + contentOnlyParams).get();
+                String title = document.select("head > title").text();
+                String id = document.select("head > meta[name=id]").attr("content");
+                String shortlink = document.select("head > link[rel=shortlink]").attr("href");
+                String bodyText = document.body().text();
+                Elements postCategories = document.select("ul[class=post-categories]");
+                List categoriesOut = []
+                Boolean excludePost = false;
+
+                if (StringUtils.isEmpty(id) && StringUtils.isNotBlank(shortlink)) {
+                    // e.g. http://www.ala.org.au/?p=24241
+                    id = StringUtils.split(shortlink, "=")[1];
+                }
+
+                if (!postCategories.isEmpty()) {
+                    // Is a WP post (not page)
+                    Elements categoriesIn = postCategories.select("li > a"); // get list of li elements
+
+                    for (Element cat : categoriesIn) {
+                        String thisCat = cat.text();
+
+                        if (thisCat != null && excludedCategories.contains(thisCat)) {
+                            // exclude category "button" posts
+                            excludePost = true;
+                        }
+                        if (thisCat != null) {
+                            // add category to list
+                            categoriesOut.add(thisCat.replaceAll(" ", "_"));
+                        }
+                    }
+                }
+
+                if (excludePost) {
+                    log("Excluding post (id: ${id} with category: ${categoriesOut.join('|')}")
+                    return
+                }
+
+                documentCount++;
+                // create SOLR doc
+                log.debug(documentCount + ". Indexing WP page - id: " + id + " | title: " + title + " | text: " + StringUtils.substring(bodyText, 0, 100) + "... ");
+                def doc = [:]
+                doc["idxtype"] = IndexDocType.WORDPRESS.name()
+
+                if (StringUtils.isNotBlank(shortlink)) {
+                    doc["guid"] = shortlink
+                } else if (StringUtils.isNotEmpty(id)) {
+                    doc["guid"] = wordPressBaseUrl + id
+                    // use page_id based URI instead of permalink in case permalink is too long for id field
+                } else {
+                    // fallback
+                    doc["guid"] = pageUrl
+                }
+
+                doc["id"] = "wp" + id // probably not needed but safer to leave in
+                doc["name"] = title // , 1.2f
+                doc["text"] = bodyText
+                doc["linkIdentifier"] = pageUrl
+                //doc["australian_s"] = "recorded" // so they appear in default QF search
+                doc["categories"] = categoriesOut
+                // add to doc to buffer (List)
+                buffer << doc
+                // update progress bar (number output only)
+                if (documentCount > 0) {
+                    Double percentDone = (documentCount / totalDocs) * 100
+                    log("${percentDone.round(1)}") // progress bar output
+                }
+            } catch (IOException ex) {
+                // catch it so we don't stop indexing other pages
+                log("Problem accessing/reading WP page <${pageUrl}>: " + ex.getMessage() + " - document skipped")
+                log.warn(ex.getMessage(), ex);
+            }
+        }
+        log("Committing to SOLR...")
+        indexService.indexBatch(buffer)
+        log("100") // complete progress bar
+        log("Import finished.")
+    }
+
+    /**
+     * Read WP sitemap.xml file and return a list of page URLs
+     *
+     * @param siteMapUrl
+     * @return
+     */
+    private List crawlWordPressSite(String siteMapUrl) throws Exception {
+
+        List pageUrls = []
+        // get list of pages to crawl via Google sitemap xml file
+        // Note: sitemap.xml files can be nested, so code may need to read multiple files in the future (recursive function needed)
+        Document doc = Jsoup.connect(siteMapUrl).get();
+        Elements pages = doc.select("loc");
+        log.info("Sitemap file lists " + pages.size() + " pages.");
+
+        for (Element page : pages) {
+            // add it to list of page urls Field
+            pageUrls.add(page.text());
+        }
+
+        pageUrls
+    }
+
 
     /**
      * Import a DwC-A into this system.
@@ -716,7 +859,7 @@ class ImportService {
                     "&wt=csv" +
                     "&indent=true" +
                     "&rows=100000"
-            log.error "Loading images from ${imagesUrl}"
+
             //load into map, keyed (for now) on scientific name. The images *should* be keyed on GUID
             new URL(imagesUrl).readLines().each {
                 def parts = it.split(",")

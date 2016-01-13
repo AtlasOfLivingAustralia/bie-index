@@ -1,3 +1,16 @@
+/*
+ * Copyright (C) 2016 Atlas of Living Australia
+ * All Rights Reserved.
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ */
+
 package au.org.ala.bie
 
 import grails.converters.JSON
@@ -24,6 +37,8 @@ class ImportController {
     def layers(){}
 
     def regions(){}
+
+    def wordpress(){}
 
     /**
      * Import a DwC-A into this system.
@@ -116,6 +131,20 @@ class ImportController {
                 log.info("Starting import of habitats....")
                 importService.importHabitats()
                 log.info("Finished import of habitats.")
+            }
+            asJson ([success:true] )
+    }
+
+    /**
+     * Import/index CMS (WordPress) pages
+     *
+     * @return
+     */
+    def importWordPress(){
+            Thread.start {
+                log.info("Starting import of CMS pages....")
+                importService.importWordPressPages()
+                log.info("Finished import of CMS pages.")
             }
             asJson ([success:true] )
 

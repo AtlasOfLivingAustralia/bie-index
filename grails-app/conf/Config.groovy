@@ -32,6 +32,12 @@ synonymCheckingEnabled = true
 imageThumbnailUrl = "http://images.als.scot/image/proxyImageThumbnail?imageId="
 imageLargeUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
 imageSmallUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
+wordPress {
+    sitemapUrl = "http://www.ala.org.au/sitemap.xml"
+    baseUrl = "http://www.ala.org.au/?page_id="
+    excludedCategories = ["button"]
+    contentOnlyParams = "?content-only=1&categories=1"
+}
 
 // SOLR additional params
 solr {
