@@ -36,9 +36,11 @@ grails.project.dependency.resolution = {
         // runtime 'org.postgresql:postgresql:9.3-1101-jdbc41'
         test "org.grails:grails-datastore-test-support:1.0-grails-2.4"
         runtime 'net.sf.opencsv:opencsv:2.3'
-        runtime "org.apache.solr:solr-solrj:4.10.2"
+        runtime "org.apache.solr:solr-solrj:5.4.0"
         runtime "org.gbif:dwca-io:1.24"
-        runtime "au.org.ala:ala-name-matching:2.3.1"
+        runtime("au.org.ala:ala-name-matching:2.3.1"){
+            excludes 'org.slf4j:slf4j-log4j12'
+        }
         runtime "org.jsoup:jsoup:1.8.3"
     }
 

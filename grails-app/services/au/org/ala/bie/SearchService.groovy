@@ -1,8 +1,9 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.search.IndexDocType
-import grails.converters.deep.JSON
+import grails.converters.JSON
 import groovy.json.JsonSlurper
+import org.apache.solr.client.solrj.util.ClientUtils
 import org.gbif.nameparser.NameParser
 
 /**
@@ -11,6 +12,7 @@ import org.gbif.nameparser.NameParser
 class SearchService {
 
     def grailsApplication
+    def liveSolrServer
 
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.
@@ -344,7 +346,7 @@ class SearchService {
     def getProfileForName(name){
 
         def additionalParams = "&wt=json"
-        def queryString = "q=" + URLEncoder.encode(name, "UTF-8")
+        def queryString = "q=" + URLEncoder.encode(ClientUtils.escapeQueryChars(name), "UTF-8")
 
         def queryResponse = new URL(grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
         def js = new JsonSlurper()

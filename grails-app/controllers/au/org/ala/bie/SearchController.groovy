@@ -1,5 +1,7 @@
 package au.org.ala.bie
 
+import au.org.ala.bie.search.SearchDTO
+import au.org.ala.bie.search.SearchResultsDTO
 import grails.converters.JSON
 import groovy.json.JsonSlurper
 import org.apache.commons.io.FilenameUtils
@@ -11,7 +13,7 @@ class SearchController {
 
     def grailsApplication
 
-    def searchService, autoCompleteService, downloadService
+    def searchService, solrSearchService, autoCompleteService, downloadService
 
     static defaultAction = "search"
 
@@ -81,6 +83,10 @@ class SearchController {
         }
     }
 
+    def getSpeciesForNames() {
+        respond params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
+    }
+
     def bulkGuidLookup(){
         def guidList = request.JSON
         def results = searchService.getTaxa(guidList)
@@ -111,6 +117,23 @@ class SearchController {
             return null
         } else {
             asJson model
+        }
+    }
+
+    def speciesLookupBulk() {
+        final req = request.getJSON()
+        if (!req) {
+            response.sendError(400, "Body could not be parsed or was empty")
+        }
+        boolean includeVernacular = req['vernacular'] ?: false
+        List<String> guids = req['names']
+
+        respond guids.collect { guid ->
+            //Need to sort the scores descended to get the highest score first
+            SearchResultsDTO results = solrSearchService.findByScientificName(guid, null, 0, 1, "score", "desc", true, includeVernacular);
+
+            // TODO repoUrlUtils.fixRepoUrls(results)
+            results.getTotalRecords() > 0 ? results.searchResults.first() : null
         }
     }
 
