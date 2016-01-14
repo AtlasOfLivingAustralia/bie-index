@@ -33,7 +33,7 @@ class SolrSearchService {
 
     static transactional = false
 
-    def liveSolrServer
+    def liveSolrClient
 
     SearchResultsDTO<SearchTaxonConceptDTO> findByScientificName(
             String query, List<String> filterQuery = [], Integer startIndex = 0,
@@ -155,7 +155,7 @@ class SolrSearchService {
         solrQuery.sort = new SolrQuery.SortClause(sortField, SolrQuery.ORDER.valueOf(sortDirection))
 
         // do the Solr search
-        return liveSolrServer.query(solrQuery); // can throw exception
+        return liveSolrClient.query(solrQuery); // can throw exception
     }
 
     /**

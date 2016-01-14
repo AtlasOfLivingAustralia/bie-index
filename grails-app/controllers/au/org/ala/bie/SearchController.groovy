@@ -1,10 +1,7 @@
 package au.org.ala.bie
 
-import au.org.ala.bie.search.SearchDTO
 import au.org.ala.bie.search.SearchResultsDTO
 import grails.converters.JSON
-import groovy.json.JsonSlurper
-import org.apache.commons.io.FilenameUtils
 
 /**
  * A set of JSON based search web services.

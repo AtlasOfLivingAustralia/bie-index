@@ -1,8 +1,8 @@
-import org.apache.solr.client.solrj.impl.ConcurrentUpdateSolrServer
-import org.apache.solr.client.solrj.impl.HttpSolrServer
+import org.apache.solr.client.solrj.impl.ConcurrentUpdateSolrClient
+import org.apache.solr.client.solrj.impl.HttpSolrClient
 
 // Place your Spring DSL code here
 beans = {
-    liveSolrServer(HttpSolrServer, application.config.indexLiveBaseUrl)
-    offlineSolrServer(ConcurrentUpdateSolrServer, application.config.indexOfflineBaseUrl, 10, 4)
+    liveSolrClient(HttpSolrClient, application.config.indexLiveBaseUrl)
+    offlineSolrClient(ConcurrentUpdateSolrClient, application.config.indexOfflineBaseUrl, 10, 4)
 }

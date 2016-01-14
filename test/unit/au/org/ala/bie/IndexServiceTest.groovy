@@ -2,6 +2,7 @@ package au.org.ala.bie
 
 import com.google.common.io.Resources
 import grails.test.mixin.TestFor
+import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.SolrServer
 import org.apache.solr.client.solrj.impl.XMLResponseParser
 import org.apache.solr.client.solrj.response.QueryResponse
@@ -13,12 +14,12 @@ import spock.lang.Specification
 @TestFor(IndexService)
 class IndexServiceTest extends Specification {
 
-    SolrServer liveSolrServer
+    SolrClient liveSolrClient
 
     void setup() {
-        liveSolrServer = Stub(SolrServer)
+        liveSolrClient = Stub(SolrClient)
 
-        service.liveSolrServer = liveSolrServer
+        service.liveSolrClient = liveSolrClient
     }
 
     void cleanup() {
@@ -27,10 +28,10 @@ class IndexServiceTest extends Specification {
     void "test getIndexFieldDetails"() {
         setup:
         def resource = Resources.getResource(resourceLocation)
-        def queryResponse = new QueryResponse(new XMLResponseParser().processResponse(resource.newReader()), liveSolrServer)
+        def queryResponse = new QueryResponse(new XMLResponseParser().processResponse(resource.newReader()), liveSolrClient)
         def rootNode = new XmlParser().parse(resource.newReader())
         def fields = rootNode.lst.find { it.@name == 'fields' }.lst
-        liveSolrServer.query(_) >> queryResponse
+        liveSolrClient.query(_) >> queryResponse
 
         when:
         def result = service.getIndexFieldDetails(*names)

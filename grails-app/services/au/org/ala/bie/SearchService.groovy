@@ -12,7 +12,6 @@ import org.gbif.nameparser.NameParser
 class SearchService {
 
     def grailsApplication
-    def liveSolrServer
 
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.

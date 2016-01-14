@@ -2,12 +2,10 @@ package au.org.ala.bie
 
 import com.google.common.io.Resources
 import grails.test.mixin.TestFor
-import org.apache.solr.client.solrj.SolrServer
+import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.SolrServerException
-import org.apache.solr.client.solrj.impl.HttpSolrServer
 import org.apache.solr.client.solrj.impl.XMLResponseParser
 import org.apache.solr.client.solrj.response.QueryResponse
-import org.apache.solr.common.SolrException
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -17,11 +15,11 @@ import spock.lang.Unroll
 @TestFor(SolrSearchService)
 class SolrSearchServiceSpec extends Specification {
 
-    SolrServer liveSolrServer
+    SolrClient liveSolrClient
 
     def setup() {
-        liveSolrServer = Mock(SolrServer)
-        service.liveSolrServer = liveSolrServer
+        liveSolrClient = Mock(SolrClient)
+        service.liveSolrClient = liveSolrClient
     }
 
     def cleanup() {
@@ -31,14 +29,14 @@ class SolrSearchServiceSpec extends Specification {
     def "test findByScientificName(#query, #exact, #incVern)"() {
         setup:
         def resource = Resources.getResource(resourcePath)
-        def queryResponse = new QueryResponse(new XMLResponseParser().processResponse(resource.newReader()), liveSolrServer)
+        def queryResponse = new QueryResponse(new XMLResponseParser().processResponse(resource.newReader()), liveSolrClient)
         def rootNode = new XmlParser().parse(resource.newReader())
 
         when:
         def result = service.findByScientificName(query, [], 0, 1, 'score', 'desc', exact, incVern)
 
         then:
-        1 * liveSolrServer.query(_) >> queryResponse
+        1 * liveSolrClient.query(_) >> queryResponse
         result.query == solrQ
         //TODO Test generation of SearchResultsDTO from Query Response
 
@@ -60,7 +58,7 @@ class SolrSearchServiceSpec extends Specification {
         def result = service.findByScientificName('Macropus Rufus', [], 0, 1, 'score', 'desc', true, true)
 
         then:
-        1 * liveSolrServer.query(_) >> { throw new SolrServerException('Service Unavailable')}
+        1 * liveSolrClient.query(_) >> { throw new SolrServerException('Service Unavailable')}
         result.status == 'ERROR'
     }
 }

@@ -11,8 +11,8 @@ import org.apache.solr.common.params.ModifiableSolrParams
  */
 class IndexService {
 
-    def liveSolrServer
-    def offlineSolrServer
+    def liveSolrClient
+    def offlineSolrClient
 
     /**
      * Delete the supplied index doc type from the index.
@@ -21,7 +21,7 @@ class IndexService {
      */
     def deleteFromIndex(IndexDocType docType){
         log.info("Deleting from index: " + docType.name() + "....")
-        offlineSolrServer.deleteByQuery("idxtype:" + docType.name())
+        offlineSolrClient.deleteByQuery("idxtype:" + docType.name())
         log.info("Deleted from index: " + docType.name())
     }
 
@@ -50,10 +50,10 @@ class IndexService {
         }
 
         //add
-        offlineSolrServer.add(buffer)
+        offlineSolrClient.add(buffer)
 
         //commit
-        offlineSolrServer.commit(true, false, true)
+        offlineSolrClient.commit(true, false, true)
 
     }
 
@@ -68,7 +68,7 @@ class IndexService {
             params.set('numTerms', '0')
         }
 
-        QueryResponse response = liveSolrServer.query(params)
+        QueryResponse response = liveSolrClient.query(params)
         Set<IndexFieldDTO> results = lukeResponseToIndexFieldDTOs(response, fields != null)
         return results
     }
