@@ -30,7 +30,7 @@ class SolrSearchServiceSpec extends Specification {
         setup:
         def resource = Resources.getResource(resourcePath)
         def queryResponse = new QueryResponse(new XMLResponseParser().processResponse(resource.newReader()), liveSolrClient)
-        def rootNode = new XmlParser().parse(resource.newReader())
+//        def rootNode = new XmlParser().parse(resource.newReader())
 
         when:
         def result = service.findByScientificName(query, [], 0, 1, 'score', 'desc', exact, incVern)

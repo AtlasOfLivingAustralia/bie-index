@@ -58,14 +58,13 @@ class SolrSearchService {
                 queryString.append("idxtype:").append(IndexedTypes.TAXON)
                 queryString.append(" AND (")
 //                queryString.append("scientificNameText:"+cleanQuery)
-                queryString.append("text:").append(cleanQuery) // TODO determine whether this is ok...
+                queryString.append("text:").append(cleanQuery) // TODO determine whether scientificNameText -> text is ok...
                 if (includeVernacular) {
                     queryString.append(" OR commonName:").append(cleanQuery)
                 }
+                // TODO these synonym fields don't appear in current index
                 //fix so that synonyms are not being included with a guid search
-                //queryString.append(" OR (guid:"+cleanQuery).append(" AND -syn_guid:*) OR syn_guid:").append(cleanQuery)
-                queryString.append(" OR guid:").append(cleanQuery)
-//.append(" AND -syn_guid:*) OR syn_guid:").append(cleanQuery)
+                queryString.append(" OR guid:").append(cleanQuery) //.append(" AND -syn_guid:*) OR syn_guid:").append(cleanQuery)
 
                 String canonicalSciName = retrieveCanonicalForm(query);
                 if (canonicalSciName != null) {
