@@ -9,7 +9,7 @@ grails.project.source.level = 1.7
 
 grails.project.fork = [
         test: false,
-        run: true
+        run: false
 ]
 
 grails.project.dependency.resolver = "maven" // or ivy

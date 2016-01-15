@@ -42,8 +42,20 @@ Additional fields can be added which will allow more sophisticated handling of n
 
 Additional fields added to the core file e.g. establishmentMeans or any other field will also be indexed and available for facetted searching.
 
-In addition to this, an extension file of vernacular names is also supported.
+An extension file of vernacular names is also supported.
 The format support here aligns with the same format supported by the [ala-names-matching API](https://travis-ci.org/AtlasOfLivingAustralia/ala-name-matching).
+
+Additional fields , which will allow more sophisticated handling of vernacular names are:
+
+- [status](http://ala.org.au/terms/1.0/status) An indicator of the relative importance of the vernacular name. The controlled vocabulary is read from [vernacularNameStatus.json](grails-app/config/vernacularNameStatus.json)
+- [source](http://purl.org/dc/terms/source) A description of the origin of the name, which may be different to the provider of the name.
+
+An extension file of additional identifiers is also supported.
+The format aligns with the [GBIF identfier](http://rs.gbif.org/terms/1.0/Identifier) format.
+
+Additional fields, which will allow more sophisticated handling of identifiers are:
+
+- [status](http://ala.org.au/terms/1.0/status) An indicator of the relative importance of the identifier. The controlled vocabulary is read from [identifierStatus.json](grails-app/config/identifierStatus.json)
 
 ### Basic example meta.xml
 

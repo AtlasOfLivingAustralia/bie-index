@@ -315,11 +315,11 @@ class SearchService {
      * @return
      */
     private def lookupTaxon(taxonID){
-        def indexServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\""
+        def indexServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
         def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
-        json.response.docs[0]
+        def result = json.response.docs[0]
     }
 
     /**
@@ -344,7 +344,7 @@ class SearchService {
     def getProfileForName(name){
 
         def additionalParams = "&wt=json"
-        def queryString = "q=" + URLEncoder.encode(name, "UTF-8")
+        def queryString = "q=" + URLEncoder.encode(name, "UTF-8") + "&fq=idxtype:" + IndexDocType.TAXON.name()
 
         def queryResponse = new URL(grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
         def js = new JsonSlurper()
@@ -393,7 +393,7 @@ class SearchService {
 
     def getTaxa(List guidList){
 
-        def postBody = [ q: "guid:(\"" + guidList.join( '","') + "\")", wt: "json" ] // will be url-encoded
+        def postBody = [ q: "guid:(\"" + guidList.join( '","') + "\")", fq: "idxtype:" + + IndexDocType.TAXON.name(), wt: "json" ] // will be url-encoded
         def resp = doPostWithParams(grailsApplication.config.indexLiveBaseUrl +  "/select", postBody)
 
         //create the docs....
@@ -437,13 +437,26 @@ class SearchService {
 
         //retrieve any synonyms
         def synonymQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
-                URLEncoder.encode("acceptedConceptID:\"" + taxon.guid + "\"", "UTF-8")
+                URLEncoder.encode("acceptedConceptID:\"" + taxon.guid + "\"", "UTF-8") + "&fq=idxtype:" + IndexDocType.TAXON.name()
         def synonymQueryResponse = new URL(synonymQueryUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def synJson = js.parseText(synonymQueryResponse)
-
         def synonyms = synJson.response.docs
 
+        //retrieve any common names
+        def commonQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
+                URLEncoder.encode("taxonGuid:\"" + taxon.guid + "\"", "UTF-8") + "&fq=idxtype:" + IndexDocType.COMMON.name()
+        def commonQueryResponse = new URL(commonQueryUrl).getText("UTF-8")
+        def commonJson = js.parseText(commonQueryResponse)
+        def commonNames = commonJson.response.docs
+
+
+        //retrieve any additional identifiers
+        def identifierQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
+                URLEncoder.encode("taxonGuid:\"" + taxon.guid + "\"", "UTF-8") + "&fq=idxtype:" + IndexDocType.IDENTIFIER.name()
+        def identifierQueryResponse = new URL(identifierQueryUrl).getText("UTF-8")
+        def identifierJson = js.parseText(identifierQueryResponse)
+        def identifiers = identifierJson.response.docs
         def classification = extractClassification(taxon)
 
         def model = [
@@ -455,37 +468,53 @@ class SearchService {
                         nameFormatted: taxon.nameFormatted,
                         author: taxon.scientificNameAuthorship,
                         rankString: taxon.rank,
-                        nameAuthority: taxon.dataset ?: grailsApplication.config.defaultNameSourceAttribution,
-                        rankID:taxon.rankID
+                        nameAuthority: taxon.datasetName ?: grailsApplication.config.defaultNameSourceAttribution,
+                        rankID:taxon.rankID,
+                        namePublishedIn: taxon.namePublishedIn,
+                        namePublishedInYear: taxon.namePublishedInYear,
+                        namePublishedInID: taxon.namePublishedInID,
+                        infoSourceURL: taxon.source
                 ],
                 taxonName:[],
                 classification:classification,
-                synonyms:[],
-                commonNames:{
-                    def cn = []
-                    taxon.commonName.each {
-                        cn << [
-                                nameString: it,
-                                infoSourceName: grailsApplication.config.commonNameSourceAttribution
-                        ]
-                    }
-                    cn
-                }.call(),
+                synonyms:synonyms.collect { synonym ->
+                    [
+                            nameString: synonym.scientificName,
+                            nameComplete: synonym.nameComplete,
+                            nameFormatted: synonym.nameFormatted,
+                            nameGuid: synonym.guid,
+                            namePublishedIn: synonym.namePublishedIn,
+                            namePublishedInYear: synonym.namePublishedInYear,
+                            namePublishedInID: synonym.namePublishedInID,
+                            nameAuthority: synonym.datasetName ?: grailsApplication.config.synonymSourceAttribution,
+                            infoSourceURL: synonym.source
+                    ]
+                },
+                commonNames: commonNames.collect { commonName ->
+                    [
+                            nameString: commonName.name,
+                            status: commonName.status,
+                            priority: commonName.priority,
+                            language: commonName.language ?: grailsApplication.config.commonNameDefaultLanguage,
+                            infoSourceName: commonName.datasetName ?: grailsApplication.config.commonNameSourceAttribution,
+                            infoSourceURL: commonName.source
+                    ]
+                },
                 conservationStatuses:[], //TODO need to be indexed from list tool
                 extantStatuses: [],
                 habitats: [],
-                identifiers: []
+                identifiers: identifiers.collect { identifier ->
+                    [
+                            identifier: identifier.guid,
+                            nameString: identifier.name,
+                            status: identifier.status,
+                            subject: identifier.subject,
+                            format: identifier.format,
+                            infoSourceName: identifier.datasetName ?: grailsApplication.config.identifierSourceAttribution,
+                            infoSourceURL: identifier.source,
+                    ]
+                }
         ]
-
-        synonyms.each { synonym ->
-            model.synonyms << [
-                    nameString: synonym.scientificName,
-                    nameComplete: synonym.nameComplete,
-                    nameFormatted: synonym.nameFormatted,
-                    nameGuid: synonym.guid
-            ]
-        }
-
         model
     }
 
@@ -596,6 +625,8 @@ class SearchService {
                         name : it.name,
                         description : it.description
                 ]
+                if (it.taxonGuid)
+                    doc.put("taxonGuid", it.taxonGuid)
                 formatted << doc
             }
         }
@@ -603,7 +634,7 @@ class SearchService {
     }
 
     private def retrieveTaxon(taxonID){
-        def solrServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + taxonID + "\""
+        def solrServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
