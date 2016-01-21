@@ -1,16 +1,18 @@
 class UrlMappings {
 
-	static mappings = {
+    static mappings = {
 
 
         "/species"(controller: "search", action: "taxon")
         "/species/"(controller: "search", action: "taxon")
         "/species/$id**"(controller: "search", action: "taxon")
         "/species/$id**.json"(controller: "search", action: "taxon")
+        "/species/lookup/bulk(.$format)?"(controller: "search", action: "speciesLookupBulk")
         "/species/shortProfile/$id**"(controller: "search", action: "shortProfile")
         "/species/shortProfile/$id**.json"(controller: "search", action: "shortProfile")
         "/taxon/$id**"(controller: "search", action: "taxon")
         "/guid/$name"(controller: "search", action: "guid")
+        "/guid/batch(.$format)?"(controller: "search", action: "getSpeciesForNames")
         "/auto"(controller: "search", action: "auto")
         "/search/auto(.$format)?"(controller: "search", action: "auto")
         "/search(.$format)?"(controller: "search", action: "search")
@@ -31,10 +33,11 @@ class UrlMappings {
 
         "/admin"(controller: "admin")
         "/admin/"(controller: "admin")
+        "/admin/indexFields(.$format)?"(controller: "admin", action: "indexFields")
 
         "/admin/import/$action?/$id?(.$format)?"(controller: "import")
 
-        "/"(view:"/index")
-        "500"(view:'/error')
-	}
+        "/"(view: "/index")
+        "500"(view: '/error')
+    }
 }

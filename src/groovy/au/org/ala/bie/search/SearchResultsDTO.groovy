@@ -1,9 +1,13 @@
 package au.org.ala.bie.search
 
-import javax.naming.directory.SearchResult
+import org.codehaus.jackson.annotate.JsonIgnore
 
-
-public class SearchResults {
+/**
+ * DTO to represents the results from a Lucene search
+ *
+ * @author "Nick dos Remedios <Nick.dosRemedios@csiro.au>"
+ */
+public class SearchResultsDTO<T extends SearchDTO> {
 
     /** Maximum number of results returned from a query */
     long pageSize = 10;
@@ -18,9 +22,20 @@ public class SearchResults {
     /** Status code to be set by Controller (e.g. OK) */
     String status;
     /** List of results from search */
-    List results = []
+    List<T> searchResults = new ArrayList<T>();
     /** List of facet results from search */
-    List facetResults = []
+    Collection<FacetResult> facetResults = new ArrayList<FacetResult>();
+//    /** SOLR query response following search */
+    //QueryResponse qr;
     /** The query that was used */
-    String query
+    String query;
+
+//    @JsonIgnore
+//    public long getCurrentPage() {
+//        if(pageSize>0){
+//            return this.startIndex/pageSize;
+//        }
+//        return -1;
+//    }
+
 }

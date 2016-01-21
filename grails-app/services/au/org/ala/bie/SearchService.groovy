@@ -1,8 +1,9 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.search.IndexDocType
-import grails.converters.deep.JSON
+import grails.converters.JSON
 import groovy.json.JsonSlurper
+import org.apache.solr.client.solrj.util.ClientUtils
 import org.gbif.nameparser.NameParser
 
 /**
@@ -319,7 +320,7 @@ class SearchService {
         def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
-        def result = json.response.docs[0]
+        json.response.docs[0]
     }
 
     /**
@@ -441,6 +442,7 @@ class SearchService {
         def synonymQueryResponse = new URL(synonymQueryUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def synJson = js.parseText(synonymQueryResponse)
+
         def synonyms = synJson.response.docs
 
         //retrieve any common names
