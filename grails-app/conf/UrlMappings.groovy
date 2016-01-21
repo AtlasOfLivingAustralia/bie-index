@@ -12,7 +12,7 @@ class UrlMappings {
         "/species/shortProfile/$id**.json"(controller: "search", action: "shortProfile")
         "/taxon/$id**"(controller: "search", action: "taxon")
         "/guid/$name"(controller: "search", action: "guid")
-        "/guid/batch(.$format)"(controller: "search", action: "getSpeciesForNames")
+        "/guid/batch(.$format)?"(controller: "search", action: "getSpeciesForNames")
         "/auto"(controller: "search", action: "auto")
         "/search/auto(.$format)?"(controller: "search", action: "auto")
         "/search(.$format)?"(controller: "search", action: "search")

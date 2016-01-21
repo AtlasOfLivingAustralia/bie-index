@@ -19,12 +19,14 @@ import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.SolrServerException
 import org.apache.solr.client.solrj.response.FacetField
 import org.apache.solr.client.solrj.response.QueryResponse
-import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.SolrDocumentList
+import org.apache.solr.common.params.HighlightParams
 import org.gbif.ecat.model.ParsedName
 import org.gbif.ecat.parser.NameParser
 import org.gbif.ecat.parser.UnparsableException
+
+import static org.apache.solr.client.solrj.util.ClientUtils.escapeQueryChars
 
 /**
  * a search service that uses the solr client rather than construct URLs and parse responses manually
@@ -45,12 +47,12 @@ class SolrSearchService {
             StringBuffer queryString = new StringBuffer()
             if (query.contains(":") && !query.startsWith("urn")) {
                 String[] bits = StringUtils.split(query, ":")
-                queryString.append(ClientUtils.escapeQueryChars(bits[0]))
+                queryString.append(escapeQueryChars(bits[0]))
                 queryString.append(":")
-                queryString.append(ClientUtils.escapeQueryChars(bits[1]).toLowerCase())
+                queryString.append(escapeQueryChars(bits[1]).toLowerCase())
             } else {
 
-                String cleanQuery = ClientUtils.escapeQueryChars(query).toLowerCase()
+                String cleanQuery = escapeQueryChars(query).toLowerCase()
                 if (exactInput) {
                     cleanQuery = "\"$cleanQuery\""
                 }
@@ -68,9 +70,9 @@ class SolrSearchService {
 
                 String canonicalSciName = retrieveCanonicalForm(query);
                 if (canonicalSciName != null) {
-                    canonicalSciName = ClientUtils.escapeQueryChars(canonicalSciName).toLowerCase();
+                    canonicalSciName = escapeQueryChars(canonicalSciName).toLowerCase();
                 } else {
-                    canonicalSciName = ClientUtils.escapeQueryChars(query).toLowerCase();
+                    canonicalSciName = escapeQueryChars(query).toLowerCase();
                 }
                 if (exactInput) {
                     canonicalSciName = "\"$canonicalSciName\""
@@ -129,50 +131,25 @@ class SolrSearchService {
      */
     private SearchResultsDTO doSolrSearch(String queryString, List<String> filterQuery, String[] facets, Integer pageSize,
                                           Integer startIndex, String sortField, String sortDirection) throws SolrServerException {
-        SolrQuery solrQuery = initSolrQuery(facets).with {
-            // general search settings
-            fields = ["*", "score"]
-            query = queryString
-            delegate
-        }
+        SolrQuery solrQuery = initSolrQuery(
+                startIndex: startIndex,
+                pageSize: pageSize,
+                sortField: sortField,
+                sortDirection: sortDirection,
+                filterQuery: filterQuery,
+                facets: facets).
+                setQuery(queryString)
 
-        return doSolrQuery(solrQuery, filterQuery, pageSize, startIndex, sortField, sortDirection)
+        QueryResponse qr = getSolrQueryResponse(solrQuery)
+        return createSearchResultsFromQueryResponse(solrQuery, qr, pageSize, sortField, sortDirection)
     }
 
-
-    private QueryResponse getSolrQueryResponse(SolrQuery solrQuery, List<String> filterQuery, Integer pageSize,
-                                               Integer startIndex, String sortField, String sortDirection) throws SolrServerException {
+    private QueryResponse getSolrQueryResponse(SolrQuery solrQuery) throws SolrServerException {
         if (log.debugEnabled) {
             log.debug("About to execute ${solrQuery.query}")
         }
-
-        // set the facet query if set
-        addFqs(solrQuery, filterQuery)
-
-        solrQuery.rows = pageSize
-        solrQuery.start = startIndex
-        solrQuery.sort = new SolrQuery.SortClause(sortField, SolrQuery.ORDER.valueOf(sortDirection))
-
         // do the Solr search
         return liveSolrClient.query(solrQuery); // can throw exception
-    }
-
-    /**
-     * Re-usable method for performing SOLR searches - takes SolrQuery input
-     *
-     * @param solrQuery
-     * @param filterQuery
-     * @param pageSize
-     * @param startIndex
-     * @param sortField
-     * @param sortDirection
-     * @return
-     * @throws org.apache.solr.client.solrj.SolrServerException
-     */
-    private SearchResultsDTO doSolrQuery(SolrQuery solrQuery, List<String> filterQuery, Integer pageSize,
-                                         Integer startIndex, String sortField, String sortDirection) throws Exception {
-        QueryResponse qr = getSolrQueryResponse(solrQuery, filterQuery, pageSize, startIndex, sortField, sortDirection);
-        return createSearchResultsFromQueryResponse(solrQuery, qr, pageSize, sortField, sortDirection)
     }
 
     private SearchResultsDTO createSearchResultsFromQueryResponse(SolrQuery solrQuery, QueryResponse qr, Integer pageSize,
@@ -239,95 +216,80 @@ class SolrSearchService {
         return searchResults
     }
 
+    static final DEFAULT_FACETS = [
+            'idxtype'
+            ,'australian_s'
+            ,'speciesGroup'
+            ,'speciesSubgroup'
+//            ,'kingdom'
+            ,'rank'
+//            ,'rankId'
+//            ,'pestStatus'
+//            ,'conservationStatus'
+//            ,'conservationStatusAUS'
+//            ,'conservationStatusACT'
+//            ,'conservationStatusNSW'
+//            ,'conservationStatusNT'
+//            ,'conservationStatusQLD'
+//            ,'conservationStatusSA'
+//            ,'conservationStatusTAS'
+//            ,'conservationStatusVIC'
+//            ,'conservationStatusWA'
+            ,'category_m_s'
+            ,'category_NSW_m_s'
+            ,'category_ACT_m_s'
+            ,'category_QLD_m_s'
+            ,'category_SA_m_s'
+            ,'category_NT_m_s'
+            ,'category_TAS_m_s'
+            ,'category_WA_m_s'
+            ,'category_VIC_m_s'
+    ] as String[]
+
     /**
-     * Helper method to create SolrQuery object and add facet settings
+     * Helper method to create SolrQuery object and add facet settings and default highlight settings
      *
+     * @params startIndex The search results start index, defaults to 0
+     * @params pageSize the search results page size, defaults to 10
+     * @params sortField the search results sort field, defaults to 'score'
+     * @params sortDirection the search results sort directions, defaults to 'asc'
+     * @params filterQuery the filter queries to apply, defaults to [] (empty list)
+     * @params fields the fields to return, defaults to ['*', 'score']
+     * @params facets the facets to return, defaults to {@link SolrSearchService#DEFAULT_FACETS}
      * @return solrQuery the SolrQuery
      */
-    protected SolrQuery initSolrQuery(String[] facets) {
-        SolrQuery solrQuery = new SolrQuery()
-        solrQuery.setRequestHandler("standard")
-        if (facets == null) {
-            //use the default set
-            solrQuery.facet = true
-            solrQuery.addFacetField("idxtype")
-            solrQuery.addFacetField("australian_s")
-            solrQuery.addFacetField("speciesGroup")
-            solrQuery.addFacetField("speciesSubgroup")
-            //solrQuery.addFacetField("kingdom")
-            solrQuery.addFacetField("rank")
-            //solrQuery.addFacetField("rankId")
-            //solrQuery.addFacetField("pestStatus")
-            //        solrQuery.addFacetField("conservationStatus")
-            //solrQuery.addFacetField("conservationStatusAUS")
-            //solrQuery.addFacetField("conservationStatusACT")
-            //solrQuery.addFacetField("conservationStatusNSW")
-            //solrQuery.addFacetField("conservationStatusNT")
-            //solrQuery.addFacetField("conservationStatusQLD")
-            //solrQuery.addFacetField("conservationStatusSA")
-            //solrQuery.addFacetField("conservationStatusTAS")
-            //solrQuery.addFacetField("conservationStatusVIC")
-            //solrQuery.addFacetField("conservationStatusWA")
-            solrQuery.addFacetField("category_m_s")
-            solrQuery.addFacetField("category_NSW_m_s")
-            solrQuery.addFacetField("category_ACT_m_s")
-            solrQuery.addFacetField("category_QLD_m_s")
-            solrQuery.addFacetField("category_SA_m_s")
-            solrQuery.addFacetField("category_NT_m_s")
-            solrQuery.addFacetField("category_TAS_m_s")
-            solrQuery.addFacetField("category_WA_m_s")
-            solrQuery.addFacetField("category_VIC_m_s")
-        } else {
-            solrQuery.addFacetField(facets)
-        }
+    protected static SolrQuery initSolrQuery(Map params) {
+        Integer startIndex = params.startIndex ?: 0
+        Integer pageSize = params.pageSize ?: 10
+        String sortField = params.sortField ?: 'score'
+        String sortDirection = params.sortDirection ?: 'asc'
+        List<String> filterQuery = params.filterQuery ?: []
+        List<String> fields = params.fields ?: ['*', 'score']
+        String[] facets = params.facets ?: DEFAULT_FACETS
 
-        solrQuery.setFacetMinCount(1)
-        solrQuery.setRows(10)
-        solrQuery.setStart(0)
+        return new SolrQuery()
+                .setRequestHandler("standard")
+                .setFacet(facets ? true : false)
+                .addFacetField(facets)
+                .setFacetMinCount(10)
+                .setStart(startIndex)
+                .setRows(pageSize)
+                .setSort(new SolrQuery.SortClause(sortField, sortDirection))
+                .setFilterQueries(*filterQuery)
+                .setFields(*fields)
+                .setHighlight(true)
+                .setHighlightFragsize(80)
+                .setHighlightSnippets(2)
+                .setHighlightSimplePre('<strong>')
+                .setHighlightSimplePost('</strong>')
+                .addHighlightField('commonName')
+                .addHighlightField('scientificName')
+                .addHighlightField('pestStatus')
+                .addHighlightField('conservationStatus')
+                .addHighlightField('simpleText')
+                .addHighlightField('content')
+                .setParam(HighlightParams.USE_PHRASE_HIGHLIGHTER, 'true')
 
-        //add highlights
-        solrQuery.highlight = true
-        solrQuery.highlightFragsize = 80
-        solrQuery.highlightSnippets = 2
-        solrQuery.highlightSimplePre = "<strong>"
-        solrQuery.highlightSimplePost = "</strong>"
-        solrQuery.add("hl.usePhraseHighlighter", "true")
-        solrQuery.addHighlightField("commonName")
-        solrQuery.addHighlightField("scientificName")
-        solrQuery.addHighlightField("pestStatus")
-        solrQuery.addHighlightField("conservationStatus")
-        solrQuery.addHighlightField("simpleText")
-        solrQuery.addHighlightField("content")
-
-        return solrQuery;
-    }
-
-    private void addFqs(SolrQuery solrQuery, List<String> filterQuery) {
-        if (filterQuery != null) {
-            for (String fq : filterQuery) {
-                // pull apart fq. E.g. Rank:species and then sanitize the string parts
-                // so that special characters are escaped appropriately
-                if (fq != null && !fq.isEmpty()) {
-                    String[] parts = fq.split(":", 2); // separate query field from query text
-                    log.debug("fq split into: " + parts.length + " parts: " + parts[0] + " & " + parts[1])
-                    String prefix
-                    String suffix
-                    // don't escape range queries
-                    if (parts[1].contains(" TO ")) {
-                        prefix = parts[0]
-                        suffix = parts[1]
-                    } else if (parts[1].contains(" OR ") || (parts[1].startsWith("(") && parts[1].endsWith(")"))) {
-                        prefix = parts[0]
-                        suffix = parts[1]
-                    } else {
-                        prefix = parts[0].startsWith("-") ? "-" + ClientUtils.escapeQueryChars(parts[0].substring(1)) : ClientUtils.escapeQueryChars(parts[0])
-                        suffix = ClientUtils.escapeQueryChars(parts[1])
-                    }
-                    solrQuery.addFilterQuery(prefix + ":" + suffix) // solrQuery.addFacetQuery(facetQuery)
-                    log.debug("adding filter query: " + prefix + ":" + suffix)
-                }
-            }
-        }
     }
 
     /// Search DTO factory methods
