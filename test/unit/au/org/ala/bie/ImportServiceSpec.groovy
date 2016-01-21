@@ -1,6 +1,5 @@
-package bie.index
+package au.org.ala.bie
 
-import au.org.ala.bie.ImportService
 import grails.test.mixin.TestFor
 import spock.lang.Specification
 
@@ -16,6 +15,4 @@ class ImportServiceSpec extends Specification {
     def cleanup() {
     }
 
-    void "test something"() {
-    }
 }
