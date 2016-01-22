@@ -60,7 +60,7 @@ class SearchService {
         [
                 totalRecords:json.response.numFound,
                 facetResults: formatFacets(json.facet_counts?.facet_fields?:[]),
-                results: formatDocs(json.response.docs)
+                results: formatDocs(json.response.docs, null)
         ]
     }
 
@@ -77,7 +77,8 @@ class SearchService {
         String bq = grailsApplication.config.solr.bq  // dismax boost function
         String defType = grailsApplication.config.solr.defType // query parser type
         String qAlt = grailsApplication.config.solr.qAlt // if no query specified use this query
-        def additionalParams = "&qf=${qf}&bq=${bq}&defType=${defType}&q.alt=${qAlt}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
+        String hl = grailsApplication.config.solr.hl // highlighting params (can be multiple)
+        def additionalParams = "&qf=${qf}&bq=${bq}&defType=${defType}&q.alt=${qAlt}&hl=${hl}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
 
         if (requestedFacets) {
             additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
@@ -139,12 +140,12 @@ class SearchService {
         }
 
 
-        log.debug("auto called with q = ${q}, returning ${json.response.numFound}")
+        log.debug("search called with q = ${q}, returning ${json.response.numFound}")
 
         [
             totalRecords: json.response.numFound,
             facetResults: formatFacets(json.facet_counts?.facet_fields ?: []),
-            results     : formatDocs(json.response.docs),
+            results     : formatDocs(json.response.docs, json.highlighting),
             queryTitle  : queryTitle
         ]
     }
@@ -572,7 +573,7 @@ class SearchService {
         formatted
     }
 
-    private def formatDocs(docs){
+    private List formatDocs(docs, highlighting){
 
         def formatted = []
 
@@ -587,18 +588,24 @@ class SearchService {
                 }
 
                 Map doc = [
+                        "id" : it.id, // needed for highlighting
                         "guid" : it.guid,
+                        "linkIdentifier" : it.linkIdentifier,
                         "idxtype": it.idxtype,
                         "name" : it.scientificName,
                         "kingdom" : it.rk_kingdom,
                         "scientificName" : it.scientificName,
                         "author" : it.scientificNameAuthorship,
                         "nameComplete" : it.nameComplete,
+                        "nameFormatted" : it.nameFormatted,
+                        "taxonomicStatus" : it.taxonomicStatus,
                         "parentGuid" : it.parentGuid,
                         "rank": it.rank,
                         "rankID": it.rankID ?: -1,
                         "commonName" : commonNames,
-                        "commonNameSingle" : commonNameSingle
+                        "commonNameSingle" : commonNameSingle,
+                        "occurrenceCount" : it.occurrenceCount,
+                        "conservationStatus" : it.conservationStatus
                 ]
 
                 if(it.acceptedConceptID){
@@ -622,7 +629,9 @@ class SearchService {
                 formatted << doc
             } else {
                 Map doc = [
+                        id : it.id,
                         guid : it.guid,
+                        linkIdentifier : it.linkIdentifier,
                         idxtype: it.idxtype,
                         name : it.name,
                         description : it.description
@@ -632,6 +641,19 @@ class SearchService {
                 formatted << doc
             }
         }
+
+        // highlighting should be a LinkedHashMap with key being the 'id' of the matching result
+        highlighting.each { k, v ->
+            if (v) {
+                Map found = formatted.find { it.id == k }
+                List snips = []
+                v.each { field, snippetList ->
+                    snips.addAll(snippetList)
+                }
+                found.put("highlight", snips.join("<br>"))
+            }
+        }
+
         formatted
     }
 

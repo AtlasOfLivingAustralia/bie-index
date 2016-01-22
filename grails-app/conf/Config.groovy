@@ -48,6 +48,7 @@ solr {
     bq = "taxonomicStatus:accepted^10000"
     defType = "edismax"
     qAlt = "text:*"
+    hl = "true&hl=true&hl.fl=*&hl.simple.pre=<b>&hl.simple.post=</b>"
 }
 skin.layout = "main"
 skin.orgNameLong = "Atlas of Living Australia"

@@ -369,7 +369,7 @@ class ImportService {
 
                 doc["id"] = "wp" + id // probably not needed but safer to leave in
                 doc["name"] = title // , 1.2f
-                doc["text"] = bodyText
+                doc["content"] = bodyText
                 doc["linkIdentifier"] = pageUrl
                 //doc["australian_s"] = "recorded" // so they appear in default QF search
                 doc["categories"] = categoriesOut
@@ -461,7 +461,12 @@ class ImportService {
             log("Reading taxon ranks.." + taxonRanks.size() + " read.")
 
             //retrieve images
-            def imageMap = indexImages()
+            def imageMap = [:]
+
+            if (!grailsApplication.config.skipImages) {
+                imageMap = indexImages()
+            }
+
 
             //retrieve common names
             def commonNamesMap = readCommonNames(vernacularArchiveFile)
