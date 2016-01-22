@@ -49,6 +49,12 @@ class ImportService {
 
     def static DYNAMIC_FIELD_EXTENSION = "_s"
 
+    static {
+        TermFactory tf = TermFactory.instance()
+        for (Term term: ALATerm.values())
+            tf.addTerm(term.qualifiedName(), term)
+    }
+
     /**
      * Retrieve a set of file paths from the import directory.
      */
@@ -81,6 +87,7 @@ class ImportService {
         def childParentMap = [:]
         def parentLess = []
         def parents = [] as Set
+        def count = 0
 
         Iterator<Record> iter = taxaFile.iterator()
 
@@ -423,9 +430,22 @@ class ImportService {
             Archive archive = ArchiveFactory.openArchive(new File(dwcDir));
             ArchiveFile taxaArchiveFile = archive.getCore()
 
+            // Archive metadata available
+            log("Archive metadata detected: " + (archive.metadata != null))
+            def datasetName = null
+            if (archive.metadataLocation) {
+                datasetName = archive.metadata.title?.trim()
+                log("Dataset name from metadata: " + datasetName)
+            }
+
             //vernacular names extension available?
             ArchiveFile vernacularArchiveFile = archive.getExtension(GbifTerm.VernacularName)
+
             log("Vernacular extension detected: " + (vernacularArchiveFile != null))
+
+            //vernacular names extension available?
+            ArchiveFile identifierArchiveFile = archive.getExtension(GbifTerm.Identifier)
+            log("Identifier extension detected: " + (identifierArchiveFile != null))
 
             //dataset extension available?
             ArchiveFile datasetArchiveFile = archive.getExtension(DcTerm.rightsHolder)
@@ -445,7 +465,7 @@ class ImportService {
 
             //retrieve common names
             def commonNamesMap = readCommonNames(vernacularArchiveFile)
-            log("Common names read: " + commonNamesMap.size())
+            log("Common names read for " + commonNamesMap.size() + " taxa")
 
             //retrieve datasets
             def attributionMap = readAttribution(datasetArchiveFile)
@@ -453,12 +473,18 @@ class ImportService {
 
             //compile a list of synonyms into memory....
             def synonymMap = readSynonyms(taxaArchiveFile, taxonRanks)
-            log("Synonyms read: " + synonymMap.size())
+            log("Synonyms read for " + synonymMap.size() + " taxa")
+
+            //retrieve additional identifiers
+            def identifierMap = readOtherIdentifiers(identifierArchiveFile)
+            log("Identifiers read for " + identifierMap.size() + " taxa")
 
             //clear
             if (clearIndex) {
                 log("Deleting existing entries in index...")
                 indexService.deleteFromIndex(IndexDocType.TAXON)
+                indexService.deleteFromIndex(IndexDocType.COMMON)
+                indexService.deleteFromIndex(IndexDocType.IDENTIFIER)
             } else {
                 log("Skipping deleting existing entries in index...")
             }
@@ -485,9 +511,6 @@ class ImportService {
             def buffer = []
             def counter = 0
 
-            def nameCompleteTerm = taxaArchiveFile.getField(ALATerm.nameComplete.qualifiedName())?.term
-            def nameFormattedTerm = taxaArchiveFile.getField(ALATerm.nameFormatted.qualifiedName())?.term
-
             Iterator<Record> iter = taxaArchiveFile.iterator()
 
             while (iter.hasNext()) {
@@ -504,11 +527,10 @@ class ImportService {
                     def scientificName = record.value(DwcTerm.scientificName)
                     def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
                     def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
-                    def nameComplete = nameCompleteTerm ? record.value(nameCompleteTerm) : null
-                    def nameFormatted = nameFormattedTerm ? record.value(nameFormattedTerm) : null
+                    def nameComplete = record.value(ALATerm.nameComplete)
+                    def nameFormatted = record.value(ALATerm.nameFormatted)
                     def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
 
-                    //common name
                     def doc = ["idxtype": IndexDocType.TAXON.name()]
                     doc["id"] = UUID.randomUUID().toString()
                     doc["guid"] = taxonID
@@ -519,7 +541,7 @@ class ImportService {
                     doc["scientificNameAuthorship"] = scientificNameAuthorship
                     doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
                     doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
-                    def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID]
+                    def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear ]
 
                     //index additional fields that are supplied in the core
                     record.terms().each { term ->
@@ -537,6 +559,8 @@ class ImportService {
                     if (attribution) {
                         doc["datasetName"] = attribution["datasetName"]
                         doc["rightsHolder"] = attribution["rightsHolder"]
+                    } else if (datasetName) {
+                        doc["datasetName"] = datasetName
                     }
 
                     //retrieve images via scientific name
@@ -554,13 +578,6 @@ class ImportService {
                         distributions.each {
                             doc["distribution"] = it
                         }
-                    }
-
-                    //common names
-                    def commonNames = commonNamesMap.get(taxonID)
-                    if (commonNames) {
-                        doc["commonName"] = commonNames
-                        doc["commonNameExact"] = commonNames
                     }
 
                     //get de-normalised taxonomy, and add it to the document
@@ -596,7 +613,7 @@ class ImportService {
                             //don't add the synonym if it is lexicographically the same
                             if (!synonym['scientificName'].equalsIgnoreCase(scientificName)) {
 
-                                def sdoc = ["idxtype": "TAXON"]
+                                def sdoc = ["idxtype": IndexDocType.TAXON.name()]
                                 sdoc["id"] = UUID.randomUUID().toString()
                                 sdoc["guid"] = synonym["taxonID"]
                                 sdoc["rank"] = taxonRank
@@ -608,11 +625,14 @@ class ImportService {
                                 sdoc["acceptedConceptName"] = doc['nameComplete']
                                 sdoc["acceptedConceptID"] = taxonID
                                 sdoc["taxonomicStatus"] = "synonym"
+                                sdoc["source"] = synonym['source']
 
-                                def synAttribution = attributionMap.get(synonym['dataset'])
+                                def synAttribution = attributionMap.get(synonym['datasetID'])
                                 if (synAttribution) {
                                     sdoc["datasetName"] = synAttribution["datasetName"]
                                     sdoc["rightsHolder"] = synAttribution["rightsHolder"]
+                                } else if (datasetName) {
+                                    sdoc["datasetName"] = datasetName
                                 }
 
                                 counter++
@@ -623,6 +643,64 @@ class ImportService {
                         }
                     }
 
+                    // common names
+                    List commonNames = commonNamesMap.get(taxonID)
+                    if (commonNames) {
+                        commonNames.sort { n1, n2 -> n2.priority - n1.priority }
+                        commonNames.each { commonName ->
+                            def cdoc = ["idxtype": IndexDocType.COMMON.name()]
+                            cdoc["id"] = UUID.randomUUID().toString()
+                            cdoc["guid"] = cdoc["id"]
+                            cdoc["taxonGuid"] = taxonID
+                            cdoc["name"] = commonName['name']
+                            cdoc["status"] = commonName['status']
+                            cdoc["priority"] = commonName['priority']
+                            cdoc["source"] = commonName['source']
+                            cdoc["language"] = commonName['language']
+
+                            def cnAttribution = attributionMap.get(commonName['datasetID'])
+                            if (cnAttribution) {
+                                cdoc["datasetName"] = cnAttribution["datasetName"]
+                                cdoc["rightsHolder"] = cnAttribution["rightsHolder"]
+                            } else if (datasetName) {
+                                cdoc["datasetName"] = datasetName
+                            }
+
+                            buffer << cdoc
+                        }
+                        doc["commonName"] = commonNames.collect { it.name }
+                        doc["commonNameExact"] = commonNames.collect { it.name }
+                    }
+
+                    // identifiers
+                    List identifiers = identifierMap.get(taxonID)
+                    if (identifiers) {
+                        identifiers.sort { i1, i2 -> i2.priority - i1.priority }
+                        identifiers.each { identifier ->
+                            if (identifier['identifier'] == taxonID)
+                                seenTaxonID = true
+                            def idoc =  ["idxtype": IndexDocType.IDENTIFIER.name()]
+                            idoc["id"] = UUID.randomUUID().toString()
+                            idoc["guid"] = identifier['identifier']
+                            idoc["taxonGuid"] = taxonID
+                            idoc["name"] = identifier['name']
+                            idoc["status"] = identifier['status'] ?: "unknown"
+                            idoc["priority"] = identifier['priority'] ?: 200
+                            idoc["source"] = identifier['source']
+                            idoc["subject"] = identifier['subject']
+                            idoc["format"] = identifier['format']
+
+                            def idAttribution = attributionMap.get(identifier['datasetID'])
+                            if (idAttribution) {
+                                idoc["datasetName"] = idAttribution["datasetName"]
+                                idoc["rightsHolder"] = idAttribution["rightsHolder"]
+                            } else if (datasetName) {
+                                idoc["datasetName"] = datasetName
+                            }
+                            buffer << idoc
+                        }
+                        doc["additionalIdentifiers"] = identifiers.collect { it.identifier }
+                    }
                     buffer << doc
                 }
 
@@ -717,8 +795,6 @@ class ImportService {
     private def readSynonyms(ArchiveFile taxaFile, Map taxonRanks) {
 
         def synonyms = [:]
-        def nameCompleteTerm = taxaFile.getField(ALATerm.nameComplete.qualifiedName())?.term
-        def nameFormattedTerm = taxaFile.getField(ALATerm.nameFormatted.qualifiedName())?.term
         def iter = taxaFile.iterator()
 
         while (iter.hasNext()) {
@@ -729,10 +805,11 @@ class ImportService {
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
             def scientificName = record.value(DwcTerm.scientificName)
             def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
-            def nameComplete = record.value(nameCompleteTerm)
-            def nameFormatted = record.value(nameFormattedTerm)
+            def nameComplete = record.value(ALATerm.nameComplete)
+            def nameFormatted = record.value(ALATerm.nameFormatted)
             def taxonRank = record.value(DwcTerm.taxonRank)?.toLowerCase() ?: "unknown"
             def datasetID = record.value(DwcTerm.datasetID)
+            def source = record.value(DcTerm.source)
 
             if (taxonID && scientificName && acceptedNameUsageID != taxonID && acceptedNameUsageID != "" && acceptedNameUsageID != null) {
                 //we have a synonym
@@ -749,7 +826,8 @@ class ImportService {
                         scientificNameAuthorship : scientificNameAuthorship,
                         nameComplete: buildNameComplete(nameComplete, scientificName, scientificNameAuthorship),
                         nameFormatted: buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks),
-                        datasetID: datasetID
+                        datasetID: datasetID,
+                        source: source
                 ]
             }
         }
@@ -787,27 +865,94 @@ class ImportService {
      * @return
      */
     private def readCommonNames(ArchiveFile vernacularArchiveFile) {
-
         def commonNames = [:]
 
         if(!vernacularArchiveFile){
             return commonNames
         }
 
+        def statusMap = vernacularNameStatus()
+
         Iterator<Record> iter = vernacularArchiveFile.iterator()
         while (iter.hasNext()) {
             Record record = iter.next()
             def taxonID = record.id()
             def vernacularName = record.value(DwcTerm.vernacularName)
+            def source = record.value(DcTerm.source)
+            def language = record.value(DcTerm.language)
+            def nameStatus = record.value(ALATerm.status)
+            def status = statusMap.get(nameStatus?.toLowerCase())
+            def datasetID = record.value(DwcTerm.datasetID)
+
+            if (nameStatus && !status)
+                log.warn "Supplied status for ${taxonID} or ${nameStatus} cannot be found"
             def nameList = commonNames.get(taxonID)
             if (!nameList) {
                 nameList = []
                 commonNames.put(taxonID, nameList)
             }
-            nameList << vernacularName
+            nameList << [
+                    name: vernacularName,
+                    status: status?.status ?: "common",
+                    priority: status?.priority ?: 100,
+                    source: source,
+                    datasetID: datasetID,
+                    language: language ?: grailsApplication.config.commonNameDefaultLanguage
+            ]
         }
         commonNames
     }
+
+
+    /**
+     * Read the identifier file, building a map of taxonID -> [identifier1, identifier2 etc]
+     *
+     * @param fileName
+     * @return
+     */
+    private def readOtherIdentifiers(ArchiveFile identifierArchiveFile) {
+        def identifiers = [:]
+
+        if(!identifierArchiveFile){
+            return identifiers
+        }
+
+        def statusMap = identifierStatus()
+
+        Iterator<Record> iter = identifierArchiveFile.iterator()
+        while (iter.hasNext()) {
+            Record record = iter.next()
+            def taxonID = record.id()
+            def identifier = record.value(DcTerm.identifier)
+            def title = record.value(DcTerm.title)
+            def subject = record.value(DcTerm.subject)
+            def format = record.value(DcTerm.format)
+            def source = record.value(DcTerm.source)
+            def datasetID = record.value(DwcTerm.datasetID)
+            def idStatus = record.value(ALATerm.status)
+            def status = idStatus ? statusMap.get(idStatus.toLowerCase()) : null
+            if (idStatus && !status)
+                log.warn "Supplied status for ${taxonID} or ${idStatus} cannot be found"
+
+            def ids = identifiers.get(taxonID)
+            if (!ids) {
+                ids = []
+                identifiers.put(taxonID, ids)
+            }
+            ids << [
+                    identifier: identifier,
+                    name: title,
+                    status: status?.status,
+                    priority: status?.priority ?: 200,
+                    subject: subject,
+                    format: format,
+                    source: source,
+                    datasetID: datasetID
+            ]
+        }
+        identifiers
+    }
+
 
     /**
      * Get the taxon rank structure
@@ -822,6 +967,36 @@ class ImportService {
         while (iter.hasNext()) {
             def entry = iter.next()
             idMap.put(entry.rank, entry)
+        }
+        idMap
+    }
+
+    /**
+     * Get vernacular name information
+     */
+    def vernacularNameStatus() {
+        JsonSlurper slurper = new JsonSlurper()
+        def ranks = slurper.parse(this.class.getResource("/vernacularNameStatus.json"))
+        def idMap = [:]
+        def iter = ranks.iterator()
+        while (iter.hasNext()) {
+            def entry = iter.next()
+            idMap.put(entry.status, entry)
+        }
+        idMap
+    }
+
+    /**
+     * Get identifier information
+     */
+    def identifierStatus() {
+        JsonSlurper slurper = new JsonSlurper()
+        def ranks = slurper.parse(this.class.getResource("/identifierStatus.json"))
+        def idMap = [:]
+        def iter = ranks.iterator()
+        while (iter.hasNext()) {
+            def entry = iter.next()
+            idMap.put(entry.status, entry)
         }
         idMap
     }

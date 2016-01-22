@@ -1,0 +1,27 @@
+[
+  {
+    "status": "primary",
+    "description": "The current primary identifier for something",
+    "priority": 500
+  },
+  {
+    "status": "current",
+    "description": "An alternative, currently used identifirt",
+    "priority": 400
+  },
+  {
+    "status": "replaced",
+    "description": "An identifier that has been replaced but may be referred to in outdated documents",
+    "priority": 300
+  },
+  {
+    "status": "unknown",
+    "description": "An identifier of unknown status",
+    "priority": 200
+  },
+  {
+    "status": "deprecated",
+    "description": "An identifier that should not be used",
+    "priority": 100
+  }
+]

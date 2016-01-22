@@ -13,5 +13,7 @@ enum IndexDocType {
     INSTITUTION,
     SPECIESLIST,
     HABITAT,
-    WORDPRESS
+    WORDPRESS,
+    COMMON,
+    IDENTIFIER,
 }

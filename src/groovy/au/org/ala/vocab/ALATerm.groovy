@@ -9,7 +9,9 @@ import org.gbif.dwc.terms.Term
  */
 enum ALATerm implements Term {
     nameComplete,
-    nameFormatted;
+    nameFormatted,
+    nameID,
+    status;
 
     static NS = "http://ala.org.au/terms/1.0/"
     static PREFIX = "ala:"
