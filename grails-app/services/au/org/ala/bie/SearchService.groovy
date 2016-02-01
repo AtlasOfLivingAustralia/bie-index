@@ -60,7 +60,7 @@ class SearchService {
         [
                 totalRecords:json.response.numFound,
                 facetResults: formatFacets(json.facet_counts?.facet_fields?:[]),
-                results: formatDocs(json.response.docs)
+                results: formatDocs(json.response.docs, null)
         ]
     }
 
@@ -77,7 +77,8 @@ class SearchService {
         String bq = grailsApplication.config.solr.bq  // dismax boost function
         String defType = grailsApplication.config.solr.defType // query parser type
         String qAlt = grailsApplication.config.solr.qAlt // if no query specified use this query
-        def additionalParams = "&qf=${qf}&bq=${bq}&defType=${defType}&q.alt=${qAlt}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
+        String hl = grailsApplication.config.solr.hl // highlighting params (can be multiple)
+        def additionalParams = "&qf=${qf}&bq=${bq}&defType=${defType}&q.alt=${qAlt}&hl=${hl}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
 
         if (requestedFacets) {
             additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
@@ -139,12 +140,12 @@ class SearchService {
         }
 
 
-        log.debug("auto called with q = ${q}, returning ${json.response.numFound}")
+        log.debug("search called with q = ${q}, returning ${json.response.numFound}")
 
         [
             totalRecords: json.response.numFound,
             facetResults: formatFacets(json.facet_counts?.facet_fields ?: []),
-            results     : formatDocs(json.response.docs),
+            results     : formatDocs(json.response.docs, json.highlighting),
             queryTitle  : queryTitle
         ]
     }
@@ -312,11 +313,19 @@ class SearchService {
 
     /**
      * Retrieve details of a taxon by taxonID
+     *
      * @param taxonID
+     * @param useOfflineIndex
      * @return
      */
-    private def lookupTaxon(taxonID){
-        def indexServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
+    private def lookupTaxon(String taxonID, Boolean useOfflineIndex){
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+
+        if (useOfflineIndex) {
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+        }
+
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
         def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -324,15 +333,25 @@ class SearchService {
     }
 
     /**
+     * Retrieve details of a taxon by taxonID
+     * @param taxonID
+     * @return
+     */
+    private def lookupTaxon(taxonID){
+        lookupTaxon(taxonID, false)
+    }
+
+    /**
      * Retrieve details of a taxon by common name or scientific name
      * @param taxonID
      * @return
      */
-    private def lookupTaxonByName(taxonName){
-
-        def encodedName = URLEncoder.encode(taxonName, 'UTF-8')
-
-        def solrServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +URLEncoder.encode(
+    private def lookupTaxonByName(String taxonName, Boolean useOfflineIndex){
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+        if (useOfflineIndex) {
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+        }
+        def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=" +URLEncoder.encode(
                 "commonNameExact:\"" + taxonName + "\" OR scientificName:\"" + taxonName + "\"",
                 "UTF-8"
         )
@@ -340,6 +359,10 @@ class SearchService {
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json.response.docs[0]
+    }
+
+    private def lookupTaxonByName(taxonName){
+        lookupTaxonByName(taxonName, false)
     }
 
     def getProfileForName(name){
@@ -587,7 +610,7 @@ class SearchService {
         formatted
     }
 
-    private def formatDocs(docs){
+    private List formatDocs(docs, highlighting){
 
         def formatted = []
 
@@ -602,18 +625,24 @@ class SearchService {
                 }
 
                 Map doc = [
+                        "id" : it.id, // needed for highlighting
                         "guid" : it.guid,
+                        "linkIdentifier" : it.linkIdentifier,
                         "idxtype": it.idxtype,
                         "name" : it.scientificName,
                         "kingdom" : it.rk_kingdom,
                         "scientificName" : it.scientificName,
                         "author" : it.scientificNameAuthorship,
                         "nameComplete" : it.nameComplete,
+                        "nameFormatted" : it.nameFormatted,
+                        "taxonomicStatus" : it.taxonomicStatus,
                         "parentGuid" : it.parentGuid,
                         "rank": it.rank,
                         "rankID": it.rankID ?: -1,
                         "commonName" : commonNames,
-                        "commonNameSingle" : commonNameSingle
+                        "commonNameSingle" : commonNameSingle,
+                        "occurrenceCount" : it.occurrenceCount,
+                        "conservationStatus" : it.conservationStatus
                 ]
 
                 if(it.acceptedConceptID){
@@ -637,7 +666,9 @@ class SearchService {
                 formatted << doc
             } else {
                 Map doc = [
+                        id : it.id,
                         guid : it.guid,
+                        linkIdentifier : it.linkIdentifier,
                         idxtype: it.idxtype,
                         name : it.name,
                         description : it.description
@@ -647,6 +678,19 @@ class SearchService {
                 formatted << doc
             }
         }
+
+        // highlighting should be a LinkedHashMap with key being the 'id' of the matching result
+        highlighting.each { k, v ->
+            if (v) {
+                Map found = formatted.find { it.id == k }
+                List snips = []
+                v.each { field, snippetList ->
+                    snips.addAll(snippetList)
+                }
+                found.put("highlight", snips.join("<br>"))
+            }
+        }
+
         formatted
     }
 

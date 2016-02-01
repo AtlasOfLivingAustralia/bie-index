@@ -12,6 +12,7 @@
         <li><g:link controller="import" action="collectory">Collectory import tool</g:link> - import collectory information</li>
         <li><g:link controller="import" action="layers">Layer import tool</g:link> - import layer information</li>
         <li><g:link controller="import" action="regions">Region import tool</g:link> - import regions information</li>
+        <li><g:link controller="import" action="specieslist">Species List import tool</g:link> - import species lists information</li>
         <li><g:link controller="import" action="wordpress">WordPress import tool</g:link> - import WordPress pages</li>
     </ul>
 </div>

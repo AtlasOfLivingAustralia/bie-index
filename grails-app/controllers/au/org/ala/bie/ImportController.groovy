@@ -38,6 +38,8 @@ class ImportController {
 
     def regions(){}
 
+    def specieslist(){}
+
     def wordpress(){}
 
     /**
@@ -145,6 +147,21 @@ class ImportController {
                 log.info("Starting import of CMS pages....")
                 importService.importWordPressPages()
                 log.info("Finished import of CMS pages.")
+            }
+            asJson ([success:true] )
+
+    }
+
+     /**
+     * Import/index Species Lists
+     *
+     * @return
+     */
+    def importSpeciesLists(){
+            Thread.start {
+                log.info("Starting import of Species Lists....")
+                importService.importSpeciesLists()
+                log.info("Finished import of Species Lists.")
             }
             asJson ([success:true] )
 
