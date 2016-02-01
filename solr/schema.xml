@@ -372,6 +372,7 @@
    <field name="idxtype" type="string" indexed="true" stored="true" required="true" />
    <field name="name" type="string" indexed="true" stored="true" multiValued="false" omitNorms="false" />
    <field name="description" type="text" indexed="true" stored="true" multiValued="false" omitNorms="false" />
+   <field name="content" type="text" indexed="true" stored="true" multiValued="false" omitNorms="false" />
 
    <!-- Taxa fields -->
    <field name="taxonConceptID" type="string" indexed="true" stored="true" omitNorms="true" />
