@@ -159,8 +159,12 @@ We do not used parenthesised names, since it makes name matching somewhat diffic
 In some cases, the author may not be tacked onto the end, for example *Senecio productus subsp. productus* with
 author *I.Thomps.* has a nameComplete of *Senecio productus I.Thomps. subsp. productus* This is because the
 species ended up being revised.
+* **nameFormatted** A non-DwC term used to contain the correct combination of scientific name and author,
+formatted with HTML span elements and CSS classes.
+This term can be used to ensure that names are correctly presented 
 * **namePublishedIn** If assembled from indivudal reference fields, then the resulting reference roughly follows
 the APA reference style.
+* **dcterms:source** Contains a resolvable URL that provides a specific linked-data source for the name
 
 ## ALA Taxon DwCA
 
@@ -188,7 +192,7 @@ It contains the following columns
 | [taxonID](http://rs.tdwg.org/dwc/terms/taxonID) | yes | yes | The main taxon identifier. This is the taxon concept ID for a taxon and the scientific name ID for a synonym |
 | [parentNameUsageID](http://rs.tdwg.org/dwc/terms/parentNameUsageID) | yes | no | If this is an accepted name then the taxonID of the parent in the taxonomic tree. Empty if a synonym. |
 | [acceptedNameUsageID](http://rs.tdwg.org/dwc/terms/acceptedNameUsageID) | yes | no | If this is an synonym then the taxonID of the accepted name. Empty if an accepted name. |
-| [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | no | The source collectory dataset for this taxon |
+| [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | no | The UID of the source collectory dataset for this taxon |
 | [scientificName](http://rs.tdwg.org/dwc/terms/scientificName) | yes | yes | The accepted taxon name or synonym |
 | [taxonRank](http://rs.tdwg.org/dwc/terms/scientificNameAuthorship) | yes | yes | If this is an accepted name then the taxonID of the parent in the taxonomic tree. Empty if a synonym. |
 | [taxonConceptID](http://rs.tdwg.org/dwc/terms/taxonConceptID) | no | no | The taxon concept ID that this taxon maps onto.  |
@@ -200,6 +204,8 @@ It contains the following columns
 | [namePublishedIn](http://rs.tdwg.org/dwc/terms/namePublishedIn) | no | no | A reference to the publication of the name  |
 | [namePublishedInYear](http://rs.tdwg.org/dwc/terms/namePublishedInYear) | no | no | The year of publication. Note that if this is not included there may be no indication of when the name was published, since the authorship column may not contain a year  |
 | [nameComplete](http://ala.org.au/terms/1.0/nameComplete) | no | no | The name with authorship information in the correct position  |
+| [nameFormatted](http://ala.org.au/terms/1.0/nameComplete) | no | no | The name with authorship information in the correct position, formatted with HTML/CSS spans  |
+| [source](http://purl.org/dc/terms/language) | no | no | An optional linked-data URL for the name  |
 
 
 senior- or self-synonyms are not included in taxon.csv.
@@ -218,8 +224,9 @@ It contains the following columns
 | nameID | no | A unique identifier for the vernacular name |
 | [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | The source collectory dataset for this name |
 | [vernacularName](http://rs.tdwg.org/dwc/terms/vernacularName) | yes | The actual common name |
-| vernacularNameStatus | no | The relative importance of the name |
+| [status](http://ala.org.au/terms/1.0/status) | no | The relative importance of the name |
 | [language](http://purl.org/dc/terms/language) | no | The language of the common name  |
+| [source](http://purl.org/dc/terms/language) | no | no | An optional linked-data URL for the name  |
 
 Note that a vernacular name, eg. "Blue Gum", can be linked to any number of scientific names.
 
@@ -250,8 +257,8 @@ It contains the following columns
 | [subject](http://purl.org/dc/terms/subject) | no | Information on how the identifier is to be used  |
 | [format](http://purl.org/dc/terms/format) | no | A term referencing how the identifier is to be interpreted, eg. "LSID" |
 | [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | The source collectory dataset for this identifier |
-| [source](http://purl.org/dc/terms/source) | no | The source of the identifier  |
-| status | no | The status of the identifier  |
+| [source](http://purl.org/dc/terms/source) | no | The linked-data source of the identifier  |
+| [status](http://ala.org.au/terms/1.0/status) | no | The status of the identifier |
 
 Identifier status gives a hint as to how additional identifiers should be interpreted.
 They use the following vocabulary:
