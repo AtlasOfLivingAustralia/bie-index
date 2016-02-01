@@ -34,6 +34,8 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 
+import java.util.regex.Pattern
+
 /**
  * Services for data importing.
  */
@@ -266,15 +268,19 @@ class ImportService {
                def details = js.parseText(new URL(it.uri).getText("UTF-8"))
                def doc = [:]
                doc["id"] = it.uri
+               doc["datasetID"] = details.uid
                doc["guid"] = details.alaPublicUrl
                doc["idxtype"] = indexDocType.name()
                doc["name"] = details.name
-               doc["description"] = details.description
+               doc["description"] = details.pubDescription
                doc["distribution"] = "N/A"
 
-               if(details.acronym){
+               if (details.rights)
+                   doc["rights"] = details.rights
+               if (details.licenseType)
+                   doc["license"] = (details.licenseType + " " + details.licenseVersion ?: "").trim()
+               if(details.acronym)
                    doc["acronym"] = details.acronym
-               }
 
                entities << doc
 
@@ -431,9 +437,9 @@ class ImportService {
             ArchiveFile taxaArchiveFile = archive.getCore()
 
             // Archive metadata available
-            log("Archive metadata detected: " + (archive.metadata != null))
+            log("Archive metadata detected: " + (archive.metadataLocation != null))
             def datasetName = null
-            if (archive.metadataLocation) {
+             if (archive.metadataLocation) {
                 datasetName = archive.metadata.title?.trim()
                 log("Dataset name from metadata: " + datasetName)
             }
@@ -499,13 +505,16 @@ class ImportService {
             log("Creating entries in index...")
 
             //read inventory, creating entries in index....
-            def alreadyIndexed = [DwcTerm.taxonID,
-                                  DwcTerm.datasetID,
-                                  DwcTerm.acceptedNameUsageID,
-                                  DwcTerm.parentNameUsageID,
-                                  DwcTerm.scientificName,
-                                  DwcTerm.taxonRank,
-                                  DwcTerm.scientificNameAuthorship
+            def alreadyIndexed = [
+                    DwcTerm.taxonID,
+                    DwcTerm.datasetID,
+                    DwcTerm.acceptedNameUsageID,
+                    DwcTerm.parentNameUsageID,
+                    DwcTerm.scientificName,
+                    DwcTerm.taxonRank,
+                    DwcTerm.scientificNameAuthorship,
+                    ALATerm.nameComplete,
+                    ALATerm.nameFormatted
             ]
 
             def buffer = []
@@ -522,7 +531,7 @@ class ImportService {
                 def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
 
                 if (taxonID == acceptedNameUsageID || acceptedNameUsageID == "" || acceptedNameUsageID == null) {
-
+                    def datasetID = (record.value(DwcTerm.datasetID))
                     def taxonRank = (record.value(DwcTerm.taxonRank) ?: "").toLowerCase()
                     def scientificName = record.value(DwcTerm.scientificName)
                     def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
@@ -534,6 +543,7 @@ class ImportService {
                     def doc = ["idxtype": IndexDocType.TAXON.name()]
                     doc["id"] = UUID.randomUUID().toString()
                     doc["guid"] = taxonID
+                    doc["datasetID"] = datasetID
                     doc["parentGuid"] = parentNameUsageID
                     doc["rank"] = taxonRank
                     doc["rankID"] = taxonRankID
@@ -541,7 +551,7 @@ class ImportService {
                     doc["scientificNameAuthorship"] = scientificNameAuthorship
                     doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
                     doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
-                    def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear ]
+                    def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear, DcTerm.source ]
 
                     //index additional fields that are supplied in the core
                     record.terms().each { term ->
@@ -616,6 +626,7 @@ class ImportService {
                                 def sdoc = ["idxtype": IndexDocType.TAXON.name()]
                                 sdoc["id"] = UUID.randomUUID().toString()
                                 sdoc["guid"] = synonym["taxonID"]
+                                sdoc["datasetID"] = synonym['datasetID']
                                 sdoc["rank"] = taxonRank
                                 sdoc["rankID"] = taxonRankID
                                 sdoc["scientificName"] = synonym['scientificName']
@@ -651,6 +662,7 @@ class ImportService {
                             def cdoc = ["idxtype": IndexDocType.COMMON.name()]
                             cdoc["id"] = UUID.randomUUID().toString()
                             cdoc["guid"] = cdoc["id"]
+                            cdoc["datasetID"] = commonName['datasetID']
                             cdoc["taxonGuid"] = taxonID
                             cdoc["name"] = commonName['name']
                             cdoc["status"] = commonName['status']
@@ -682,6 +694,7 @@ class ImportService {
                             def idoc =  ["idxtype": IndexDocType.IDENTIFIER.name()]
                             idoc["id"] = UUID.randomUUID().toString()
                             idoc["guid"] = identifier['identifier']
+                            idoc["datasetID"] = identifier['datasetID']
                             idoc["taxonGuid"] = taxonID
                             idoc["name"] = identifier['name']
                             idoc["status"] = identifier['status'] ?: "unknown"
@@ -897,7 +910,7 @@ class ImportService {
                     priority: status?.priority ?: 100,
                     source: source,
                     datasetID: datasetID,
-                    language: language ?: grailsApplication.config.commonNameDefaultLanguage
+                    language: language
             ]
         }
         commonNames

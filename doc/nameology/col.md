@@ -6,7 +6,7 @@ but which need to be included.
 
 ## Data Source
 
-Data is suppled in the form of Darwin Core archives.
+Data is suppled in the form of Darwin Core archives by downloading from the [DCA_Export](http://www.catalogueoflife.org/DCA_Export/) link
 The data comes with the following files:
 
 | File | Used | Description |

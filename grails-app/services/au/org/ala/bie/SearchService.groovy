@@ -461,6 +461,11 @@ class SearchService {
         def identifiers = identifierJson.response.docs
         def classification = extractClassification(taxon)
 
+        //Dataset index
+        def datasetMap = [:]
+        def taxonDatasetURL = getDataset(taxon.datasetID, datasetMap)?.guid
+        def taxonDatasetName = getDataset(taxon.datasetID, datasetMap)?.name
+
         def model = [
                 taxonConcept:[
                         guid: taxon.guid,
@@ -470,16 +475,19 @@ class SearchService {
                         nameFormatted: taxon.nameFormatted,
                         author: taxon.scientificNameAuthorship,
                         rankString: taxon.rank,
-                        nameAuthority: taxon.datasetName ?: grailsApplication.config.defaultNameSourceAttribution,
+                        nameAuthority: taxon.datasetName ?: taxonDatasetName ?: grailsApplication.config.defaultNameSourceAttribution,
                         rankID:taxon.rankID,
                         namePublishedIn: taxon.namePublishedIn,
                         namePublishedInYear: taxon.namePublishedInYear,
                         namePublishedInID: taxon.namePublishedInID,
-                        infoSourceURL: taxon.source
+                        infoSourceURL: taxon.source ?: taxonDatasetURL,
+                        datasetURL: taxonDatasetURL
                 ],
                 taxonName:[],
                 classification:classification,
                 synonyms:synonyms.collect { synonym ->
+                    def datasetURL = getDataset(synonym.datasetID, datasetMap)?.guid
+                    def datasetName = getDataset(synonym.datasetID, datasetMap)?.name
                     [
                             nameString: synonym.scientificName,
                             nameComplete: synonym.nameComplete,
@@ -488,32 +496,39 @@ class SearchService {
                             namePublishedIn: synonym.namePublishedIn,
                             namePublishedInYear: synonym.namePublishedInYear,
                             namePublishedInID: synonym.namePublishedInID,
-                            nameAuthority: synonym.datasetName ?: grailsApplication.config.synonymSourceAttribution,
-                            infoSourceURL: synonym.source
+                            nameAuthority: synonym.datasetName ?: datasetName ?: grailsApplication.config.synonymSourceAttribution,
+                            infoSourceURL: synonym.source ?: datasetURL,
+                            datasetURL: datasetURL
                     ]
                 },
                 commonNames: commonNames.collect { commonName ->
+                    def datasetURL = getDataset(commonName.datasetID, datasetMap)?.guid
+                    def datasetName = getDataset(commonName.datasetID, datasetMap)?.name
                     [
                             nameString: commonName.name,
                             status: commonName.status,
                             priority: commonName.priority,
                             language: commonName.language ?: grailsApplication.config.commonNameDefaultLanguage,
-                            infoSourceName: commonName.datasetName ?: grailsApplication.config.commonNameSourceAttribution,
-                            infoSourceURL: commonName.source
+                            infoSourceName: commonName.datasetName ?: datasetName ?: grailsApplication.config.commonNameSourceAttribution,
+                            infoSourceURL: commonName.source ?: datasetURL,
+                            datasetURL: datasetURL
                     ]
                 },
                 conservationStatuses:[], //TODO need to be indexed from list tool
                 extantStatuses: [],
                 habitats: [],
                 identifiers: identifiers.collect { identifier ->
+                    def datasetURL = getDataset(identifier.datasetID, datasetMap)?.guid
+                    def datasetName = getDataset(identifier.datasetID, datasetMap)?.name
                     [
                             identifier: identifier.guid,
                             nameString: identifier.name,
                             status: identifier.status,
                             subject: identifier.subject,
                             format: identifier.format,
-                            infoSourceName: identifier.datasetName ?: grailsApplication.config.identifierSourceAttribution,
-                            infoSourceURL: identifier.source,
+                            infoSourceName: identifier.datasetName ?: datasetName ?: grailsApplication.config.identifierSourceAttribution,
+                            infoSourceURL: identifier.source ?: datasetURL,
+                            datasetURL: datasetURL
                     ]
                 }
         ]
@@ -692,5 +707,21 @@ class SearchService {
             log.error(error, e)
             return error
         }
+    }
+
+    def getDataset(String datasetID, Map datasets) {
+        if (!datasetID)
+            return null
+        def dataset = datasets.get(datasetID)
+        if (!dataset) {
+            def datasetQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
+                    URLEncoder.encode("datasetID:\"" + datasetID + "\"", "UTF-8") + "&fq=idxtype:" + IndexDocType.DATARESOURCE.name()
+            def datasetQueryResponse = new URL(datasetQueryUrl).getText("UTF-8")
+            def js = new JsonSlurper()
+            def datasetJson = js.parseText(datasetQueryResponse)
+            dataset = datasetJson.response.docs && datasetJson.response.docs.size() > 0 ? datasetJson.response?.docs?.get(0) : null
+            datasets.put(datasetID, dataset)
+        }
+        return dataset
     }
 }

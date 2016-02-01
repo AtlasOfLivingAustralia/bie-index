@@ -39,6 +39,8 @@ Additional fields can be added which will allow more sophisticated handling of n
 
 - [nameComplete](http://ala.org.au/terms/1.0/nameComplete) An explicit complete name. If not specified, the scientificNameAuthorship (if present) is appended to the scientificName to make the canonical name.
 - [nameFormatted](http://ala.org.au/terms/1.0/nameFormatted) An explicitly formatted name, with name, author and structural parts marked by `<span class="...">` elements. If not explicitly present, it is constructed from the information available. See [Name Formatting](doc/nameology/name-formatting.md) for details.
+- [source](http://purl.org/dc/terms/source) A URL for a source of the name. This can be used to link to a page containing the original data.
+- [datasetID](http://rs.tdwg.org/dwc/terms/#datasetID) The uid of the collectory dataset ID. If provided, then a link to the dataset description will be provided
 
 Additional fields added to the core file e.g. establishmentMeans or any other field will also be indexed and available for facetted searching.
 
@@ -49,6 +51,7 @@ Additional fields , which will allow more sophisticated handling of vernacular n
 
 - [status](http://ala.org.au/terms/1.0/status) An indicator of the relative importance of the vernacular name. The controlled vocabulary is read from [vernacularNameStatus.json](grails-app/config/vernacularNameStatus.json)
 - [source](http://purl.org/dc/terms/source) A URL for a source of the vernacular name. This can be used to link to a page containing the original data.
+- [datasetID](http://rs.tdwg.org/dwc/terms/#datasetID) The uid of the collectory dataset ID. If provided, then a link to the dataset description will be provided
 
 An extension file of additional identifiers is also supported.
 The format aligns with the [GBIF identfier](http://rs.gbif.org/terms/1.0/Identifier) format.
@@ -57,8 +60,14 @@ Additional fields, which will allow more sophisticated handling of identifiers a
 
 - [status](http://ala.org.au/terms/1.0/status) An indicator of the relative importance of the identifier. The controlled vocabulary is read from [identifierStatus.json](grails-app/config/identifierStatus.json)
 - [source](http://purl.org/dc/terms/source) A URL for a source of the identifier. This can be used to link to a page containing the original data.
+- [datasetID](http://rs.tdwg.org/dwc/terms/#datasetID) The uid of the collectory dataset ID. If provided, then a link to the dataset description will be provided
 
-If the Darwin Core Archive contains an `eml.xml` metadata file, and no dataset name is directly supplied, the dataset name is taken from the dataset title.
+### emlxml
+
+A Darwin Core Archive may contain an `eml.xml` metadata file, in the [Ecological Metadata Language](https://knb.ecoinformatics.org/#tools/eml) format.
+If available, default information is gathered from the metadata file:
+
+- **datasetName** Derived from `eml/dataset/title`
 
 ### Basic example meta.xml
 
