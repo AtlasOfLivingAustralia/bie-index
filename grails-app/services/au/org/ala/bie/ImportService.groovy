@@ -13,13 +13,14 @@
 
 package au.org.ala.bie
 
-import au.org.ala.bie.search.BIETerms
 import au.org.ala.bie.search.IndexDocType
-import au.org.ala.names.parser.PhraseNameParser
 import au.org.ala.vocab.ALATerm
+import grails.converters.JSON
 import groovy.json.JsonSlurper
+import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
+import org.codehaus.groovy.grails.web.json.JSONElement
 import org.gbif.dwc.terms.DcTerm
 import org.gbif.dwc.terms.DwcTerm
 import org.gbif.dwc.terms.GbifTerm
@@ -41,7 +42,7 @@ class ImportService {
 
     def serviceMethod() {}
 
-    def indexService
+    def indexService, searchService
 
     def grailsApplication
 
@@ -415,6 +416,93 @@ class ImportService {
         pageUrls
     }
 
+    /**
+     * Import and index species lists for:
+     * <ul>
+     *   <li> conservation status </li>
+     *   <li> sensitive ? </li>
+     *   <li> host-pest interactions ? </li>
+     * </ul>
+     * For each taxon in each list, update that taxon's SOLR doc with additional fields
+     */
+    def importSpeciesLists() throws Exception {
+        def speciesListUrl = grailsApplication.config.speciesList.url
+        def speciesListParams = grailsApplication.config.speciesList.params
+        def conservationSourceField  = grailsApplication.config.conservationList.sourceField
+        Map speciesListMap = grailsApplication.config.conservationLists?:[:]
+
+        speciesListMap.each { drUid, solrField ->
+            if (drUid && solrField) {
+                def url = "${speciesListUrl}${drUid}${speciesListParams}"
+
+                try {
+                    JSONElement json = JSON.parse(getStringForUrl(url))
+                    updateDocsWithConservationStatus(json, conservationSourceField, solrField)
+                } catch (Exception ex) {
+                    def msg = "Error calling webservice: ${ex.message}"
+                    log(msg)
+                    log.warn(msg, ex) // send to user via http socket
+                }
+            }
+        }
+
+    }
+
+    /**
+     * Update TAXON SOLR doc with conservation status info
+     *
+     * @param json
+     * @param jsonFieldName
+     * @param SolrFieldName
+     * @return
+     */
+    private updateDocsWithConservationStatus(JSONElement json, String jsonFieldName, String SolrFieldName) {
+        if (json.size() > 0) {
+            def totalDocs = json.size()
+            def buffer = []
+
+            log("0") // reset progress bar
+            log("Updating taxa with ${SolrFieldName}")
+            json.eachWithIndex { item, i ->
+                log.debug "item = ${item}"
+                def taxonDoc
+
+                if (item.lsid) {
+                    taxonDoc = searchService.lookupTaxon(item.lsid, true) // TODO cache call
+                }
+
+                if (!taxonDoc && item.name) {
+                    taxonDoc = searchService.lookupTaxonByName(item.name, true) // TODO cache call
+                }
+
+                if (taxonDoc) {
+                    // do a SOLR doc (atomic) update
+                    def doc = [:]
+                    doc["id"] = taxonDoc.id // doc key
+                    doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
+                    doc["guid"] = ["set": taxonDoc.guid] // required field
+                    def fieldVale = item.kvpValues.find{it.key == jsonFieldName}?.get("value")
+                    doc[SolrFieldName] = ["set": fieldVale ] // "set" lets SOLR know to update record
+                    log.debug "new doc = ${doc}"
+                    buffer << doc
+                } else {
+                    log("Warning: No taxon found for ${item.name}")
+                }
+
+                if (i > 0) {
+                    Double percentDone = (i / totalDocs) * 100
+                    log("${percentDone.round(1)}") // progress bar output
+                }
+            }
+
+            log("Committing to SOLR...")
+            indexService.indexBatch(buffer)
+            log("100") // complete progress bar
+            log("Import finished.")
+        } else {
+            log("JSON not an array or has no elements - exitting")
+        }
+    }
 
     /**
      * Import a DwC-A into this system.
@@ -1114,6 +1202,23 @@ class ImportService {
         if (scientificNameAuthorship)
             return "<span class=\"${formattedCssClass}\"><span class=\"name\">${StringEscapeUtils.escapeHtml(scientificName)}</span> <span class=\"author\">${StringEscapeUtils.escapeHtml(scientificNameAuthorship)}</span></span>"
         return "<span class=\"${formattedCssClass}\"><span class=\"name\">${StringEscapeUtils.escapeHtml(scientificName)}</span></span>"
+    }
+
+    /**
+     * Helper method to do a HTTP GET and return String content
+     *
+     * @param url
+     * @return
+     */
+    private String getStringForUrl(String url) throws IOException {
+        String output = ""
+        def inStm = new URL( url ).openStream()
+        try {
+            output =  IOUtils.toString( inStm )
+        } finally {
+            IOUtils.closeQuietly(inStm)
+        }
+        output
     }
 
     def log(msg){

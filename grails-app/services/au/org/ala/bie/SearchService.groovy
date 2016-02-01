@@ -313,11 +313,19 @@ class SearchService {
 
     /**
      * Retrieve details of a taxon by taxonID
+     *
      * @param taxonID
+     * @param useOfflineIndex
      * @return
      */
-    private def lookupTaxon(taxonID){
-        def indexServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
+    private def lookupTaxon(String taxonID, Boolean useOfflineIndex){
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+
+        if (useOfflineIndex) {
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+        }
+
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
         def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -325,15 +333,25 @@ class SearchService {
     }
 
     /**
+     * Retrieve details of a taxon by taxonID
+     * @param taxonID
+     * @return
+     */
+    private def lookupTaxon(taxonID){
+        lookupTaxon(taxonID, false)
+    }
+
+    /**
      * Retrieve details of a taxon by common name or scientific name
      * @param taxonID
      * @return
      */
-    private def lookupTaxonByName(taxonName){
-
-        def encodedName = URLEncoder.encode(taxonName, 'UTF-8')
-
-        def solrServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +URLEncoder.encode(
+    private def lookupTaxonByName(String taxonName, Boolean useOfflineIndex){
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+        if (useOfflineIndex) {
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+        }
+        def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=" +URLEncoder.encode(
                 "commonNameExact:\"" + taxonName + "\" OR scientificName:\"" + taxonName + "\"",
                 "UTF-8"
         )
@@ -341,6 +359,10 @@ class SearchService {
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json.response.docs[0]
+    }
+
+    private def lookupTaxonByName(taxonName){
+        lookupTaxonByName(taxonName, false)
     }
 
     def getProfileForName(name){

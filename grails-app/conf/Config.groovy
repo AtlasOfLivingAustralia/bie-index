@@ -41,11 +41,25 @@ wordPress {
     excludedCategories = ["button"]
     contentOnlyParams = "?content-only=1&categories=1"
 }
-
+speciesList.url = "http://lists.ala.org.au/ws/speciesListItems/"
+speciesList.params = "?includeKVP=true"
+// Conservation lists to index
+conservationList.sourceField = "sourceStatus"
+conservationLists {
+    dr656 = "conservationStatusAUS_s"
+    dr649 = "conservationStatusACT_s"
+    dr650 = "conservationStatusNSW_s"
+    dr652 = "conservationStatusQLD_s"
+    dr655 = "conservationStatusVIC_s"
+    dr654 = "conservationStatusTAS_s"
+    dr653 = "conservationStatusSA_s"
+    dr2201 = "conservationStatusWA_s"
+    dr651 = "conservationStatusNT_s"
+}
 // SOLR additional params
 solr {
-    qf = "doc_name^1000+text"
-    bq = "taxonomicStatus:accepted^10000"
+    qf = "doc_name^100+text"
+    bq = "taxonomicStatus:accepted^1000+rankID:7000^1000"
     defType = "edismax"
     qAlt = "text:*"
     hl = "true&hl=true&hl.fl=*&hl.simple.pre=<b>&hl.simple.post=</b>"
