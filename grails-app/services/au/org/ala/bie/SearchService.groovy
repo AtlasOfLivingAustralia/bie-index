@@ -131,7 +131,7 @@ class SearchService {
                 def shortProfile = getShortProfile(guid)
                 queryTitle = rankName + " " + shortProfile.scientificName
             } catch (Exception e){
-
+                //log.debug("Exception thrown parsing name..", e)
             }
         }
 
@@ -673,8 +673,12 @@ class SearchService {
                         name : it.name,
                         description : it.description
                 ]
-                if (it.taxonGuid)
+                if (it.taxonGuid) {
                     doc.put("taxonGuid", it.taxonGuid)
+                }
+                if(it.centroid){
+                    doc.put("centroid", it.centroid)
+                }
                 formatted << doc
             }
         }

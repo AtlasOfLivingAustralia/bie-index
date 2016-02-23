@@ -13,10 +13,12 @@
 
 package au.org.ala.bie
 
+import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.vocab.ALATerm
 import grails.converters.JSON
 import groovy.json.JsonSlurper
+import org.apache.commons.compress.compressors.gzip.GzipUtils
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
@@ -36,6 +38,7 @@ import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 
 import java.util.regex.Pattern
+import java.util.zip.GZIPInputStream
 
 /**
  * Services for data importing.
@@ -74,6 +77,24 @@ class ImportService {
             }
         }
         filePaths
+    }
+
+    def importAll(){
+        try { importAllDwcA() } catch (Exception e) { log("Problem loading taxa: " + e.getMessage())}
+        try { importCollectory() } catch (Exception e) { log("Problem loading collectory: " + e.getMessage())}
+        try { importLayers() } catch (Exception e) { log("Problem loading layers: " + e.getMessage())}
+        try { importRegions() } catch (Exception e) { log("Problem loading regions: " + e.getMessage())}
+        //try { importLocalities() } catch (Exception e) { log("Problem loading localities: " + e.getMessage())}
+        try { importSpeciesLists() } catch (Exception e) { log("Problem loading species lists: " + e.getMessage())}
+        try { importWordPressPages() } catch (Exception e) { log("Problem loading wordpress pages: " + e.getMessage())}
+    }
+
+    def importAllDwcA(){
+        clearTaxaIndex()
+        def filePaths = retrieveAvailableDwCAPaths()
+        filePaths.each {
+            importDwcA(it, false)
+        }
     }
 
     /**
@@ -183,32 +204,95 @@ class ImportService {
         log("Finished indexing ${layers.size()} layers")
     }
 
+    def importLocalities(){
+        indexService.deleteFromIndex(IndexDocType.LOCALITY)
+        log("Starting indexing ${grailsApplication.config.gazetteerLayerId}")
+        def metadataUrl = grailsApplication.config.layersServicesUrl + "/layer/" + grailsApplication.config.gazetteerLayerId + "?enabledOnly=false"
+        log("Getting metadata for layer: ${metadataUrl}")
+        def js = new JsonSlurper()
+        def layer = js.parseText(new URL(metadataUrl).getText("UTF-8"))
+        log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
+        importLayer(layer)
+        log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
+    }
+
     def importRegions(){
         def js = new JsonSlurper()
         def layers = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/layers").getText("UTF-8"))
         indexService.deleteFromIndex(IndexDocType.REGION)
         layers.each { layer ->
             if(layer.type == "Contextual") {
-                log("Loading regions from layer " + layer.name)
-                def batch = []
-                def objects = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/objects/cl" + layer.id).getText("UTF-8"))
-                objects.each { object ->
-
-                    def doc = [:]
-                    doc["id"] = object.id
-                    doc["guid"] = object.pid
-                    doc["idxtype"] = IndexDocType.REGION.name()
-                    doc["name"] = object.name
-                    doc["description"] = layer.displayname
-                    doc["distribution"] = "N/A"
-                    batch << doc
-                }
-                if(batch){
-                    indexService.indexBatch(batch)
-                }
+                importLayer(layer)
             }
         }
         log("Finished indexing ${layers.size()} region layers")
+    }
+
+    /**
+     * Import layer into index.
+     *
+     * @param layer
+     * @return
+     */
+    private def importLayer(layer){
+        log("Loading regions from layer " + layer.name)
+
+        def tempFilePath = "/tmp/objects_${layer.id}.csv.gz"
+        def url = grailsApplication.config.layersServicesUrl + "/objects/csv/cl" + layer.id
+        def file = new File(tempFilePath).newOutputStream()
+        file << new URL(url).openStream()
+        file.flush()
+        file.close()
+
+        if(new File(tempFilePath).exists() && new File(tempFilePath).length() > 0){
+
+            def gzipInput = new GZIPInputStream(new FileInputStream(tempFilePath))
+
+            //read file and index
+            def csvReader = new CSVReader(new InputStreamReader(gzipInput))
+
+            def expectedHeaders = ["pid","id","name","description","centroid","featuretype"]
+
+            def headers = csvReader.readNext()
+            def currentLine = []
+            def batch = []
+            while((currentLine = csvReader.readNext()) != null){
+
+                if(currentLine.length >= expectedHeaders.size()){
+
+                    def doc = [:]
+                    doc["id"] = currentLine[0]
+                    doc["guid"] = currentLine[0]
+
+                    if(currentLine[5] == "POINT"){
+                        doc["idxtype"] = IndexDocType.LOCALITY.name()
+                    } else {
+                        doc["idxtype"] = IndexDocType.REGION.name()
+                    }
+
+                    doc["name"] = currentLine[2]
+
+                    if(currentLine[3] && currentLine[2] != currentLine[3]){
+                        doc["description"] = currentLine[3]
+                    } else {
+                        doc["description"] = layer.displayname
+                    }
+
+                    doc["centroid"] = currentLine[4]
+                    doc["distribution"] = "N/A"
+                    batch << doc
+
+                    if(batch.size() > 10000){
+                        indexService.indexBatch(batch)
+                        batch.clear()
+                    }
+                }
+            }
+            if(batch){
+                indexService.indexBatch(batch)
+                batch.clear()
+            }
+        }
     }
 
     def importHabitats(){
@@ -304,6 +388,10 @@ class ImportService {
     def importWordPressPages() throws Exception {
         // clear the existing WP index
         indexService.deleteFromIndex(IndexDocType.WORDPRESS)
+        if(!grailsApplication.config.wordPress.sitemapUrl){
+            return
+        }
+
         // WordPress variables
         String wordPressSitemapUrl = grailsApplication.config.wordPress.sitemapUrl
         String wordPressBaseUrl = grailsApplication.config.wordPress.baseUrl
@@ -440,7 +528,7 @@ class ImportService {
         speciesListMap.each { drUid, solrField ->
             if (drUid && solrField) {
                 def url = "${speciesListUrl}${drUid}${speciesListParams}"
-
+                log("Loading list from: " + url)
                 try {
                     JSONElement json = JSON.parse(getStringForUrl(url))
                     updateDocsWithConservationStatus(json, conservationSourceField, solrField)
@@ -451,7 +539,6 @@ class ImportService {
                 }
             }
         }
-
     }
 
     /**
@@ -506,8 +593,16 @@ class ImportService {
             log("100") // complete progress bar
             log("Import finished.")
         } else {
-            log("JSON not an array or has no elements - exitting")
+            log("JSON not an array or has no elements - exiting")
         }
+    }
+
+    def clearTaxaIndex(){
+        log("Deleting existing taxon entries in index...")
+        indexService.deleteFromIndex(IndexDocType.TAXON)
+        indexService.deleteFromIndex(IndexDocType.COMMON)
+        indexService.deleteFromIndex(IndexDocType.IDENTIFIER)
+        log("Cleared.")
     }
 
     /**
@@ -561,7 +656,6 @@ class ImportService {
                 imageMap = indexImages()
             }
 
-
             //retrieve common names
             def commonNamesMap = readCommonNames(vernacularArchiveFile)
             log("Common names read for " + commonNamesMap.size() + " taxa")
@@ -580,10 +674,7 @@ class ImportService {
 
             //clear
             if (clearIndex) {
-                log("Deleting existing entries in index...")
-                indexService.deleteFromIndex(IndexDocType.TAXON)
-                indexService.deleteFromIndex(IndexDocType.COMMON)
-                indexService.deleteFromIndex(IndexDocType.IDENTIFIER)
+                clearTaxaIndex()
             } else {
                 log("Skipping deleting existing entries in index...")
             }

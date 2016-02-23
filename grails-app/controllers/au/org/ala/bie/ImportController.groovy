@@ -32,11 +32,15 @@ class ImportController {
         [filePaths: filePaths]
     }
 
+    def all(){}
+
     def collectory(){}
 
     def layers(){}
 
     def regions(){}
+
+    def localities(){}
 
     def specieslist(){}
 
@@ -62,6 +66,32 @@ class ImportController {
                 log.info("Starting import of ${dwcDir}....")
                 importService.importDwcA(dwcDir, clearIndex)
                 log.info("Finished import of ${dwcDir}.")
+            }
+            asJson ([success:true])
+        } else {
+            asJson ([success: false, message: 'Supplied directory path is not accessible'])
+        }
+    }
+
+    def importAll(){
+        try {
+            importService.importAll()
+        } catch (Exception e) {
+            log.error("Problem loading taxa: " + e.getMessage(), e)
+        }
+    }
+
+    /**
+     * Import a DwC-A into this system.
+     *
+     * @return
+     */
+    def importAllDwcA() {
+        if(new File(grailsApplication.config.importDir).exists()){
+            Thread.start {
+                log.info("Starting import of all archives....")
+                importService.importAllDwcA()
+                log.info("Finished import of all archives.")
             }
             asJson ([success:true])
         } else {
@@ -110,12 +140,30 @@ class ImportController {
      *
      * @return
      */
+    def importLocalities(){
+        if(grailsApplication.config.layersServicesUrl && grailsApplication.config.gazetteerLayerId){
+            Thread.start {
+                log.info("Starting import of localities from gazetteer....")
+                importService.importLocalities()
+                log.info("Finished import of localities from gazetteer.")
+            }
+            asJson ([success:true] )
+        } else {
+            asJson ([success: false, message: 'layersServicesUrl not configured or gazetteerLayerId not configured'] )
+        }
+    }
+
+    /**
+     * Import information from layers.
+     *
+     * @return
+     */
     def importRegions(){
         if(grailsApplication.config.layersServicesUrl){
             Thread.start {
-                log.info("Starting import of layers....")
+                log.info("Starting import of regions....")
                 importService.importRegions()
-                log.info("Finished import of layers.")
+                log.info("Finished import of regions.")
             }
             asJson ([success:true] )
         } else {
