@@ -691,10 +691,9 @@ class SearchService {
                 v.each { field, snippetList ->
                     snips.addAll(snippetList)
                 }
-                found.put("highlight", snips.join("<br>"))
+                found.put("highlight", snips.toSet().join("<br>"))
             }
         }
-
         formatted
     }
 
