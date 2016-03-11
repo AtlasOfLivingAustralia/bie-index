@@ -1,7 +1,7 @@
 # Catalogue of Life
 
 The [Catalogue of Life](http://www.catalogueoflife.org/) (CoL) is a global taxonomic catalogue.
-The ALA uses CoL for viruses, bacteria and certain fungi that are not part of [AusFungi](ausfungi.md)
+The ALA uses CoL for viruses, bacteria, protozoa, chromista and certain fungi that are not part of [AusFungi](ausfungi.md)
 but which need to be included.
 
 ## Data Source
@@ -40,6 +40,11 @@ If a higher taxon is already in AusFungi, the identifier is replaced by the AusF
 
 CoL is a complete representation of a domain.
 Since parents are included by means of an Australian species being present no further parent processing is required.
+
+Note that there are occasional glitches in the parent-child relationship with at least one ID, 
+urn:lsid:catalogueoflife.org:taxon:e0016937-18fd-11e5-9774-bc764e0806fb:col20150828 referring to both the
+kingdom and phylum.
+
 
 ## DwCA Construction
 

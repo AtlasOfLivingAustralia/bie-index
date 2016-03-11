@@ -13,6 +13,7 @@ the sort of taxonomic Darwin Core Archives that the bie-index expects.
 ## Table of Contents
 
 * [The Goal](#thegoal)
+* [Order of Sources](#orderofsources)
 * [Conventions](conventions.md)
 * [Processing Basics](processing-basics.md)
 * [Name Formatting](name-formatting.md)
@@ -21,8 +22,9 @@ the sort of taxonomic Darwin Core Archives that the bie-index expects.
     * [Australian Plant Name Index and Australian Plant Census (APNI/APC)](apni.md)
     * [AusFungi](ausfungi.md)
     * [AusMoss](ausmoss.md)
-    * [Catalogue of Life](col.md)
     * [Codes for Australian Aquatic Biota](caab.md)
+    * [New Zealand Organism Register](nzor.md)
+    * [Catalogue of Life](col.md)
 
 ## The Goal
 
@@ -73,3 +75,23 @@ the genuis *Grus*, then the family *GRUIDAE*, the order *GRUIFORMES*, the class 
 the taxon *GNATHOSTOMATA*, the subphylum *VERTEBRATA*, the phylum *CHORDATA* and the kingdom *ANIMALIA*.
 This means that anyone looking for "class:AVES" will get this record.
 
+## Order of Sources
+
+Some sources are more equal than others.
+Generally, if a name/author occurs in an earlier source, then the identifier and source for that source is
+used and identifiers are mapped in following sources.
+The order of priority for sources is:
+
+1. Australian Faunal Directory
+2. Australian Plant Name Index/Australian Plant Census
+3. AusFungi
+4. AusMoss
+5. Codes for Australian Aquatic Biota
+6. New Zealand Organism Register
+7. Catalogue of Life
+
+There are some cases where source disagree on classification to the point where the same species appears
+at a different rank or with different parents.
+For example, the Australian Pelican is *Pelecanus conspicillatus* in the AFD and 
+*Pelecanus conspicillatus conspicillatus* in NZOR.
+There's not much that can be done about this, but it does make failed matches likely when using vernacular names.
