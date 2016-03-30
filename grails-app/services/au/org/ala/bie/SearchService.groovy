@@ -59,7 +59,7 @@ class SearchService {
 
         [
                 totalRecords:json.response.numFound,
-                facetResults: formatFacets(json.facet_counts?.facet_fields?:[]),
+                facetResults: formatFacets(json.facet_counts?.facet_fields?:[:]),
                 results: formatDocs(json.response.docs, null)
         ]
     }
@@ -139,12 +139,11 @@ class SearchService {
             queryTitle = "all records"
         }
 
-
         log.debug("search called with q = ${q}, returning ${json.response.numFound}")
 
         [
             totalRecords: json.response.numFound,
-            facetResults: formatFacets(json.facet_counts?.facet_fields ?: [], requestedFacets),
+            facetResults: formatFacets(json.facet_counts?.facet_fields ?: [:], requestedFacets),
             results     : formatDocs(json.response.docs, json.highlighting),
             queryTitle  : queryTitle
         ]
@@ -599,22 +598,26 @@ class SearchService {
         def formatted = []
 
         if (requestedFacets) {
-            // maintain order of facets from facets request paramater
+            // maintain order of facets from facets request parameter
             requestedFacets.each { facetName ->
                 if (facetFields.containsKey(facetName)) {
                     def arrayValues = facetFields.get(facetName)
                     def facetValues = []
-                    for (int i =0; i < arrayValues.size(); i+=2){
-                        facetValues << [label:arrayValues[i], count: arrayValues[i+1], fieldValue:arrayValues[i] ]
+                    for (int i = 0; i < arrayValues.size(); i += 2) {
+                        facetValues << [label: arrayValues[i], count: arrayValues[i + 1], fieldValue: arrayValues[i]]
                     }
                     formatted << [
-                            fieldName: facetName,
+                            fieldName  : facetName,
                             fieldResult: facetValues
                     ]
                 }
             }
-        } else {
-            facetFields.each { facetName, arrayValues ->
+
+        }
+
+        // Catch any remaining facets OR if requestedFacets is empty (not specified)
+        facetFields.each { facetName, arrayValues ->
+            if (!requestedFacets.contains(facetName)) {
                 def facetValues = []
                 for (int i =0; i < arrayValues.size(); i+=2){
                     facetValues << [label:arrayValues[i], count: arrayValues[i+1], fieldValue:arrayValues[i] ]
