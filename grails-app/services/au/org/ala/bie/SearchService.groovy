@@ -144,7 +144,7 @@ class SearchService {
 
         [
             totalRecords: json.response.numFound,
-            facetResults: formatFacets(json.facet_counts?.facet_fields ?: []),
+            facetResults: formatFacets(json.facet_counts?.facet_fields ?: [], requestedFacets),
             results     : formatDocs(json.response.docs, json.highlighting),
             queryTitle  : queryTitle
         ]
@@ -595,18 +595,37 @@ class SearchService {
         classification
     }
 
-    private def formatFacets(facetFields){
+    private def formatFacets(Map facetFields, List requestedFacets = []){
         def formatted = []
-        facetFields.each { facetName, arrayValues ->
-            def facetValues = []
-            for (int i =0; i < arrayValues.size(); i+=2){
-                facetValues << [label:arrayValues[i], count: arrayValues[i+1], fieldValue:arrayValues[i] ]
+
+        if (requestedFacets) {
+            // maintain order of facets from facets request paramater
+            requestedFacets.each { facetName ->
+                if (facetFields.containsKey(facetName)) {
+                    def arrayValues = facetFields.get(facetName)
+                    def facetValues = []
+                    for (int i =0; i < arrayValues.size(); i+=2){
+                        facetValues << [label:arrayValues[i], count: arrayValues[i+1], fieldValue:arrayValues[i] ]
+                    }
+                    formatted << [
+                            fieldName: facetName,
+                            fieldResult: facetValues
+                    ]
+                }
             }
-            formatted << [
-                    fieldName: facetName,
-                    fieldResult: facetValues
-            ]
+        } else {
+            facetFields.each { facetName, arrayValues ->
+                def facetValues = []
+                for (int i =0; i < arrayValues.size(); i+=2){
+                    facetValues << [label:arrayValues[i], count: arrayValues[i+1], fieldValue:arrayValues[i] ]
+                }
+                formatted << [
+                        fieldName: facetName,
+                        fieldResult: facetValues
+                ]
+            }
         }
+
         formatted
     }
 
