@@ -35,6 +35,7 @@ synonymSourceAttribution = "National Species Lists"
 imageThumbnailUrl = "http://images.als.scot/image/proxyImageThumbnail?imageId="
 imageLargeUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
 imageSmallUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
+gazetteerLayerId = "2123"
 wordPress {
     sitemapUrl = "http://www.ala.org.au/sitemap.xml"
     baseUrl = "http://www.ala.org.au/?page_id="

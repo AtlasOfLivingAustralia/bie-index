@@ -7,6 +7,7 @@ enum IndexDocType {
     TAXON,
     LAYER,
     REGION,
+    LOCALITY,
     DATARESOURCE,
     DATAPROVIDER,
     COLLECTION,
