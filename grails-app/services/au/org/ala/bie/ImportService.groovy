@@ -15,6 +15,7 @@ package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
+import au.org.ala.bie.search.IndexedTypes
 import au.org.ala.vocab.ALATerm
 import grails.converters.JSON
 import groovy.json.JsonSlurper
@@ -524,14 +525,17 @@ class ImportService {
         def speciesListParams = grailsApplication.config.speciesList.params
         def conservationSourceField  = grailsApplication.config.conservationList.sourceField
         Map speciesListMap = grailsApplication.config.conservationLists?:[:]
+        Integer listNum = 0
 
         speciesListMap.each { drUid, solrField ->
+            listNum++
+            Integer listProgress = (listNum / speciesListMap.size()) * 100 // percentage as int
             if (drUid && solrField) {
                 def url = "${speciesListUrl}${drUid}${speciesListParams}"
                 log("Loading list from: " + url)
                 try {
                     JSONElement json = JSON.parse(getStringForUrl(url))
-                    updateDocsWithConservationStatus(json, conservationSourceField, solrField)
+                    updateDocsWithConservationStatus(json, conservationSourceField, solrField, drUid, listProgress)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -549,12 +553,15 @@ class ImportService {
      * @param SolrFieldName
      * @return
      */
-    private updateDocsWithConservationStatus(JSONElement json, String jsonFieldName, String SolrFieldName) {
+    private updateDocsWithConservationStatus(JSONElement json, String jsonFieldName, String SolrFieldName, String drUid, Integer listProgress) {
         if (json.size() > 0) {
             def totalDocs = json.size()
             def buffer = []
+            def statusMap = vernacularNameStatus()
+            def legistatedStatusType = statusMap.get("legislated")
+            def unmatchedTaxaCount = 0
 
-            log("0") // reset progress bar
+            log("${listProgress}||0") // reset progress bar
             log("Updating taxa with ${SolrFieldName}")
             json.eachWithIndex { item, i ->
                 log.debug "item = ${item}"
@@ -576,21 +583,37 @@ class ImportService {
                     doc["guid"] = ["set": taxonDoc.guid] // required field
                     def fieldVale = item.kvpValues.find{it.key == jsonFieldName}?.get("value")
                     doc[SolrFieldName] = ["set": fieldVale ] // "set" lets SOLR know to update record
-                    log.debug "new doc = ${doc}"
+                    log.debug "adding to doc = ${doc}"
                     buffer << doc
                 } else {
-                    log("Warning: No taxon found for ${item.name}")
+                    // No match so add it as a vernacular name
+                    def doc = [:]
+                    doc["id"] = UUID.randomUUID().toString() // doc key
+                    doc["idxtype"] = IndexDocType.TAXON // required field
+                    doc["guid"] = "ALA_${item.name?.replaceAll(" ","_")}" // required field
+                    doc["datasetID"] = drUid
+                    doc["datasetName"] = "Conservation list for ${SolrFieldName}"
+                    doc["name"] = item.name
+                    doc["status"] = legistatedStatusType?.status?:"legistated"
+                    doc["priority"] = legistatedStatusType?.priority?:500
+                    // set conservationStatus facet
+                    def fieldVale = item.kvpValues.find{it.key == jsonFieldName}?.get("value")
+                    doc[SolrFieldName] = fieldVale
+                    log.debug "new name doc = ${doc}"
+                    buffer << doc
+                    log("No existing taxon found for ${item.name}, so has been added as ${doc["guid"]}")
                 }
 
                 if (i > 0) {
                     Double percentDone = (i / totalDocs) * 100
-                    log("${percentDone.round(1)}") // progress bar output
+                    log("${listProgress}||${percentDone.round(1)}") // progress bar output
                 }
             }
 
             log("Committing to SOLR...")
             indexService.indexBatch(buffer)
-            log("100") // complete progress bar
+            log("${listProgress}||1000") // complete progress bar
+            log("Number of taxa unmatched: ${unmatchedTaxaCount}")
             log("Import finished.")
         } else {
             log("JSON not an array or has no elements - exiting")

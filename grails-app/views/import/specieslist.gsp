@@ -48,7 +48,12 @@
     <div class="well import-info alert-info hide" style="margin-top:20px;">
         <p></p>
         <div class="progress hide">
-            <div class="progress-bar" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+            <div id="progress1" class="progress-bar progress-bar-success" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <span class="sr-only"><span class="percent">0</span>% Complete</span>
+            </div>
+        </div>
+        <div class="progress hide">
+            <div id="progress2" class="progress-bar" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                 <span class="sr-only"><span class="percent">0</span>% Complete</span>
             </div>
         </div>
@@ -77,7 +82,14 @@
             client.connect({}, function() {
                 client.subscribe("/topic/import-feedback", function(message) {
                     var msg = $.trim(message.body);
-                    if ($.isNumeric(msg)) {
+                    var msgParts = msg.split("||");
+                    if (msgParts && msgParts.length == 2) {
+                        // update 2 progress bars - bar1%, bar2%
+                        $('#progress1').css('width', msgParts[0] + '%').attr('aria-valuenow', msgParts[0]);
+                        $('#progress1 span.percent').html(msgParts[0]);
+                        $('#progress2').css('width', msgParts[1] + '%').attr('aria-valuenow', msgParts[1]);
+                        $('#progress2 span.percent').html(msgParts[1]);
+                    } else if ($.isNumeric(msg)) {
                         // update progress bar
                         $('.progress-bar ').css('width', msg + '%').attr('aria-valuenow', msg);
                         $('.progress-bar span.percent').html(msg);

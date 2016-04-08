@@ -4,6 +4,7 @@ import au.org.ala.bie.search.IndexDocType
 import grails.converters.JSON
 import groovy.json.JsonSlurper
 import org.apache.solr.client.solrj.util.ClientUtils
+import org.codehaus.groovy.grails.web.json.JSONObject
 import org.gbif.nameparser.NameParser
 
 /**
@@ -632,9 +633,19 @@ class SearchService {
         formatted
     }
 
-    private List formatDocs(docs, highlighting){
+    /**
+     * Munge SOLR document set for output via JSON
+     *
+     * @param docs
+     * @param highlighting
+     * @return
+     */
+    private List formatDocs(docs, highlighting) {
 
         def formatted = []
+
+        // add occurrence counts
+        docs = populateOccurrenceCounts(docs)
 
         docs.each {
             if(it.idxtype == IndexDocType.TAXON.name()){
@@ -792,5 +803,39 @@ class SearchService {
             datasets.put(datasetID, dataset)
         }
         return dataset
+    }
+
+    /**
+     * Add occurrence counts for taxa in results list
+     * Taken from https://github.com/AtlasOfLivingAustralia/bie-service/blob/master/src/main/java/org/ala/web/SearchController.java#L369
+     *
+     * @param docs
+     */
+    private populateOccurrenceCounts(List docs) {
+        List guids = []
+        docs.each {
+            if (it.idxtype == IndexDocType.TAXON.name() && it.guid) {
+                guids.add(it.guid)
+            }
+        }
+
+        if (guids.size() > 0) {
+            try {
+                def url = "${grailsApplication.config.biocacheService.baseUrl}/occurrences/taxaCount"
+                Map params = [:]
+                params.put("guids", guids.join(","))
+                params.put("separator", ",")
+                Map results = doPostWithParams(url, params) // returns (JsonObject) Map with guid as key and count as value
+                Map guidsCountsMap = results.get("resp")?:[:]
+                docs.each {
+                    it.put("occurrenceCount", guidsCountsMap.get(it.guid))
+                }
+            } catch (Exception ex) {
+                // do nothing but log it
+                log.error("Error populating occurrence counts: ${ex.message}", ex);
+            }
+        }
+
+        docs
     }
 }
