@@ -20,7 +20,7 @@ import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 
 /**
- * Simplification around the Java 7 FileWatchService that supports individual files as well as directories
+ * Simplification around the Java 7 WatchService that supports individual files as well as directories
  */
 class FileWatchService implements AutoCloseable {
 
@@ -85,7 +85,7 @@ class FileWatchService implements AutoCloseable {
         try {
             fileWatchRegistration?.cb?.call(path, kind)
         } catch(Exception e) {
-            log.error("Uncaught exception invoking callback for $fileWatchRegistration with $path and $kind", e)
+            log.error("Uncaught exception invoking callback for ${fileWatchRegistration.wk.watchable()} with $path and $kind", e)
         }
     }
 
