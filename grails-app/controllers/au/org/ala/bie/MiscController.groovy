@@ -18,7 +18,7 @@ class MiscController {
                 response.outputStream << is
             }
         } catch (FileNotFoundException e) {
-            response.status = 404
+            response.sendError(404)
         }
         return
     }
