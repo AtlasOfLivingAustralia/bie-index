@@ -1,4 +1,4 @@
-class UrlMappings {
+class   UrlMappings {
 
     static mappings = {
 
@@ -36,6 +36,8 @@ class UrlMappings {
         "/admin/indexFields(.$format)?"(controller: "admin", action: "indexFields")
 
         "/admin/import/$action?/$id?(.$format)?"(controller: "import")
+
+        "/ws/subgroups(.json)?"(controller: 'misc', action: 'speciesGroups')
 
         "/"(view: "/index")
         "500"(view: '/error')
