@@ -14,6 +14,10 @@ class SpeciesGroupService {
 
     def grailsApplication
     def fileWatchService
+    /**
+     * The map from a taxonomic rank and name to a group and subgroup.  To ensure consistency when using this map
+     * copy the reference to the map as it could be replaced by another thread at any time.
+     */
     Map<RankedName, SubGroup> invertedSpeciesGroups
     /**
      * Eagerly loads the species group JSON file and, if the json file location is set, reloads the file on changes.

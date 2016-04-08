@@ -8,6 +8,7 @@ import java.nio.file.FileSystems
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds
+import java.nio.file.WatchEvent
 import java.nio.file.WatchKey
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -57,9 +58,9 @@ class FileWatchService implements AutoCloseable {
                             if (ctx instanceof Path && w instanceof Path) {
                                 final path = w.resolve(ctx)
                                 log.debug("Resolved path is $path")
-                                registeredPaths[path]?.cb?.call(path)
+                                invokeCallback(registeredPaths[path], path, kind)
                                 // The directory for the path may also be registered
-                                registeredPaths[w]?.cb?.call(path)
+                                invokeCallback(registeredPaths[w], path, kind)
                             } else {
                                 log.error("$w OR $ctx IS NOT A PATH!")
                             }
@@ -77,6 +78,14 @@ class FileWatchService implements AutoCloseable {
             } finally {
                 log.info("Watch thread ending")
             }
+        }
+    }
+
+    private void invokeCallback(FileWatchRegistration fileWatchRegistration, Path path, WatchEvent.Kind kind) {
+        try {
+            fileWatchRegistration?.cb?.call(path, kind)
+        } catch(Exception e) {
+            log.error("Uncaught exception invoking callback for $fileWatchRegistration with $path and $kind", e)
         }
     }
 
