@@ -104,16 +104,15 @@ class FileWatchService implements AutoCloseable {
      * @param cb The callback
      */
     void watch(String path, Closure<Void> cb) {
-        log.info("watch $path")
         final f = new File(path)
         final p = f.isDirectory() ? f.toPath() : f.parentFile.toPath()
         final fp = f.toPath()
         final existing = registeredPaths[fp]
         if (existing != null) throw new IllegalArgumentException("$path is already watched")
-        log.info("Watching $p")
+        log.debug("Watching $p")
         final wk = p.register(ws, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
         registeredPaths[fp] = new FileWatchRegistration(wk: wk, cb: cb)
-        log.info("Registered ${wk.watchable()} and got validity ${wk.isValid()}")
+        log.info("Registered ${wk.watchable()} for watching and got validity ${wk.isValid()}")
     }
 
     /**
@@ -123,10 +122,10 @@ class FileWatchService implements AutoCloseable {
     void unwatch(String path) {
         final r = registeredPaths.remove(Paths.get(path))
         if (r != null) {
-            log.info("$path removed")
+            log.info("Watch for $path removed")
             if (registeredPaths.values().count { it.wk == r.wk } == 0) { r.wk.cancel() }
         } else {
-            log.info("$path NOT removed")
+            log.warn("Watch for $path NOT removed")
         }
     }
 
