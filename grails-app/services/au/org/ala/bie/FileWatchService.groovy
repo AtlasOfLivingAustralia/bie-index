@@ -26,22 +26,22 @@ class FileWatchService implements AutoCloseable {
 
     static transactional = false
 
-    final exec = Executors.newSingleThreadExecutor()
-    final ws = FileSystems.getDefault().newWatchService()
-    Future<?> wt
+    final executor = Executors.newSingleThreadExecutor()
+    final watchService = FileSystems.getDefault().newWatchService()
 
-    final registeredPaths = new ConcurrentHashMap<Path, FileWatchRegistration>()
+    private Future<?> watchThread
+    private final registeredPaths = new ConcurrentHashMap<Path, FileWatchRegistration>()
 
     @PostConstruct
     def init() {
-        wt = exec.submit {
+        watchThread = executor.submit {
             try {
-                log.info("Watch thread started")
+                log.info("File watch thread started")
                 while (!Thread.interrupted()) {
                     log.trace("Watch thread spinning")
                     WatchKey key
                     try {
-                        key = ws.poll(25, MILLISECONDS)
+                        key = watchService.poll(25, MILLISECONDS)
                     } catch (InterruptedException e) {
                         log.info("WatchService.poll interrupted")
                         break
@@ -70,12 +70,13 @@ class FileWatchService implements AutoCloseable {
                             log.warn("WatchKey for $w is no longer valid")
                             removeWatchKey(key)
                         }
-                        Thread.yield()
                     }
+                    Thread.yield()
                 }
             } catch (Exception e) {
                 log.warn("Uncaught exception", e)
             } finally {
+                cancelAllWatches()
                 log.info("Watch thread ending")
             }
         }
@@ -83,36 +84,36 @@ class FileWatchService implements AutoCloseable {
 
     private void invokeCallback(FileWatchRegistration fileWatchRegistration, Path path, WatchEvent.Kind kind) {
         try {
-            fileWatchRegistration?.cb?.call(path, kind)
+            fileWatchRegistration?.callback?.call(path, kind)
         } catch(Exception e) {
-            log.error("Uncaught exception invoking callback for ${fileWatchRegistration.wk.watchable()} with $path and $kind", e)
+            log.error("Uncaught exception invoking callback for ${fileWatchRegistration.watchKey.watchable()} with $path and $kind", e)
         }
     }
 
     @PreDestroy
     @Override
     void close() {
-        wt.cancel(true)
-        ws.close()
-        exec.shutdownNow()
+        watchThread.cancel(true)
+        watchService.close()
+        executor.shutdownNow()
     }
 
     /**
      * Watch a file or directory for changes
      *
      * @param path The path to watch
-     * @param cb The callback
+     * @param callback The callback
      */
-    void watch(String path, Closure<Void> cb) {
-        final f = new File(path)
-        final p = f.isDirectory() ? f.toPath() : f.parentFile.toPath()
-        final fp = f.toPath()
-        final existing = registeredPaths[fp]
-        if (existing != null) throw new IllegalArgumentException("$path is already watched")
-        log.debug("Watching $p")
-        final wk = p.register(ws, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
-        registeredPaths[fp] = new FileWatchRegistration(wk: wk, cb: cb)
-        log.info("Registered ${wk.watchable()} for watching and got validity ${wk.isValid()}")
+    void watch(String path, Closure<Void> callback) {
+        final file = new File(path)
+        final dirPath = file.isDirectory() ? file.toPath().normalize() : file.parentFile.toPath().normalize()
+        final filePath = file.toPath().normalize()
+        final existing = registeredPaths[filePath]
+        if (existing != null) { throw new IllegalArgumentException("$dirPath is already watched") }
+        log.debug("Watching $dirPath")
+        final watchKey = dirPath.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
+        registeredPaths[filePath] = new FileWatchRegistration(watchKey: watchKey, callback: callback)
+        log.info("Registered ${watchKey.watchable()} for watching and got validity ${watchKey.isValid()}")
     }
 
     /**
@@ -120,10 +121,13 @@ class FileWatchService implements AutoCloseable {
      * @param path The path to stop watching
      */
     void unwatch(String path) {
-        final r = registeredPaths.remove(Paths.get(path))
+        final r = registeredPaths.remove(Paths.get(path).normalize())
         if (r != null) {
             log.info("Watch for $path removed")
-            if (registeredPaths.values().count { it.wk == r.wk } == 0) { r.wk.cancel() }
+            if (registeredPaths.values().count { it.watchKey == r.watchKey } == 0) {
+                log.debug("No other registered paths use the watch key for $path, cancelling the watch key for ${r.watchKey.watchable()}")
+                r.watchKey.cancel()
+            }
         } else {
             log.warn("Watch for $path NOT removed")
         }
@@ -131,16 +135,25 @@ class FileWatchService implements AutoCloseable {
 
     /**
      * Remove all registered watches that use the given WatchKey
-     * @param wk The watch key to remove watches for
+     * @param watchKey The watch key to remove watches for
      */
-    private void removeWatchKey(WatchKey wk) {
+    private void removeWatchKey(WatchKey watchKey) {
         final i = registeredPaths.entrySet().iterator()
         while (i.hasNext()) {
             final e = i.next()
-            if (e.value.wk == wk) {
+            if (e.value.watchKey == watchKey) {
                 log.warn("Automatically removing ${e.key} from file watches")
                 i.remove()
             }
+        }
+    }
+
+    private void cancelAllWatches() {
+        final i = registeredPaths.entrySet().iterator()
+        while (i.hasNext()) {
+            final e = i.next()
+            e.value.watchKey.cancel() // no-op if watch key already cancelled
+            i.remove()
         }
     }
 
