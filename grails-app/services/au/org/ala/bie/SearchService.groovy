@@ -489,6 +489,15 @@ class SearchService {
         def taxonDatasetURL = getDataset(taxon.datasetID, datasetMap)?.guid
         def taxonDatasetName = getDataset(taxon.datasetID, datasetMap)?.name
 
+        // Conservation status map
+        def clists = grailsApplication.config.conservationLists?.values() ?: []
+        def conservationStatus = clists.inject([:], { map, region ->
+            def cs = taxon[region.field]
+            if (cs) map.put(region.term, cs)
+            map
+        })
+
+
         def model = [
                 taxonConcept:[
                         guid: taxon.guid,
@@ -537,7 +546,7 @@ class SearchService {
                             datasetURL: datasetURL
                     ]
                 },
-                conservationStatuses:[], //TODO need to be indexed from list tool
+                conservationStatuses:conservationStatus,
                 extantStatuses: [],
                 habitats: [],
                 identifiers: identifiers.collect { identifier ->

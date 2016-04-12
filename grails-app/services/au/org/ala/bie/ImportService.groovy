@@ -525,9 +525,10 @@ class ImportService {
         Map speciesListMap = grailsApplication.config.conservationLists?:[:]
         Integer listNum = 0
 
-        speciesListMap.each { drUid, solrField ->
+        speciesListMap.each { drUid, status ->
             listNum++
             Integer listProgress = (listNum / speciesListMap.size()) * 100 // percentage as int
+            String solrField = status.field ?: "conservationStatus_s"
             if (drUid && solrField) {
                 def url = "${speciesListUrl}${drUid}${speciesListParams}"
                 log("Loading list from: " + url)

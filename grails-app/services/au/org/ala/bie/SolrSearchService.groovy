@@ -35,6 +35,7 @@ class SolrSearchService {
 
     static transactional = false
 
+    def grailsApplication
     def liveSolrClient
 
     SearchResultsDTO<SearchTaxonConceptDTO> findByScientificName(
@@ -438,6 +439,12 @@ class SolrSearchService {
      * @return
      */
     private SearchTaxonConceptDTO createTaxonConceptFromIndex(QueryResponse qr, SolrDocument doc) {
+        def clists = grailsApplication.config.conservationLists?.values ?: []
+        def conservationStatus = clists.inject([:], { map, region ->
+            def cs = (String) doc.getFirstValue(region.field)
+            if (cs) map.put(region.term, cs)
+            map
+        })
         SearchTaxonConceptDTO taxonConcept = new SearchTaxonConceptDTO(
                 idxType: IndexedTypes.TAXON.toString(),
                 score: (Float) doc.getFirstValue("score"),
@@ -452,15 +459,7 @@ class SolrSearchService {
                 rank: (String) doc.getFirstValue("rank"),
                 author: (String) doc.getFirstValue("scientificNameAuthorship"),
                 nameComplete: (String) doc.getFirstValue("nameComplete"),
-                conservationStatusAUS: (String) doc.getFirstValue("conservationStatusAUS_s"),
-                conservationStatusACT: (String) doc.getFirstValue("conservationStatusACT_s"),
-                conservationStatusNSW: (String) doc.getFirstValue("conservationStatusNSW_s"),
-                conservationStatusNT: (String) doc.getFirstValue("conservationStatusNT_s"),
-                conservationStatusQLD: (String) doc.getFirstValue("conservationStatusQLD_s"),
-                conservationStatusSA: (String) doc.getFirstValue("conservationStatusSA_s"),
-                conservationStatusTAS: (String) doc.getFirstValue("conservationStatusTAS_s"),
-                conservationStatusVIC: (String) doc.getFirstValue("conservationStatusVIC_s"),
-                conservationStatusWA: (String) doc.getFirstValue("conservationStatusWA_s"),
+                conservationStatus: conservationStatus,
                 kingdom: (String) doc.getFirstValue("rk_kingdom"),
                 phylum: (String) doc.getFirstValue("rk_phylum"),
                 classs: (String) doc.getFirstValue("rk_class"),

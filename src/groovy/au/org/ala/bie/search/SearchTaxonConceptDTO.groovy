@@ -33,16 +33,7 @@ public class SearchTaxonConceptDTO extends SearchDTO implements Comparable<Searc
     String rank;
     int rankId;
     String taxonomicStatus
-    String conservationStatus;
-    String conservationStatusAUS;
-    String conservationStatusACT;
-    String conservationStatusQLD;
-    String conservationStatusNSW;
-    String conservationStatusSA;
-    String conservationStatusNT;
-    String conservationStatusTAS;
-    String conservationStatusVIC;
-    String conservationStatusWA;
+    Map<String, String> conservationStatus;
     String highlight;
     String image;
     String kingdom;
