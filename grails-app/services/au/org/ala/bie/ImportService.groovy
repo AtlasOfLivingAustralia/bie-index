@@ -721,7 +721,7 @@ class ImportService {
                     DwcTerm.taxonRank,
                     DwcTerm.scientificNameAuthorship,
                     ALATerm.nameComplete,
-                    ALATerm.nameFormatted
+                    ALATerm.nameFormatted,
             ]
 
             def buffer = []
@@ -758,7 +758,12 @@ class ImportService {
                     doc["scientificNameAuthorship"] = scientificNameAuthorship
                     doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
                     doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
-                    def inSchema = [DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear, DcTerm.source ]
+                    def inSchema = [
+                            DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.nomenclaturalStatus,
+                            DwcTerm.scientificNameID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear,
+                            DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.license, DcTerm.rights, DcTerm.rightsHolder,
+                            ALATerm.status, ALATerm.nameID
+                    ]
 
                     //index additional fields that are supplied in the core
                     record.terms().each { term ->
@@ -876,6 +881,7 @@ class ImportService {
                             cdoc["priority"] = commonName['priority']
                             cdoc["source"] = commonName['source']
                             cdoc["language"] = commonName['language']
+                            cdoc["nameID"] = commonName['nameID']
 
                             def cnAttribution = attributionMap.get(commonName['datasetID'])
                             if (cnAttribution) {
@@ -1101,6 +1107,7 @@ class ImportService {
             def source = record.value(DcTerm.source)
             def language = record.value(DcTerm.language)
             def nameStatus = record.value(ALATerm.status)
+            def nameID = record.value(ALATerm.nameID)
             def status = statusMap.get(nameStatus?.toLowerCase())
             def datasetID = record.value(DwcTerm.datasetID)
 
@@ -1113,6 +1120,7 @@ class ImportService {
             }
             nameList << [
                     name: vernacularName,
+                    nameID: nameID,
                     status: status?.status ?: "common",
                     priority: status?.priority ?: 100,
                     source: source,
