@@ -71,9 +71,11 @@ These are canonicalisations of the name and author with the following characteri
 * If the name has a subgenus element (eg. *Coniopteryx (Xeroconiopteryx) occidentalis*) then the subgenus element is removed.
 For example, the above name would become *Coniopteryx occidentalis*
 * Any " and " part of the author is replaced by an ampersand.
+* Any year following the author is removed.
 * The name or author is made upper case.
 * Any punctuation is removed
 * Multiple spaces are normalised to a single space
+
 
 ### Annotation
 
@@ -137,13 +139,20 @@ into the standard vocabulary described in [the conventions](conventions.md#taxon
 Each data source tends to have its own taxon rank vocabulary.
 These need to be translated into the ALA vocabulary described in [the conventions]((conventions.md#taxon-rank).
 
+### Generating the eml.xml file
+
+The `eml.xml` file contains metadata about the DwCA.
+The file is constructed by running an [XSLT script](eml.xsl) over a `metadata.xml` file.
+The `metadata.xml` file contains basic information about the data set, such as the source organisation, the
+data date (as opposed to the archive production date, which is included automatically), coverage, etc.
+The script extends this data with information about the ALA.
+
 ### DwCA Packaging
 
 Once the CSV files are constructed, the files are zipped into a DwC archive, along with
 pre-built `meta.xml` and `eml.xml` files.
 Once packaged, the resulting DwCA can be delivered to the BIE index.
-
-* TODO Dynamically build the eml.xml file.
+.
 * TODO (Potentially, it may not be worth it) Dynamically build the meta.xml file.
 
 

@@ -25,36 +25,17 @@ public class SearchTaxonConceptDTO extends SearchDTO implements Comparable<Searc
         }
     }
 
-    String parentId;
     String parentGuid;
     String commonName;
     String nameComplete;
-    String commonNameSingle;
     String acceptedConceptGuid;
     String acceptedConceptName;
-    String synonymRelationship;
-    String synonymDescription;
-    boolean hasChildren;
     String rank;
     int rankId;
-    String rawRank;
-    String pestStatus;
-    String conservationStatus;
-    String conservationStatusAUS;
-    String conservationStatusACT;
-    String conservationStatusQLD;
-    String conservationStatusNSW;
-    String conservationStatusSA;
-    String conservationStatusNT;
-    String conservationStatusTAS;
-    String conservationStatusVIC;
-    String conservationStatusWA;
-    String isAustralian;
+    String taxonomicStatus
+    Map<String, String> conservationStatus;
     String highlight;
     String image;
-    String thumbnail;
-    Integer left;
-    Integer right;
     String kingdom;
     String phylum;
     String classs;
@@ -63,10 +44,6 @@ public class SearchTaxonConceptDTO extends SearchDTO implements Comparable<Searc
     String genus;
     String author;
     String linkIdentifier;
-    Integer occCount;
-    String imageSource;
-    Integer imageCount;
-    Boolean isExcluded; //whether or not the taxon concept has been marked as excluded in Australia
 
     //image properties
     String imageUrl;

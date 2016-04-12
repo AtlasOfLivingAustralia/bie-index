@@ -15,6 +15,8 @@ An extension file, `identifier.csv` contains additional identifiers for some tax
 The data supplied is a snapshot of the current taxonomic tree.
 All information is current.
 However, incertae sedis taxa and taxa without valid ranks or names are removed.
+There are also accepted taxa without a parent; 
+these are mostly names of genera that are no longer recognised, or do not occur in Australia. 
 
 ## Identification
 

@@ -67,6 +67,13 @@ for example http://biodiversity.org.au/afd.name/489144
 
 ## Annotation
 
+### Vernacular Names
+
+The name subtype provides a priority code that can be used in the vernacular name status field.
+
+* `name.type.C.O` is `preferred`
+* `name.type.C.N` is `common`, also the default
+
 ### References
 
 Links to literature references are added to the taxon, if a reference is available.
