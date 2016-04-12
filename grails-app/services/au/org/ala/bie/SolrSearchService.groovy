@@ -443,40 +443,30 @@ class SolrSearchService {
                 score: (Float) doc.getFirstValue("score"),
                 guid: (String) doc.getFirstValue("guid"),
                 parentGuid: (String) doc.getFirstValue("parentGuid"),
-                name: (String) doc.getFirstValue("scientificNameRaw"),
+                name: (String) doc.getFirstValue("scientificName"),
                 acceptedConceptName: (String) doc.getFirstValue("acceptedConceptName"),
-                synonymRelationship: (String) doc.getFieldValue("synonymRelationship_s"),
-                synonymDescription: (String) doc.getFirstValue("synonymDescription_s"),
-                commonName: (String) doc.getFirstValue("commonNameDisplay"),
-                commonNameSingle: (String) doc.getFirstValue("commonNameSingle"),
+                acceptedConceptGuid: (String) doc.getFirstValue("acceptedConceptID"),
+                taxonomicStatus: (String) doc.getFieldValue("taxonomicStatus"),
+                commonName: (String) doc.getFirstValue("commonName"),
                 image: (String) doc.getFirstValue("image"),
-                imageSource: (String) doc.getFirstValue("imageSource"),
-                imageCount: (Integer) doc.getFirstValue("imageCount"),
-                thumbnail: (String) doc.getFirstValue("thumbnail"),
                 rank: (String) doc.getFirstValue("rank"),
-                rawRank: (String) doc.getFirstValue("rawRank"),
-                left: (Integer) doc.getFirstValue("left"),
-                right: (Integer) doc.getFirstValue("right"),
-                kingdom: (String) doc.getFirstValue("kingdom"),
-                author: (String) doc.getFirstValue("author"),
+                author: (String) doc.getFirstValue("scientificNameAuthorship"),
                 nameComplete: (String) doc.getFirstValue("nameComplete"),
-                conservationStatusAUS: (String) doc.getFirstValue("conservationStatusAUS"),
-                conservationStatusACT: (String) doc.getFirstValue("conservationStatusACT"),
-                conservationStatusNSW: (String) doc.getFirstValue("conservationStatusNSW"),
-                conservationStatusNT: (String) doc.getFirstValue("conservationStatusNT"),
-                conservationStatusQLD: (String) doc.getFirstValue("conservationStatusQLD"),
-                conservationStatusSA: (String) doc.getFirstValue("conservationStatusSA"),
-                conservationStatusTAS: (String) doc.getFirstValue("conservationStatusTAS"),
-                conservationStatusVIC: (String) doc.getFirstValue("conservationStatusVIC"),
-                conservationStatusWA: (String) doc.getFirstValue("conservationStatusWA"),
-                isAustralian: (String) doc.getFirstValue("australian_s"),
-                isExcluded: (Boolean) doc.getFirstValue("is_excluded_b"),
-                phylum: (String) doc.getFirstValue("phylum"),
-                classs: (String) doc.getFirstValue("class"),
-                order: (String) doc.getFirstValue("bioOrder"),
-                family: (String) doc.getFirstValue("family"),
-                genus: (String) doc.getFirstValue("genus"),
-                hasChildren: Boolean.parseBoolean((String) doc.getFirstValue("hasChildren"))
+                conservationStatusAUS: (String) doc.getFirstValue("conservationStatusAUS_s"),
+                conservationStatusACT: (String) doc.getFirstValue("conservationStatusACT_s"),
+                conservationStatusNSW: (String) doc.getFirstValue("conservationStatusNSW_s"),
+                conservationStatusNT: (String) doc.getFirstValue("conservationStatusNT_s"),
+                conservationStatusQLD: (String) doc.getFirstValue("conservationStatusQLD_s"),
+                conservationStatusSA: (String) doc.getFirstValue("conservationStatusSA_s"),
+                conservationStatusTAS: (String) doc.getFirstValue("conservationStatusTAS_s"),
+                conservationStatusVIC: (String) doc.getFirstValue("conservationStatusVIC_s"),
+                conservationStatusWA: (String) doc.getFirstValue("conservationStatusWA_s"),
+                kingdom: (String) doc.getFirstValue("rk_kingdom"),
+                phylum: (String) doc.getFirstValue("rk_phylum"),
+                classs: (String) doc.getFirstValue("rk_class"),
+                order: (String) doc.getFirstValue("rk_order"),
+                family: (String) doc.getFirstValue("rk_family"),
+                genus: (String) doc.getFirstValue("rk_genus")
         )
         try {
             taxonConcept.linkIdentifier = URLEncoder.encode((String) doc.getFirstValue("linkIdentifier"), "UTF-8")
@@ -485,15 +475,15 @@ class SolrSearchService {
         }
 
         try {
-            Integer rankId = (Integer) doc.getFirstValue("rankId");
+            Integer rankId = (Integer) doc.getFirstValue("rankID");
             if (rankId != null) {
                 taxonConcept.rankId = rankId
             }
         } catch (Exception ex) {
             log.error("Error parsing rankId: ${ex.message}", ex);
         }
-        taxonConcept.pestStatus = (String) doc.getFirstValue(StatusType.PEST.toString())
-        taxonConcept.conservationStatus = (String) doc.getFirstValue(StatusType.CONSERVATION.toString())
+        //taxonConcept.pestStatus = (String) doc.getFirstValue(StatusType.PEST.toString())
+        //taxonConcept.conservationStatus = (String) doc.getFirstValue(StatusType.CONSERVATION.toString())
 
         // highlights
         if (qr.getHighlighting() != null && qr.getHighlighting().get(taxonConcept.getGuid()) != null) {
