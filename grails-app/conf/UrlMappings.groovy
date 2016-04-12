@@ -37,6 +37,8 @@ class UrlMappings {
 
         "/admin/import/$action?/$id?(.$format)?"(controller: "import")
 
+        "/ws/subgroups(.json)?"(controller: 'misc', action: 'speciesGroups')
+
         "/"(view: "/index")
         "500"(view: '/error')
     }

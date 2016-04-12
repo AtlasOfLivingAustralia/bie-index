@@ -16,10 +16,10 @@ package au.org.ala.bie
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.search.IndexedTypes
+import au.org.ala.bie.indexing.RankedName
 import au.org.ala.vocab.ALATerm
 import grails.converters.JSON
 import groovy.json.JsonSlurper
-import org.apache.commons.compress.compressors.gzip.GzipUtils
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
@@ -38,7 +38,6 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 
-import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream
 
 /**
@@ -46,11 +45,10 @@ import java.util.zip.GZIPInputStream
  */
 class ImportService {
 
-    def serviceMethod() {}
-
     def indexService, searchService
 
     def grailsApplication
+    def speciesGroupService
 
     def brokerMessagingTemplate
 
@@ -635,6 +633,10 @@ class ImportService {
      */
     def importDwcA(dwcDir, clearIndex){
 
+        log.info("Loading Species Group mappings for DwcA import")
+        def speciesGroupMapping = speciesGroupService.invertedSpeciesGroups
+        log.info("Finished loading Species Group mappings")
+
         try {
             log("Importing archive from path.." + dwcDir)
 
@@ -802,6 +804,9 @@ class ImportService {
                         }
                     }
 
+                    def speciesGroups = []
+                    def speciesSubGroups = []
+
                     //get de-normalised taxonomy, and add it to the document
                     if (parentNameUsageID) {
                         def taxa = denormalised.get(parentNameUsageID)
@@ -815,17 +820,29 @@ class ImportService {
                                 String tID = parts[0]
                                 String name = parts[1]
                                 String rank = parts[2]
-                                String normalisedRank = rank.replaceAll(" ", "_").toLowerCase()
+                                String normalisedRank = normaliseRank(rank)
                                 if (processedRanks.contains(normalisedRank)) {
                                     log.debug("Duplicated rank: " + normalisedRank + " - " + taxa)
                                 } else {
                                     processedRanks << normalisedRank
                                     doc["rk_" + normalisedRank] = name
                                     doc["rkid_" + normalisedRank] = tID
+
+                                    // we have a unique rank name and value, check if it's in the species group list
+                                    def rn = new RankedName(name: name.toLowerCase(), rank: normalisedRank)
+                                    if (speciesGroupMapping.containsKey(rn)) {
+                                        def speciesGroup = speciesGroupMapping[rn]
+                                        log.debug("Adding group ${speciesGroup.group} and subgroup ${speciesGroup.subGroup} to $scientificName")
+                                        speciesGroups << speciesGroup.group
+                                        speciesSubGroups << speciesGroup.subGroup
+                                    }
                                 }
                             }
                         }
                     }
+
+                    doc['speciesGroup'] = speciesGroups
+                    doc['speciesSubgroup'] = speciesSubGroups
 
                     //synonyms - add a separate doc for each
                     def synonyms = synonymMap.get(taxonID)
@@ -950,6 +967,10 @@ class ImportService {
             log("See server logs for more details.")
             log.error(e.getMessage(), e)
         }
+    }
+
+    static String normaliseRank(String rank) {
+        return rank?.replaceAll(" ", "_")?.toLowerCase()
     }
 
     /**
