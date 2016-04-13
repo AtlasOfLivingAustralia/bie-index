@@ -48,15 +48,15 @@ speciesList.params = "?includeKVP=true"
 // Conservation lists to index
 conservationList.sourceField = "sourceStatus"
 conservationLists {
-    dr656 = [ field: "conservationStatusAUS_s", term: "conservationStatusAUS" ]
-    dr649 = [ field: "conservationStatusACT_s", term: "conservationStatusACT" ]
-    dr650 = [ field: "conservationStatusNSW_s", term: "conservationStatusNSW" ]
-    dr652 = [ field: "conservationStatusQLD_s", term: "conservationStatusQLD" ]
-    dr655 = [ field: "conservationStatusVIC_s", term: "conservationStatusVIC" ]
-    dr654 = [ field: "conservationStatusTAS_s", term: "conservationStatusTAS" ]
-    dr653 = [ field: "conservationStatusSA_s", term: "conservationStatusSA" ]
-    dr2201 = [ field: "conservationStatusWA_s", term: "conservationStatusWA" ]
-    dr651 = [ field: "conservationStatusNT_s", term: "conservationStatusNT" ]
+    dr656 = [ field: "conservationStatusAUS_s", term: "conservationStatusAUS", label: "AUS" ]
+    dr649 = [ field: "conservationStatusACT_s", term: "conservationStatusACT", label: "ACT" ]
+    dr650 = [ field: "conservationStatusNSW_s", term: "conservationStatusNSW", label: "NSW" ]
+    dr652 = [ field: "conservationStatusQLD_s", term: "conservationStatusQLD", label: "QLD" ]
+    dr655 = [ field: "conservationStatusVIC_s", term: "conservationStatusVIC", label: "VIC" ]
+    dr654 = [ field: "conservationStatusTAS_s", term: "conservationStatusTAS", label: "TAS" ]
+    dr653 = [ field: "conservationStatusSA_s", term: "conservationStatusSA", label: "SA" ]
+    dr2201 = [ field: "conservationStatusWA_s", term: "conservationStatusWA", label: "WA" ]
+    dr651 = [ field: "conservationStatusNT_s", term: "conservationStatusNT", label: "NT" ]
 }
 // SOLR additional params
 solr {

@@ -490,13 +490,12 @@ class SearchService {
         def taxonDatasetName = getDataset(taxon.datasetID, datasetMap)?.name
 
         // Conservation status map
-        def clists = grailsApplication.config.conservationLists?.values() ?: []
-        def conservationStatus = clists.inject([:], { map, region ->
-            def cs = taxon[region.field]
-            if (cs) map.put(region.term, cs)
-            map
-        })
-
+        def clists = grailsApplication.config.conservationLists ?: [:]
+        def conservationStatus = clists.collectEntries {
+            final cs = taxon[it.value.field]
+            log.info("${it.value.field}: $cs")
+            cs ? [ (it.value.label) : [ dr: it.key, status: cs ] ] : [:]
+        }
 
         def model = [
                 taxonConcept:[
