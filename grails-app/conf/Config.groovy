@@ -21,7 +21,6 @@ println "default_config = ${default_config}"
 
 indexLiveBaseUrl = "http://localhost:8080/solr/bie"
 indexOfflineBaseUrl = "http://localhost:8080/solr/bie-offline"
-biocache.solr.url = "http://index.als.scot/solr/"
 biocacheService.baseUrl = "http://biocache.ala.org.au/ws"
 defaultNameSourceAttribution = "National Species Lists"
 commonNameSourceAttribution = "National Species Lists"
@@ -33,9 +32,6 @@ collectoryUrl = "http://collections.ala.org.au/ws"
 layersServicesUrl = "http://spatial.ala.org.au/ws"
 synonymCheckingEnabled = true
 synonymSourceAttribution = "National Species Lists"
-imageThumbnailUrl = "http://images.als.scot/image/proxyImageThumbnail?imageId="
-imageLargeUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
-imageSmallUrl = "http://images.als.scot/image/proxyImageThumbnailLarge?imageId="
 gazetteerLayerId = "2123"
 wordPress {
     sitemapUrl = "http://www.ala.org.au/sitemap.xml"
