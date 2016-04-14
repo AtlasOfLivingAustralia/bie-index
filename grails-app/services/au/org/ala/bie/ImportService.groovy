@@ -521,7 +521,7 @@ class ImportService {
     def importSpeciesLists() throws Exception {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
-        def conservationSourceField  = grailsApplication.config.conservationList.sourceField
+        def conservationDefaultSourceField = grailsApplication.config.conservationList.defaultSourceField
         Map speciesListMap = grailsApplication.config.conservationLists?:[:]
         Integer listNum = 0
 
@@ -529,12 +529,13 @@ class ImportService {
             listNum++
             Integer listProgress = (listNum / speciesListMap.size()) * 100 // percentage as int
             String solrField = status.field ?: "conservationStatus_s"
+            String sourceField = status.sourceField ?: conservationDefaultSourceField
             if (drUid && solrField) {
                 def url = "${speciesListUrl}${drUid}${speciesListParams}"
                 log("Loading list from: " + url)
                 try {
                     JSONElement json = JSON.parse(getStringForUrl(url))
-                    updateDocsWithConservationStatus(json, conservationSourceField, solrField, drUid, listProgress)
+                    updateDocsWithConservationStatus(json, sourceField, solrField, drUid, listProgress)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
