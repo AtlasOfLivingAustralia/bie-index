@@ -19,6 +19,7 @@ import au.org.ala.bie.search.IndexedTypes
 import au.org.ala.bie.indexing.RankedName
 import au.org.ala.vocab.ALATerm
 import grails.converters.JSON
+import groovy.json.JsonParserType
 import groovy.json.JsonSlurper
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
@@ -79,13 +80,14 @@ class ImportService {
     }
 
     def importAll(){
-        try { importAllDwcA() } catch (Exception e) { log("Problem loading taxa: " + e.getMessage())}
         try { importCollectory() } catch (Exception e) { log("Problem loading collectory: " + e.getMessage())}
+        try { importAllDwcA() } catch (Exception e) { log("Problem loading taxa: " + e.getMessage())}
         try { importLayers() } catch (Exception e) { log("Problem loading layers: " + e.getMessage())}
         try { importRegions() } catch (Exception e) { log("Problem loading regions: " + e.getMessage())}
         //try { importLocalities() } catch (Exception e) { log("Problem loading localities: " + e.getMessage())}
         try { importSpeciesLists() } catch (Exception e) { log("Problem loading species lists: " + e.getMessage())}
         try { importWordPressPages() } catch (Exception e) { log("Problem loading wordpress pages: " + e.getMessage())}
+        try { buildLinkIdentifiers() } catch (Exception e) { log("Problem building link identifiers: " + e.getMessage())}
     }
 
     def importAllDwcA(){
@@ -1201,6 +1203,66 @@ class ImportService {
             ]
         }
         identifiers
+    }
+
+    /**
+     * Go through the index and build link identifiers for unique names.
+     */
+    def buildLinkIdentifiers() {
+        int pageSize = 1000
+        int page = 0
+        int added = 0
+        def js = new JsonSlurper()
+        def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+OR+idxtype:\"" + IndexDocType.COMMON.name() + "\""
+
+        js.setType(JsonParserType.INDEX_OVERLAY)
+        log("Starting link identifier scan")
+        while (true) {
+            def startTime = System.currentTimeMillis()
+            def solrServerUrl = grailsApplication.config.indexOfflineBaseUrl + "/select?wt=json&q=" + typeQuery + "&start=" + (pageSize * page) + "&rows=" + pageSize
+            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
+            def docs = json.response.docs
+            def buffer = []
+
+            if (docs.isEmpty())
+                break
+            docs.each { doc ->
+                def name = doc.scientificName ?: doc.name
+                try {
+                    if (name) {
+                        def encName = URLEncoder.encode(name, "UTF-8")
+                        def nameSearchUrl = grailsApplication.config.indexOfflineBaseUrl + "/select?wt=json&q=name:\"" + encName + "\"+OR+scientificName:\"" + encName + "\"&fq=" + typeQuery + "&rows=0"
+                        def nameResponse = nameSearchUrl.toURL().getText("UTF-8")
+                        def nameJson = js.parseText(nameResponse)
+                        int found = nameJson.response.numFound
+                        if (found == 1) {
+                            //log.debug("Adding link identifier for ${name} to ${doc.id}")
+                            def update = [:]
+                            update["id"] = doc.id // doc key
+                            update["idxtype"] = ["set": doc.idxtype] // required field
+                            update["guid"] = ["set": doc.guid] // required field
+                            update["linkIdentifier"] = ["set": name]
+                            buffer << update
+                            added++
+                        }
+                    }
+                } catch (Exception ex) {
+                    log.warn "Unable to search for name ${name}: ${ex.message}"
+                }
+            }
+            if (!buffer.isEmpty())
+                indexService.indexBatch(buffer)
+            page++
+            if (page % 10 == 0) {
+                def progress = page * pageSize
+                def percentage = Math.round(progress * 100 / total)
+                def speed = Math.round((page * 1000) / (System.currentTimeMillis() - startTime))
+                log("Processed ${page * pageSize} names (${percentage}%), added ${added} unique links, ${speed} names per second")
+            }
+        }
+        log("Finished scan")
     }
 
 

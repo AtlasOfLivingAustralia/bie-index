@@ -46,6 +46,8 @@ class ImportController {
 
     def wordpress(){}
 
+    def links(){}
+
     /**
      * Import a DwC-A into this system.
      *
@@ -212,6 +214,16 @@ class ImportController {
                 log.info("Finished import of Species Lists.")
             }
             asJson ([success:true] )
+
+    }
+
+    def buildLinkIdentifiers() {
+        Thread.start {
+            log.info("Starting build of link identifiers....")
+            importService.buildLinkIdentifiers()
+            log.info("Finished build of link identifiers.")
+        }
+        asJson ([success:true] )
 
     }
 
