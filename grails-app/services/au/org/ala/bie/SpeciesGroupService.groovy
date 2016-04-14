@@ -2,8 +2,11 @@ package au.org.ala.bie
 
 import au.org.ala.bie.indexing.RankedName
 import au.org.ala.bie.indexing.SubGroup
+import au.org.ala.bie.util.Files
 import com.google.common.io.Resources
 import groovy.json.JsonSlurper
+
+import rx.Subscription
 
 import javax.annotation.PostConstruct
 import javax.annotation.PreDestroy
@@ -13,19 +16,21 @@ class SpeciesGroupService {
     static transactional = false
 
     def grailsApplication
-    def fileWatchService
+
+    private Subscription speciesGroupsFileSubscription
     /**
      * The map from a taxonomic rank and name to a group and subgroup.  To ensure consistency when using this map
      * copy the reference to the map as it could be replaced by another thread at any time.
      */
     Map<RankedName, SubGroup> invertedSpeciesGroups
+
     /**
      * Eagerly loads the species group JSON file and, if the json file location is set, reloads the file on changes.
      */
     @PostConstruct
     def init() {
         if (location) {
-            fileWatchService.watch(location) {
+            speciesGroupsFileSubscription = Files.watch(location).subscribe {
                 log.info("Reloading species groups")
                 loadInvertedSpeciesGroupMap()
             }
@@ -35,7 +40,8 @@ class SpeciesGroupService {
 
     @PreDestroy
     def close() {
-        fileWatchService.unwatch(location)
+        log.debug("Closing SpeciesGroupService")
+        speciesGroupsFileSubscription?.unsubscribe()
     }
 
     def configFileDetails() {

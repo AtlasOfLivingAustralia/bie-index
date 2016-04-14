@@ -32,6 +32,9 @@ grails.project.dependency.resolution = {
 
     dependencies {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes
+        compile 'com.github.davidmoten:rxjava-file:0.4'
+        compile 'io.reactivex:rxgroovy:1.0.3'
+
         runtime 'net.sf.opencsv:opencsv:2.3'
         runtime "org.apache.solr:solr-solrj:5.4.0"
         runtime "org.gbif:dwca-io:1.24"
