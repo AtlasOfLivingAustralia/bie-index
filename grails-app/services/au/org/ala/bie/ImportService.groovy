@@ -679,9 +679,7 @@ class ImportService {
             //retrieve images
             def imageMap = [:]
 
-            if (!grailsApplication.config.skipImages) {
-                imageMap = indexImages()
-            }
+            imageMap = indexImages()
 
             //retrieve common names
             def commonNamesMap = readCommonNames(vernacularArchiveFile)
