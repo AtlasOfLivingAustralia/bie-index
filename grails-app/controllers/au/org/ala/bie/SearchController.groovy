@@ -168,7 +168,7 @@ class SearchController {
                     it.split(",").each { facet -> facets << facet }
                 }
             }
-            asJson([searchResults: searchService.search(params.q, request.queryString, facets)])
+            asJson([searchResults: searchService.search(params.q, params, facets)])
         } catch (Exception e){
             log.error(e.getMessage(), e)
             render(["error": e.getMessage(), indexServer: grailsApplication.config.indexLiveBaseUrl] as JSON)
