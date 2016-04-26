@@ -14,7 +14,7 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
-  <title>Build Link Identifiers</title>
+  <title>Build Links</title>
   <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
     <r:require modules="sockets" />
     <style type="text/css">
@@ -31,15 +31,22 @@
         <li class="font-xxsmall active" href="#">Import</li>
     </ol>
     <!-- End Breadcrumb -->
-    <h2 class="heading-medium">Build Link Identifiers</h2>
+    <h2 class="heading-medium">Build Links</h2>
 
     <p class="lead">
-        Scan the offline index for link identifiers; names that are unique and can be treated as an identifier.
-        Note SOLR cores (bie / bie-offline) require swapping before searches will appear.
+        Scan the index for link identifiers; names that are unique and can be treated as an identifier.
+        Scan the index for images; suitable images for various species.
+        Note SOLR cores (bie / bie-offline) may require swapping before searches will appear.
     </p>
 
     <div>
-        <button id="start-import" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary">Build Link Identifiers</button>
+        <button id="build-link-identifiers" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary">Build Link Identifiers</button>
+    </div>
+    <div>
+        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load Images</button>
+    </div>
+    <div>
+        <input type="checkbox" id="use-online" name="use-online"/> Use online index
     </div>
 
     <div class="well import-info alert-info hide" style="margin-top:20px;">
@@ -54,7 +61,20 @@
 
     <r:script>
         function buildLinkIdentifiers(){
-            $.get("${createLink(controller:'import', action:'buildLinkIdentifiers')}", function( data ) {
+            $.get("${createLink(controller:'import', action:'buildLinkIdentifiers')}?online=" + $('#use-online').is(':checked'), function( data ) {
+              if(data.success){
+                $('.import-info p').html('Build successfully started....')
+                $('#start-import').prop('disabled', true);
+              } else {
+                $('.import-info p').html('Build failed. Check file path...')
+              }
+              $('.import-info').removeClass('hide');
+              $('.progress').removeClass('hide');
+            });
+        }
+
+        function loadImages(){
+            $.get("${createLink(controller:'import', action:'loadImages')}?online=" + $('#use-online').is(':checked'), function( data ) {
               if(data.success){
                 $('.import-info p').html('Import successfully started....')
                 $('#start-import').prop('disabled', true);

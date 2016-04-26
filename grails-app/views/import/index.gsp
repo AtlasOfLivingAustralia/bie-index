@@ -55,7 +55,7 @@
     <r:script>
 
         function loadDwCAFromDir(){
-            $.get("${createLink(controller: 'import', action: 'importDwcA')}?dwca_dir=" + $('#dwca_dir').val() + "&clear_index=" + $('#clear_index').val() + "&field_delimiter=" + $('#field_delimiter').val(), function( data ) {
+            $.get("${createLink(controller: 'import', action: 'importDwcA')}?dwca_dir=" + $('#dwca_dir').val() + "&clear_index=" + $('#clear_index').is(':checked') + "&field_delimiter=" + $('#field_delimiter').val(), function( data ) {
               if(data.success){
                 $('.import-info p').html('Import successfully started....')
                 $('#start-import').prop('disabled', true);

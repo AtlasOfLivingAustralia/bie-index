@@ -5,4 +5,5 @@ import org.apache.solr.client.solrj.impl.HttpSolrClient
 beans = {
     liveSolrClient(HttpSolrClient, application.config.indexLiveBaseUrl)
     offlineSolrClient(ConcurrentUpdateSolrClient, application.config.indexOfflineBaseUrl, 10, 4)
+    updatingLiveSolrClient(ConcurrentUpdateSolrClient, application.config.indexLiveBaseUrl, 10, 4)
 }

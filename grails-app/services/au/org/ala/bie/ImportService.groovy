@@ -54,10 +54,12 @@ class ImportService {
     def brokerMessagingTemplate
 
     def static DYNAMIC_FIELD_EXTENSION = "_s"
+    def static IMAGE_FIELDS = URLEncoder.encode("taxon_concept_lsid, kingdom, phylum, class, order, family, genus, species, taxon_name, image_url, data_resource_uid", "UTF-8")
+
 
     static {
         TermFactory tf = TermFactory.instance()
-        for (Term term: ALATerm.values())
+        for (Term term : ALATerm.values())
             tf.addTerm(term.qualifiedName(), term)
     }
 
@@ -79,18 +81,46 @@ class ImportService {
         filePaths
     }
 
-    def importAll(){
-        try { importCollectory() } catch (Exception e) { log("Problem loading collectory: " + e.getMessage())}
-        try { importAllDwcA() } catch (Exception e) { log("Problem loading taxa: " + e.getMessage())}
-        try { importLayers() } catch (Exception e) { log("Problem loading layers: " + e.getMessage())}
-        try { importRegions() } catch (Exception e) { log("Problem loading regions: " + e.getMessage())}
+    def importAll() {
+        try {
+            importCollectory()
+        } catch (Exception e) {
+            log("Problem loading collectory: " + e.getMessage())
+        }
+        try {
+            importAllDwcA()
+        } catch (Exception e) {
+            log("Problem loading taxa: " + e.getMessage())
+        }
+        try {
+            importLayers()
+        } catch (Exception e) {
+            log("Problem loading layers: " + e.getMessage())
+        }
+        try {
+            importRegions()
+        } catch (Exception e) {
+            log("Problem loading regions: " + e.getMessage())
+        }
         //try { importLocalities() } catch (Exception e) { log("Problem loading localities: " + e.getMessage())}
-        try { importSpeciesLists() } catch (Exception e) { log("Problem loading species lists: " + e.getMessage())}
-        try { importWordPressPages() } catch (Exception e) { log("Problem loading wordpress pages: " + e.getMessage())}
-        try { buildLinkIdentifiers() } catch (Exception e) { log("Problem building link identifiers: " + e.getMessage())}
+        try {
+            importSpeciesLists()
+        } catch (Exception e) {
+            log("Problem loading species lists: " + e.getMessage())
+        }
+        try {
+            importWordPressPages()
+        } catch (Exception e) {
+            log("Problem loading wordpress pages: " + e.getMessage())
+        }
+        try {
+            buildLinkIdentifiers()
+        } catch (Exception e) {
+            log("Problem building link identifiers: " + e.getMessage())
+        }
     }
 
-    def importAllDwcA(){
+    def importAllDwcA() {
         clearTaxaIndex()
         def filePaths = retrieveAvailableDwCAPaths()
         filePaths.each {
@@ -124,7 +154,7 @@ class ImportService {
             def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
             def scientificName = record.value(DwcTerm.scientificName)
-            def taxonRank = record.value(DwcTerm.taxonRank)?:"".toLowerCase()
+            def taxonRank = record.value(DwcTerm.taxonRank) ?: "".toLowerCase()
 
             parents << parentNameUsageID
 
@@ -183,10 +213,10 @@ class ImportService {
      *
      * @return
      */
-    def importLayers(){
+    def importLayers() {
         def js = new JsonSlurper()
         def url = grailsApplication.config.layersServicesUrl + "/layers"
-        log("Requesting layer list from : " +  url)
+        log("Requesting layer list from : " + url)
         def layers = js.parseText(new URL(url).getText("UTF-8"))
         def batch = []
         indexService.deleteFromIndex(IndexDocType.LAYER)
@@ -198,14 +228,14 @@ class ImportService {
             doc["name"] = layer.displayname
             doc["description"] = layer.description
             doc["distribution"] = "N/A"
-            log("Importing layer: " +  layer.displayname)
+            log("Importing layer: " + layer.displayname)
             batch << doc
         }
         indexService.indexBatch(batch)
         log("Finished indexing ${layers.size()} layers")
     }
 
-    def importLocalities(){
+    def importLocalities() {
         indexService.deleteFromIndex(IndexDocType.LOCALITY)
         log("Starting indexing ${grailsApplication.config.gazetteerLayerId}")
         def metadataUrl = grailsApplication.config.layersServicesUrl + "/layer/" + grailsApplication.config.gazetteerLayerId + "?enabledOnly=false"
@@ -217,12 +247,12 @@ class ImportService {
         log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
     }
 
-    def importRegions(){
+    def importRegions() {
         def js = new JsonSlurper()
         def layers = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/layers").getText("UTF-8"))
         indexService.deleteFromIndex(IndexDocType.REGION)
         layers.each { layer ->
-            if(layer.type == "Contextual") {
+            if (layer.type == "Contextual") {
                 importLayer(layer)
             }
         }
@@ -235,7 +265,7 @@ class ImportService {
      * @param layer
      * @return
      */
-    private def importLayer(layer){
+    private def importLayer(layer) {
         log("Loading regions from layer " + layer.name)
 
         def tempFilePath = "/tmp/objects_${layer.id}.csv.gz"
@@ -245,27 +275,27 @@ class ImportService {
         file.flush()
         file.close()
 
-        if(new File(tempFilePath).exists() && new File(tempFilePath).length() > 0){
+        if (new File(tempFilePath).exists() && new File(tempFilePath).length() > 0) {
 
             def gzipInput = new GZIPInputStream(new FileInputStream(tempFilePath))
 
             //read file and index
             def csvReader = new CSVReader(new InputStreamReader(gzipInput))
 
-            def expectedHeaders = ["pid","id","name","description","centroid","featuretype"]
+            def expectedHeaders = ["pid", "id", "name", "description", "centroid", "featuretype"]
 
             def headers = csvReader.readNext()
             def currentLine = []
             def batch = []
-            while((currentLine = csvReader.readNext()) != null){
+            while ((currentLine = csvReader.readNext()) != null) {
 
-                if(currentLine.length >= expectedHeaders.size()){
+                if (currentLine.length >= expectedHeaders.size()) {
 
                     def doc = [:]
                     doc["id"] = currentLine[0]
                     doc["guid"] = currentLine[0]
 
-                    if(currentLine[5] == "POINT"){
+                    if (currentLine[5] == "POINT") {
                         doc["idxtype"] = IndexDocType.LOCALITY.name()
                     } else {
                         doc["idxtype"] = IndexDocType.REGION.name()
@@ -273,7 +303,7 @@ class ImportService {
 
                     doc["name"] = currentLine[2]
 
-                    if(currentLine[3] && currentLine[2] != currentLine[3]){
+                    if (currentLine[3] && currentLine[2] != currentLine[3]) {
                         doc["description"] = currentLine[3]
                     } else {
                         doc["description"] = layer.displayname
@@ -283,20 +313,20 @@ class ImportService {
                     doc["distribution"] = "N/A"
                     batch << doc
 
-                    if(batch.size() > 10000){
+                    if (batch.size() > 10000) {
                         indexService.indexBatch(batch)
                         batch.clear()
                     }
                 }
             }
-            if(batch){
+            if (batch) {
                 indexService.indexBatch(batch)
                 batch.clear()
             }
         }
     }
 
-    def importHabitats(){
+    def importHabitats() {
 
         def batch = []
         indexService.deleteFromIndex(IndexDocType.HABITAT)
@@ -317,11 +347,11 @@ class ImportService {
             def parentHabitatID = record.value(parentHabitatIDTerm)
             def habitatName = record.value(habitatNameTerm)
             def doc = [:]
-            if(habitatID){
+            if (habitatID) {
                 doc["id"] = habitatID
                 doc["guid"] = habitatID
-                if(parentHabitatID) {
-                    doc["parentGuid"] =  parentHabitatID
+                if (parentHabitatID) {
+                    doc["parentGuid"] = parentHabitatID
                 }
                 doc["idxtype"] = IndexDocType.HABITAT.name()
                 doc["name"] = habitatName
@@ -336,51 +366,51 @@ class ImportService {
      *
      * @return
      */
-    def importCollectory(){
-       [
-            "dataResource" : IndexDocType.DATARESOURCE,
-            "dataProvider" : IndexDocType.DATAPROVIDER,
-            "institution" : IndexDocType.INSTITUTION,
-            "collection" : IndexDocType.COLLECTION
+    def importCollectory() {
+        [
+                "dataResource": IndexDocType.DATARESOURCE,
+                "dataProvider": IndexDocType.DATAPROVIDER,
+                "institution" : IndexDocType.INSTITUTION,
+                "collection"  : IndexDocType.COLLECTION
         ].each { entityType, indexDocType ->
-           def js = new JsonSlurper()
-           def entities = []
-           def drLists = js.parseText(new URL(grailsApplication.config.collectoryUrl + "/${entityType}").getText("UTF-8"))
-           log("About to import ${drLists.size()} ${entityType}")
-           log("Clearing existing: ${entityType}")
-           indexService.deleteFromIndex(indexDocType)
+            def js = new JsonSlurper()
+            def entities = []
+            def drLists = js.parseText(new URL(grailsApplication.config.collectoryUrl + "/${entityType}").getText("UTF-8"))
+            log("About to import ${drLists.size()} ${entityType}")
+            log("Clearing existing: ${entityType}")
+            indexService.deleteFromIndex(indexDocType)
 
-           drLists.each {
-               def details = js.parseText(new URL(it.uri).getText("UTF-8"))
-               def doc = [:]
-               doc["id"] = it.uri
-               doc["datasetID"] = details.uid
-               doc["guid"] = details.alaPublicUrl
-               doc["idxtype"] = indexDocType.name()
-               doc["name"] = details.name
-               doc["description"] = details.pubDescription
-               doc["distribution"] = "N/A"
+            drLists.each {
+                def details = js.parseText(new URL(it.uri).getText("UTF-8"))
+                def doc = [:]
+                doc["id"] = it.uri
+                doc["datasetID"] = details.uid
+                doc["guid"] = details.alaPublicUrl
+                doc["idxtype"] = indexDocType.name()
+                doc["name"] = details.name
+                doc["description"] = details.pubDescription
+                doc["distribution"] = "N/A"
 
-               if (details.rights)
-                   doc["rights"] = details.rights
-               if (details.licenseType)
-                   doc["license"] = (details.licenseType + " " + details.licenseVersion ?: "").trim()
-               if(details.acronym)
-                   doc["acronym"] = details.acronym
+                if (details.rights)
+                    doc["rights"] = details.rights
+                if (details.licenseType)
+                    doc["license"] = (details.licenseType + " " + details.licenseVersion ?: "").trim()
+                if (details.acronym)
+                    doc["acronym"] = details.acronym
 
-               entities << doc
+                entities << doc
 
-               if(entities.size() > 10){
-                   indexService.indexBatch(entities)
-                   entities.clear()
-               }
-           }
-           log("Cleared")
-           if(entities) {
-               indexService.indexBatch(entities)
-           }
-           log("Finished indexing ${drLists.size()} ${entityType}")
-       }
+                if (entities.size() > 10) {
+                    indexService.indexBatch(entities)
+                    entities.clear()
+                }
+            }
+            log("Cleared")
+            if (entities) {
+                indexService.indexBatch(entities)
+            }
+            log("Finished indexing ${drLists.size()} ${entityType}")
+        }
     }
 
     /**
@@ -389,7 +419,7 @@ class ImportService {
     def importWordPressPages() throws Exception {
         // clear the existing WP index
         indexService.deleteFromIndex(IndexDocType.WORDPRESS)
-        if(!grailsApplication.config.wordPress.sitemapUrl){
+        if (!grailsApplication.config.wordPress.sitemapUrl) {
             return
         }
 
@@ -524,7 +554,7 @@ class ImportService {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
         def conservationDefaultSourceField = grailsApplication.config.conservationList.defaultSourceField
-        Map speciesListMap = grailsApplication.config.conservationLists?:[:]
+        Map speciesListMap = grailsApplication.config.conservationLists ?: [:]
         Integer listNum = 0
 
         speciesListMap.each { drUid, status ->
@@ -583,8 +613,8 @@ class ImportService {
                     doc["id"] = taxonDoc.id // doc key
                     doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
                     doc["guid"] = ["set": taxonDoc.guid] // required field
-                    def fieldVale = item.kvpValues.find{it.key == jsonFieldName}?.get("value")
-                    doc[SolrFieldName] = ["set": fieldVale ] // "set" lets SOLR know to update record
+                    def fieldVale = item.kvpValues.find { it.key == jsonFieldName }?.get("value")
+                    doc[SolrFieldName] = ["set": fieldVale] // "set" lets SOLR know to update record
                     log.debug "adding to doc = ${doc}"
                     buffer << doc
                 } else {
@@ -592,14 +622,14 @@ class ImportService {
                     def doc = [:]
                     doc["id"] = UUID.randomUUID().toString() // doc key
                     doc["idxtype"] = IndexDocType.TAXON // required field
-                    doc["guid"] = "ALA_${item.name?.replaceAll(" ","_")}" // required field
+                    doc["guid"] = "ALA_${item.name?.replaceAll(" ", "_")}" // required field
                     doc["datasetID"] = drUid
                     doc["datasetName"] = "Conservation list for ${SolrFieldName}"
                     doc["name"] = item.name
-                    doc["status"] = legistatedStatusType?.status?:"legistated"
-                    doc["priority"] = legistatedStatusType?.priority?:500
+                    doc["status"] = legistatedStatusType?.status ?: "legistated"
+                    doc["priority"] = legistatedStatusType?.priority ?: 500
                     // set conservationStatus facet
-                    def fieldVale = item.kvpValues.find{it.key == jsonFieldName}?.get("value")
+                    def fieldVale = item.kvpValues.find { it.key == jsonFieldName }?.get("value")
                     doc[SolrFieldName] = fieldVale
                     log.debug "new name doc = ${doc}"
                     buffer << doc
@@ -622,7 +652,7 @@ class ImportService {
         }
     }
 
-    def clearTaxaIndex(){
+    def clearTaxaIndex() {
         log("Deleting existing taxon entries in index...")
         indexService.deleteFromIndex(IndexDocType.TAXON)
         indexService.deleteFromIndex(IndexDocType.COMMON)
@@ -635,7 +665,7 @@ class ImportService {
      *
      * @return
      */
-    def importDwcA(dwcDir, clearIndex){
+    def importDwcA(dwcDir, clearIndex) {
 
         log.info("Loading Species Group mappings for DwcA import")
         def speciesGroupMapping = speciesGroupService.invertedSpeciesGroups
@@ -651,7 +681,7 @@ class ImportService {
             // Archive metadata available
             log("Archive metadata detected: " + (archive.metadataLocation != null))
             def datasetName = null
-             if (archive.metadataLocation) {
+            if (archive.metadataLocation) {
                 datasetName = archive.metadata.title?.trim()
                 log("Dataset name from metadata: " + datasetName)
             }
@@ -677,13 +707,6 @@ class ImportService {
             log("Reading taxon ranks..")
             def taxonRanks = ranks()
             log("Reading taxon ranks.." + taxonRanks.size() + " read.")
-
-            //retrieve images
-            def imageMap = [:]
-
-            if (!grailsApplication.config.skipImages) {
-                imageMap = indexImages()
-            }
 
             //retrieve common names
             def commonNamesMap = readCommonNames(vernacularArchiveFile)
@@ -791,15 +814,9 @@ class ImportService {
                         doc["datasetName"] = datasetName
                     }
 
-                    //retrieve images via scientific name
-                    def image = imageMap.get(scientificName)
 
-                    if (image) {
-                        doc["image"] = image
-                        doc["imageAvailable"] = "yes"
-                    } else {
-                        doc["imageAvailable"] = "no"
-                    }
+                    doc["imageAvailable"] = "no"
+
 
                     def distributions = distributionMap.get(taxonID)
                     if (distributions) {
@@ -925,7 +942,7 @@ class ImportService {
                         identifiers.each { identifier ->
                             if (identifier['identifier'] == taxonID)
                                 seenTaxonID = true
-                            def idoc =  ["idxtype": IndexDocType.IDENTIFIER.name()]
+                            def idoc = ["idxtype": IndexDocType.IDENTIFIER.name()]
                             idoc["id"] = UUID.randomUUID().toString()
                             idoc["guid"] = identifier['identifier']
                             idoc["datasetID"] = identifier['datasetID']
@@ -966,7 +983,7 @@ class ImportService {
                 buffer.clear()
             }
             log("Import finished.")
-        } catch (Exception e){
+        } catch (Exception e) {
             log("There was problem with the import: " + e.getMessage())
             log("See server logs for more details.")
             log.error(e.getMessage(), e)
@@ -987,7 +1004,7 @@ class ImportService {
 
         def distributions = [:]
 
-        if(!distributionsFile){
+        if (!distributionsFile) {
             return distributions
         }
 
@@ -999,7 +1016,7 @@ class ImportService {
             def stateProvince = record.value(DwcTerm.stateProvince)
 
             def stateProvinces = distributions.get(taxonID)
-            if(stateProvinces == null){
+            if (stateProvinces == null) {
                 distributions.put(taxonID, [stateProvince])
             } else {
                 stateProvinces << stateProvince
@@ -1019,12 +1036,12 @@ class ImportService {
                 if (parts.length == 3) {
                     String tID = parts[0]
                     def stateProvinces = distributions.get(tID)
-                    if(stateProvinces == null){
+                    if (stateProvinces == null) {
                         distributions.put(tID, distributions.get(it))
                     } else {
                         def distributionsValues = distributions.get(it)
                         distributionsValues.each {
-                            if(!stateProvinces.contains(it)){
+                            if (!stateProvinces.contains(it)) {
                                 stateProvinces << it
                             }
                         }
@@ -1072,13 +1089,13 @@ class ImportService {
 
                 //lets ignore lexicographically the same names....
                 synonymList << [
-                        taxonID: taxonID,
-                        scientificName : scientificName,
-                        scientificNameAuthorship : scientificNameAuthorship,
-                        nameComplete: buildNameComplete(nameComplete, scientificName, scientificNameAuthorship),
-                        nameFormatted: buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks),
-                        datasetID: datasetID,
-                        source: source
+                        taxonID                 : taxonID,
+                        scientificName          : scientificName,
+                        scientificNameAuthorship: scientificNameAuthorship,
+                        nameComplete            : buildNameComplete(nameComplete, scientificName, scientificNameAuthorship),
+                        nameFormatted           : buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks),
+                        datasetID               : datasetID,
+                        source                  : source
                 ]
             }
         }
@@ -1118,7 +1135,7 @@ class ImportService {
     private def readCommonNames(ArchiveFile vernacularArchiveFile) {
         def commonNames = [:]
 
-        if(!vernacularArchiveFile){
+        if (!vernacularArchiveFile) {
             return commonNames
         }
 
@@ -1144,18 +1161,17 @@ class ImportService {
                 commonNames.put(taxonID, nameList)
             }
             nameList << [
-                    name: vernacularName,
-                    nameID: nameID,
-                    status: status?.status ?: "common",
-                    priority: status?.priority ?: 100,
-                    source: source,
+                    name     : vernacularName,
+                    nameID   : nameID,
+                    status   : status?.status ?: "common",
+                    priority : status?.priority ?: 100,
+                    source   : source,
                     datasetID: datasetID,
-                    language: language
+                    language : language
             ]
         }
         commonNames
     }
-
 
     /**
      * Read the identifier file, building a map of taxonID -> [identifier1, identifier2 etc]
@@ -1166,7 +1182,7 @@ class ImportService {
     private def readOtherIdentifiers(ArchiveFile identifierArchiveFile) {
         def identifiers = [:]
 
-        if(!identifierArchiveFile){
+        if (!identifierArchiveFile) {
             return identifiers
         }
 
@@ -1194,13 +1210,13 @@ class ImportService {
             }
             ids << [
                     identifier: identifier,
-                    name: title,
-                    status: status?.status,
-                    priority: status?.priority ?: 200,
-                    subject: subject,
-                    format: format,
-                    source: source,
-                    datasetID: datasetID
+                    name      : title,
+                    status    : status?.status,
+                    priority  : status?.priority ?: 200,
+                    subject   : subject,
+                    format    : format,
+                    source    : source,
+                    datasetID : datasetID
             ]
         }
         identifiers
@@ -1209,18 +1225,19 @@ class ImportService {
     /**
      * Go through the index and build link identifiers for unique names.
      */
-    def buildLinkIdentifiers() {
+    def buildLinkIdentifiers(online) {
         int pageSize = 1000
         int page = 0
         int added = 0
         def js = new JsonSlurper()
+        def baseUrl = online ? grailsApplication.config.indexLiveBaseUrl : grailsApplication.config.indexOfflineBaseUrl
         def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+OR+idxtype:\"" + IndexDocType.COMMON.name() + "\""
 
         js.setType(JsonParserType.INDEX_OVERLAY)
         log("Starting link identifier scan")
         while (true) {
             def startTime = System.currentTimeMillis()
-            def solrServerUrl = grailsApplication.config.indexOfflineBaseUrl + "/select?wt=json&q=" + typeQuery + "&start=" + (pageSize * page) + "&rows=" + pageSize
+            def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&start=" + (pageSize * page) + "&rows=" + pageSize
             def queryResponse = solrServerUrl.toURL().getText("UTF-8")
             def json = js.parseText(queryResponse)
             int total = json.response.numFound
@@ -1234,7 +1251,7 @@ class ImportService {
                 try {
                     if (name) {
                         def encName = URLEncoder.encode(name, "UTF-8")
-                        def nameSearchUrl = grailsApplication.config.indexOfflineBaseUrl + "/select?wt=json&q=name:\"" + encName + "\"+OR+scientificName:\"" + encName + "\"&fq=" + typeQuery + "&rows=0"
+                        def nameSearchUrl = baseUrl + "/select?wt=json&q=name:\"" + encName + "\"+OR+scientificName:\"" + encName + "\"&fq=" + typeQuery + "&rows=0"
                         def nameResponse = nameSearchUrl.toURL().getText("UTF-8")
                         def nameJson = js.parseText(nameResponse)
                         int found = nameJson.response.numFound
@@ -1254,7 +1271,7 @@ class ImportService {
                 }
             }
             if (!buffer.isEmpty())
-                indexService.indexBatch(buffer)
+                indexService.indexBatch(buffer, online)
             page++
             if (page % 10 == 0) {
                 def progress = page * pageSize
@@ -1266,6 +1283,129 @@ class ImportService {
         log("Finished scan")
     }
 
+    /**
+     * Go through the index and build image links for taxa
+     */
+    def loadImages(online) {
+        int pageSize = 5000
+        int processed = 0
+        int added = 0
+        def js = new JsonSlurper()
+        def baseUrl = online ? grailsApplication.config.indexLiveBaseUrl : grailsApplication.config.indexOfflineBaseUrl
+        def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+taxonomicStatus:accepted"
+        def prevCursor = ""
+        def cursor = "*"
+        def imageMap = collectImageLists()
+        def rankMap = grailsApplication.config.imageRanks.collectEntries { r -> [(r.rank): r] }
+        // Emphasise live occurrences
+        def boostList = ["bq=record_type:Image^10",
+                      "bq=record_type:HumanObservaton^20",
+                      "bq=record_type:Observation^10",
+                      "bq=-record_type:PreservedSpecimen^20"
+        ]
+        boostList.addAll(grailsApplication.config.imageSources.collect({"bq=datasetID:\"${it.drUid}\"^${it.boost}"}))
+        def boosts = boostList.join("&")
+        def lastImage = [imageId: "none", taxonID: "none", name: "none"]
+
+        js.setType(JsonParserType.INDEX_OVERLAY)
+        log("Starting image load scan for ${online ? 'online' : 'offline'} index")
+        while (prevCursor != cursor) {
+            def startTime = System.currentTimeMillis()
+            def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&cursorMark=" + cursor + "&sort=id+asc&rows=" + pageSize
+            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
+            def docs = json.response.docs
+            def buffer = []
+
+            docs.each { doc ->
+                def taxonID = doc.guid
+                def name = doc.scientificName ?: doc.name
+                def rank = rankMap[doc.rank]
+
+                def image = null
+                if (rank != null) {
+                    try {
+                        image = imageMap[taxonID] ?: imageMap[name]
+
+                        if (!image && taxonID )
+                            image = imageSearch(taxonID, name, "lsid", taxonID, boosts)
+                        if (!image && taxonID && rank.idField)
+                            image = imageSearch(taxonID, name, rank.idField, taxonID, boosts)
+                        if (!image && name && rank.nameField)
+                            image = imageSearch(taxonID, name, rank.nameField, name, boosts)
+                        if (image) {
+                            def update = [:]
+                            update["id"] = doc.id // doc key
+                            update["idxtype"] = ["set": doc.idxtype] // required field
+                            update["guid"] = ["set": doc.guid] // required field
+                            update["image"] = ["set": image.imageId]
+                            update["imageAvailable"] = ["set": "yes"]
+                            buffer << update
+                            lastImage = image
+                            added++
+                        }
+                    } catch (Exception ex) {
+                        log.warn "Unable to search for name ${name}: ${ex.message}"
+                    }
+                }
+                processed++
+            }
+            if (!buffer.isEmpty())
+                indexService.indexBatch(buffer, online)
+            def percentage = Math.round(processed * 100 / total)
+            def speed = Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime))
+            log("Processed ${processed} names (${percentage}%), added ${added} images, ${speed} taxa per second. Last image ${lastImage.imageId} for ${lastImage.name}, ${lastImage.taxonID}")
+            prevCursor = cursor
+            cursor = json.nextCursorMark
+        }
+        log("Finished scan")
+    }
+
+    def imageSearch(taxonID, name, field, value, boosts) {
+        def biocacheSolrUrl = grailsApplication.config.biocache.solr.url
+        def js = new JsonSlurper()
+        def enc = URLEncoder.encode(value, "UTF-8")
+        def taxonSearchUrl = biocacheSolrUrl + "/select?q=${field}:\"${enc}\"+AND+multimedia:Image&${boosts}&rows=1&wt=json&fl=${IMAGE_FIELDS}"
+        def taxonResponse = taxonSearchUrl.toURL().getText("UTF-8")
+        def taxonJson = js.parseText(taxonResponse)
+        return taxonJson.response.numFound > 0 ? [taxonID: taxonID, name: name, imageId: taxonJson.response.docs[0].image_url] : null
+    }
+
+
+    /**
+     * Collect the list where images are specifically listed
+     */
+    def collectImageLists() {
+        def speciesListUrl = grailsApplication.config.speciesList.url
+        def speciesListParams = grailsApplication.config.speciesList.params
+        def imageMap = [:]
+        log("Loading image lists")
+        grailsApplication.config.imageLists.each { list ->
+            String drUid = list.drUid
+            String imageIdName = list.imageId
+            String imageUrlName = list.imageUrl
+            if (drUid && (imageIdName || imageUrlName)) {
+                def url = "${speciesListUrl}${drUid}${speciesListParams}"
+                JSONElement json = JSON.parse(getStringForUrl(url))
+                json.each { item ->
+                    def taxonID = item.lsid
+                    def name = item.name
+                    def imageId = imageIdName ? item.kvpValues.find { it.key == imageIdName }?.get("value") : null
+                    def imageUrl = imageUrlName ? item.kvpValues.find { it.key == imageUrlName }?.get("value") : null
+                    if (imageId || imageUrl) {
+                        def image = [taxonID: taxonID, name: name, imageId: imageId, imageUrl: imageUrl]
+                        if (taxonID && !imageMap.containsKey(taxonID))
+                            imageMap[taxonID] = image
+                        if (name && !imageMap.containsKey(name))
+                            imageMap[name] = image
+                    }
+                }
+            }
+        }
+        log("Loaded image lists")
+        return imageMap
+    }
 
     /**
      * Get the taxon rank structure
@@ -1314,12 +1454,12 @@ class ImportService {
         idMap
     }
 
-    private def indexLists(){
+    private def indexLists() {
 
         // http://lists.ala.org.au/ws/speciesList?isAuthoritative=eq:true&max=100
         //for each list
-            // download http://lists.ala.org.au/speciesListItem/downloadList/{0}
-            // read, and add to map
+        // download http://lists.ala.org.au/speciesListItem/downloadList/{0}
+        // read, and add to map
     }
 
     /**
@@ -1327,7 +1467,7 @@ class ImportService {
      *
      * @return
      */
-    private def indexImages() {
+    def indexImages() {
 
         if (!grailsApplication.config.indexImages.toBoolean()) {
             return [:]
@@ -1424,6 +1564,7 @@ class ImportService {
         return "<span class=\"${formattedCssClass}\"><span class=\"name\">${StringEscapeUtils.escapeHtml(scientificName)}</span></span>"
     }
 
+
     /**
      * Helper method to do a HTTP GET and return String content
      *
@@ -1432,16 +1573,16 @@ class ImportService {
      */
     private String getStringForUrl(String url) throws IOException {
         String output = ""
-        def inStm = new URL( url ).openStream()
+        def inStm = new URL(url).openStream()
         try {
-            output =  IOUtils.toString( inStm )
+            output = IOUtils.toString(inStm)
         } finally {
             IOUtils.closeQuietly(inStm)
         }
         output
     }
 
-    def log(msg){
+    def log(msg) {
         log.info(msg)
         brokerMessagingTemplate.convertAndSend "/topic/import-feedback", msg.toString()
     }

@@ -218,13 +218,24 @@ class ImportController {
     }
 
     def buildLinkIdentifiers() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
         Thread.start {
             log.info("Starting build of link identifiers....")
-            importService.buildLinkIdentifiers()
+            importService.buildLinkIdentifiers(online)
             log.info("Finished build of link identifiers.")
         }
         asJson ([success:true] )
 
+    }
+
+    def loadImages() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        Thread.start {
+            log.info("Starting image load....")
+            importService.loadImages(online)
+            log.info("Finished image load.")
+        }
+        asJson ([success:true] )
     }
 
     def ranks() {

@@ -22,6 +22,7 @@ println "default_config = ${default_config}"
 indexLiveBaseUrl = "http://localhost:8080/solr/bie"
 indexOfflineBaseUrl = "http://localhost:8080/solr/bie-offline"
 biocacheService.baseUrl = "http://biocache.ala.org.au/ws"
+biocache.solr.url="http://localhost:8080/solr/biocache"
 defaultNameSourceAttribution = "National Species Lists"
 commonNameSourceAttribution = "National Species Lists"
 commonNameDefaultLanguage = "en-XX"
@@ -54,6 +55,26 @@ conservationLists {
     dr2201 = [ field: "conservationStatusWA_s", term: "conservationStatusWA", label: "WA"]
     dr651 = [ field: "conservationStatusNT_s", term: "conservationStatusNT", label: "NT"]
 }
+// Image lists to use, highest priority first
+imageLists = [
+    [ drUid: "dr4778", imageId: "imageId" ]
+]
+// Preferred image sources
+imageSources = [
+        [ drUid: "dr130", boost: 10 ]
+]
+// The map of rank ids that deserve an image and what to use to find that image
+imageRanks = [
+    //[ rank: "kingdom", idField: "kingdomID.p", nameField: "kingdom" ],
+    [ rank: "phylum", idField: null, nameField: "phylum" ],
+    [ rank: "class", idField: null, nameField: "class" ],
+    [ rank: "order", idField: null, nameField: "order" ],
+    [ rank: "family", idField: null, nameField: "family" ],
+    [ rank: "genus", idField: "genus_guid", nameField: "genus" ],
+    [ rank: "species", idField: "species_guid", nameField: "taxon_name" ]
+    //[ rank: "subspecies", idField: "subspecies_guid", nameField: "subspecies.p" ]
+]
+
 // SOLR additional params
 solr {
     qf = "doc_name^100+text"
