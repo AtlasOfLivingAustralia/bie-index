@@ -3,8 +3,7 @@ package au.org.ala.bie
 import au.org.ala.bie.search.IndexDocType
 import grails.converters.JSON
 import groovy.json.JsonSlurper
-import org.apache.solr.client.solrj.util.ClientUtils
-import org.codehaus.groovy.grails.web.json.JSONObject
+import org.codehaus.groovy.grails.web.servlet.mvc.GrailsParameterMap
 import org.gbif.nameparser.NameParser
 
 /**
@@ -72,8 +71,10 @@ class SearchService {
      * @param requestedFacets
      * @return
      */
-    def search(q, queryString, requestedFacets) {
-
+    def search(String q, GrailsParameterMap params, List requestedFacets) {
+        params.remove("controller") // remove Grails stuff from query
+        params.remove("action") // remove Grails stuff from query
+        String queryString = params.toQueryString()
         String qf = grailsApplication.config.solr.qf // dismax query fields
         String bq = grailsApplication.config.solr.bq  // dismax boost function
         String defType = grailsApplication.config.solr.defType // query parser type
@@ -92,11 +93,27 @@ class SearchService {
                 queryString = queryString.replaceFirst("q=*", "q=*:*")
             }
             // boost query syntax was removed from here. NdR.
+
+            // Add fuzzy search term modifier to simple queries (e.g. no braces)
+            if (!q.contains("(")) {
+                def queryArray = []
+                q.split(/\s+/).each {
+                    if (!(it =~ /AND|OR|NOT/)) {
+                        queryArray.add(it + "~")
+                    } else {
+                        queryArray.add(it)
+                    }
+                }
+                def nq = queryArray.join(" ")
+                log.debug "fuzzy nq = ${nq}"
+                params.q = nq
+                queryString = params.toQueryString()
+            }
         } else {
             queryString = "q=*:*"
         }
 
-        String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams
+        String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select" + queryString + additionalParams
         log.debug "solrUlr = ${solrUlr}"
         def queryResponse = new URL(solrUlr).getText("UTF-8")
         def js = new JsonSlurper()
@@ -111,6 +128,7 @@ class SearchService {
                 def parsedName = nameParser.parse(q)
                 if (parsedName && parsedName.canonicalName()) {
                     def canonical = parsedName.canonicalName()
+                    // TODO test if this breaks paginating through results... looks like it will
                     def sciNameQuery = grailsApplication.config.indexLiveBaseUrl + "/select?q=scientificName:\"" + URLEncoder.encode(canonical, "UTF-8") + "\"" + additionalParams
                     log.debug "sciNameQuery = ${sciNameQuery}"
                     queryResponse = new URL(sciNameQuery).getText("UTF-8")
@@ -318,7 +336,7 @@ class SearchService {
      * @param useOfflineIndex
      * @return
      */
-    private def lookupTaxon(String taxonID, Boolean useOfflineIndex){
+    def lookupTaxon(String taxonID, Boolean useOfflineIndex = false){
         def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
 
         if (useOfflineIndex) {
@@ -334,20 +352,11 @@ class SearchService {
     }
 
     /**
-     * Retrieve details of a taxon by taxonID
-     * @param taxonID
-     * @return
-     */
-    private def lookupTaxon(taxonID){
-        lookupTaxon(taxonID, false)
-    }
-
-    /**
      * Retrieve details of a taxon by common name or scientific name
      * @param taxonID
      * @return
      */
-    private def lookupTaxonByName(String taxonName, Boolean useOfflineIndex){
+    private def lookupTaxonByName(String taxonName, Boolean useOfflineIndex = false){
         def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
         if (useOfflineIndex) {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
@@ -362,9 +371,6 @@ class SearchService {
         json.response.docs[0]
     }
 
-    private def lookupTaxonByName(taxonName){
-        lookupTaxonByName(taxonName, false)
-    }
 
     def getProfileForName(name){
 

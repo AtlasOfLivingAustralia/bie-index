@@ -54,12 +54,10 @@ class ImportService {
     def brokerMessagingTemplate
 
     def static DYNAMIC_FIELD_EXTENSION = "_s"
-    def static IMAGE_FIELDS = URLEncoder.encode("taxon_concept_lsid, kingdom, phylum, class, order, family, genus, species, taxon_name, image_url, data_resource_uid", "UTF-8")
-
 
     static {
         TermFactory tf = TermFactory.instance()
-        for (Term term : ALATerm.values())
+        for (Term term: ALATerm.values())
             tf.addTerm(term.qualifiedName(), term)
     }
 
