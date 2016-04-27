@@ -130,3 +130,53 @@ When provided to the server un-encoded, everything is fine.
 However, if encoded with slashes being replaced by `%2F` then tomcat treats this as a security error and
 returns a 400 error.
 To allow encoded slashes in tomcat, start the server with `-Dorg.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH=true`
+
+## Image scans
+
+An image scan will search the biocache for suitable images to act as an example image for the taxon.
+For each candidate taxon, a query is constructed that boosts certain characteristics of the occurrence in the
+hopes of finding something that doesn't look terribly dead. An example boost list is:
+
+```
+imageBoosts = [
+   "record_type:Image^10",
+   "record_type:HumanObservaton^20",
+   "record_type:Observation^20",
+   "-record_type:PreservedSpecimen^20"
+    "datasetID:dr130^10"   
+]
+```
+
+This prefers images that come from an observation and de-emphasises preserved specimens.
+It also prefers images from a specifc dataset.
+
+In addition, species lists can be used to manually specify preferred heroic images for species.
+The species lists should have a column called that supplies the image imageId, so that the image
+can be found on the image server
+An example of the species lists is
+
+```
+imageLists = [
+    [ drUid: "dr4778", imageId: "imageId" ]
+]
+```
+
+Multiple lists can be used, with highest priority going to the first entry.
+
+Only certain ranks get images attached to them.
+This can be configured via the `imageRanks` configuration.
+For example, the following only retrieves images at the genus and species level.
+
+```
+imageRanks = [
+    [ rank: "genus", idField: "genus_guid", nameField: "genus" ],
+    [ rank: "species", idField: "species_guid", nameField: "taxon_name" ]
+]
+```
+
+The `idField` provides a specific biocache field that will be searched for the taxon identifier.
+It can be left null for ranks that have no biocache index fields.
+The `idName` provides a specific biocache field that will be searched for the taxon name.
+Again, it can be left null for ranks with no name.
+The `lsid` field is always searched, to see if there is an ocurrence record that is specifically
+named as the taxon.

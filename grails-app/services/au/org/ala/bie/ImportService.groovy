@@ -114,7 +114,7 @@ class ImportService {
             log("Problem loading wordpress pages: " + e.getMessage())
         }
         try {
-            buildLinkIdentifiers()
+            buildLinkIdentifiers(false)
         } catch (Exception e) {
             log("Problem building link identifiers: " + e.getMessage())
         }
@@ -1235,52 +1235,57 @@ class ImportService {
 
         js.setType(JsonParserType.INDEX_OVERLAY)
         log("Starting link identifier scan")
-        while (true) {
-            def startTime = System.currentTimeMillis()
-            def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&start=" + (pageSize * page) + "&rows=" + pageSize
-            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
-            def json = js.parseText(queryResponse)
-            int total = json.response.numFound
-            def docs = json.response.docs
-            def buffer = []
+        try {
+            while (true) {
+                def startTime = System.currentTimeMillis()
+                def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&start=" + (pageSize * page) + "&rows=" + pageSize
+                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                def json = js.parseText(queryResponse)
+                int total = json.response.numFound
+                def docs = json.response.docs
+                def buffer = []
 
-            if (docs.isEmpty())
-                break
-            docs.each { doc ->
-                def name = doc.scientificName ?: doc.name
-                try {
-                    if (name) {
-                        def encName = URLEncoder.encode(name, "UTF-8")
-                        def nameSearchUrl = baseUrl + "/select?wt=json&q=name:\"" + encName + "\"+OR+scientificName:\"" + encName + "\"&fq=" + typeQuery + "&rows=0"
-                        def nameResponse = nameSearchUrl.toURL().getText("UTF-8")
-                        def nameJson = js.parseText(nameResponse)
-                        int found = nameJson.response.numFound
-                        if (found == 1) {
-                            //log.debug("Adding link identifier for ${name} to ${doc.id}")
-                            def update = [:]
-                            update["id"] = doc.id // doc key
-                            update["idxtype"] = ["set": doc.idxtype] // required field
-                            update["guid"] = ["set": doc.guid] // required field
-                            update["linkIdentifier"] = ["set": name]
-                            buffer << update
-                            added++
+                if (docs.isEmpty())
+                    break
+                docs.each { doc ->
+                    def name = doc.scientificName ?: doc.name
+                    try {
+                        if (name) {
+                            def encName = URLEncoder.encode(name, "UTF-8")
+                            def nameSearchUrl = baseUrl + "/select?wt=json&q=name:\"" + encName + "\"+OR+scientificName:\"" + encName + "\"&fq=" + typeQuery + "&rows=0"
+                            def nameResponse = nameSearchUrl.toURL().getText("UTF-8")
+                            def nameJson = js.parseText(nameResponse)
+                            int found = nameJson.response.numFound
+                            if (found == 1) {
+                                //log.debug("Adding link identifier for ${name} to ${doc.id}")
+                                def update = [:]
+                                update["id"] = doc.id // doc key
+                                update["idxtype"] = ["set": doc.idxtype] // required field
+                                update["guid"] = ["set": doc.guid] // required field
+                                update["linkIdentifier"] = ["set": name]
+                                buffer << update
+                                added++
+                            }
                         }
+                    } catch (Exception ex) {
+                        log.warn "Unable to search for name ${name}: ${ex.message}"
                     }
-                } catch (Exception ex) {
-                    log.warn "Unable to search for name ${name}: ${ex.message}"
+                }
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                page++
+                if (page % 10 == 0) {
+                    def progress = page * pageSize
+                    def percentage = Math.round(progress * 100 / total)
+                    def speed = Math.round((page * 1000) / (System.currentTimeMillis() - startTime))
+                    log("Processed ${page * pageSize} names (${percentage}%), added ${added} unique links, ${speed} names per second")
                 }
             }
-            if (!buffer.isEmpty())
-                indexService.indexBatch(buffer, online)
-            page++
-            if (page % 10 == 0) {
-                def progress = page * pageSize
-                def percentage = Math.round(progress * 100 / total)
-                def speed = Math.round((page * 1000) / (System.currentTimeMillis() - startTime))
-                log("Processed ${page * pageSize} names (${percentage}%), added ${added} unique links, ${speed} names per second")
-            }
+            log("Finished scan")
+        } catch (Exception ex) {
+            log.error("Unable to perform link identifier scan", ex)
+            log("Error during scan: " + ex.getMessage())
         }
-        log("Finished scan")
     }
 
     /**
@@ -1292,86 +1297,87 @@ class ImportService {
         int added = 0
         def js = new JsonSlurper()
         def baseUrl = online ? grailsApplication.config.indexLiveBaseUrl : grailsApplication.config.indexOfflineBaseUrl
+        def biocacheSolrUrl = grailsApplication.config.biocache.solr.url
         def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+taxonomicStatus:accepted"
         def prevCursor = ""
         def cursor = "*"
         def imageMap = collectImageLists()
         def rankMap = grailsApplication.config.imageRanks.collectEntries { r -> [(r.rank): r] }
-        // Emphasise live occurrences
-        def boostList = ["bq=record_type:Image^10",
-                      "bq=record_type:HumanObservaton^20",
-                      "bq=record_type:Observation^10",
-                      "bq=-record_type:PreservedSpecimen^20"
-        ]
-        boostList.addAll(grailsApplication.config.imageSources.collect({"bq=datasetID:\"${it.drUid}\"^${it.boost}"}))
-        def boosts = boostList.join("&")
+        def boosts = grailsApplication.config.imageBoosts.collect({"bq=" + it}).join("&")
         def lastImage = [imageId: "none", taxonID: "none", name: "none"]
+        def addImageSearch = { query, field, value, boost ->
+            if (field && value) {
+                query = query ? query + "+OR+" : ""
+                query = query + "${field}:\"${URLEncoder.encode(value, "UTF-8")}\"^${boost}"
+            }
+            query
+        }
 
         js.setType(JsonParserType.INDEX_OVERLAY)
         log("Starting image load scan for ${online ? 'online' : 'offline'} index")
-        while (prevCursor != cursor) {
-            def startTime = System.currentTimeMillis()
-            def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&cursorMark=" + cursor + "&sort=id+asc&rows=" + pageSize
-            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
-            def json = js.parseText(queryResponse)
-            int total = json.response.numFound
-            def docs = json.response.docs
-            def buffer = []
+        try {
+            while (prevCursor != cursor) {
+                def startTime = System.currentTimeMillis()
+                def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&cursorMark=" + cursor + "&sort=id+asc&rows=" + pageSize
+                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                def json = js.parseText(queryResponse)
+                int total = json.response.numFound
+                def docs = json.response.docs
+                def buffer = []
 
-            docs.each { doc ->
-                def taxonID = doc.guid
-                def name = doc.scientificName ?: doc.name
-                def rank = rankMap[doc.rank]
+                docs.each { doc ->
+                    def taxonID = doc.guid
+                    def name = doc.scientificName ?: doc.name
+                    def rank = rankMap[doc.rank]
+                    def image = null
 
-                def image = null
-                if (rank != null) {
-                    try {
-                        image = imageMap[taxonID] ?: imageMap[name]
-
-                        if (!image && taxonID )
-                            image = imageSearch(taxonID, name, "lsid", taxonID, boosts)
-                        if (!image && taxonID && rank.idField)
-                            image = imageSearch(taxonID, name, rank.idField, taxonID, boosts)
-                        if (!image && name && rank.nameField)
-                            image = imageSearch(taxonID, name, rank.nameField, name, boosts)
-                        if (image) {
-                            def update = [:]
-                            update["id"] = doc.id // doc key
-                            update["idxtype"] = ["set": doc.idxtype] // required field
-                            update["guid"] = ["set": doc.guid] // required field
-                            update["image"] = ["set": image.imageId]
-                            update["imageAvailable"] = ["set": "yes"]
-                            buffer << update
-                            lastImage = image
-                            added++
+                    if (rank != null) {
+                        try {
+                            image = imageMap[taxonID] ?: imageMap[name]
+                            if (!image) {
+                                def query = null
+                                query = addImageSearch(query, "lsid", taxonID, 100)
+                                query = addImageSearch(query, rank.nameField, name, 50)
+                                query = addImageSearch(query, rank.idField, taxonID, 20)
+                                if (query) {
+                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=1&wt=json&fl=${IMAGE_FIELDS}"
+                                    def taxonResponse = taxonSearchUrl.toURL().getText("UTF-8")
+                                    def taxonJson = js.parseText(taxonResponse)
+                                    if (taxonJson.response.numFound > 0)
+                                        image = [taxonID: taxonID, name: name, imageId: taxonJson.response.docs[0].image_url]
+                                }
+                            }
+                        } catch (Exception ex) {
+                            log.warn "Unable to search for name ${name}: ${ex.message}"
                         }
-                    } catch (Exception ex) {
-                        log.warn "Unable to search for name ${name}: ${ex.message}"
                     }
+                    if (image) {
+                        def update = [:]
+                        update["id"] = doc.id // doc key
+                        update["idxtype"] = ["set": doc.idxtype] // required field
+                        update["guid"] = ["set": doc.guid] // required field
+                        update["image"] = ["set": image.imageId]
+                        update["imageAvailable"] = ["set": "yes"]
+                        buffer << update
+                        lastImage = image
+                        added++
+                    }
+                    processed++
                 }
-                processed++
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                def percentage = Math.round(processed * 100 / total)
+                def speed = Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime))
+                log("Processed ${processed} names (${percentage}%), added ${added} images, ${speed} taxa per second. Last image ${lastImage.imageId} for ${lastImage.name}, ${lastImage.taxonID}")
+                prevCursor = cursor
+                cursor = json.nextCursorMark
             }
-            if (!buffer.isEmpty())
-                indexService.indexBatch(buffer, online)
-            def percentage = Math.round(processed * 100 / total)
-            def speed = Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime))
-            log("Processed ${processed} names (${percentage}%), added ${added} images, ${speed} taxa per second. Last image ${lastImage.imageId} for ${lastImage.name}, ${lastImage.taxonID}")
-            prevCursor = cursor
-            cursor = json.nextCursorMark
+            log("Finished scan")
+        } catch (Exception ex) {
+            log.error("Unable to perform image scan", ex)
+            log("Error during scan: " + ex.getMessage())
         }
-        log("Finished scan")
     }
-
-    def imageSearch(taxonID, name, field, value, boosts) {
-        def biocacheSolrUrl = grailsApplication.config.biocache.solr.url
-        def js = new JsonSlurper()
-        def enc = URLEncoder.encode(value, "UTF-8")
-        def taxonSearchUrl = biocacheSolrUrl + "/select?q=${field}:\"${enc}\"+AND+multimedia:Image&${boosts}&rows=1&wt=json&fl=${IMAGE_FIELDS}"
-        def taxonResponse = taxonSearchUrl.toURL().getText("UTF-8")
-        def taxonJson = js.parseText(taxonResponse)
-        return taxonJson.response.numFound > 0 ? [taxonID: taxonID, name: name, imageId: taxonJson.response.docs[0].image_url] : null
-    }
-
 
     /**
      * Collect the list where images are specifically listed
@@ -1460,46 +1466,6 @@ class ImportService {
         //for each list
         // download http://lists.ala.org.au/speciesListItem/downloadList/{0}
         // read, and add to map
-    }
-
-    /**
-     * Retrieve map of scientificName -> image details
-     *
-     * @return
-     */
-    def indexImages() {
-
-        if (!grailsApplication.config.indexImages.toBoolean()) {
-            return [:]
-        }
-
-        def imageMap = [:]
-        log("Loading images for the each of the ranks")
-        //load images against scientific name
-        ["taxon_name", "genus", "family", "order", "class", "phylum"].each {
-
-            log("Loading images for the each of the ${it} ... total thus far ${imageMap.size()}".toString())
-
-            def imagesUrl = grailsApplication.config.biocache.solr.url + "/select?" +
-                    "q=*%3A*" +
-                    "&fq=multimedia%3AImage" +
-                    "&fl=${it}%2C+image_url%2C+data_resource_uid" +
-                    "&wt=csv" +
-                    "&indent=true" +
-                    "&rows=100000"
-
-            //load into map, keyed (for now) on scientific name. The images *should* be keyed on GUID
-            new URL(imagesUrl).readLines().each {
-                def parts = it.split(",")
-                if (parts.length == 3) {
-                    //the regular expression removes the subgenus
-                    imageMap.put(parts[0].replaceFirst(/\([A-Z]{1}[a-z]{1,}\) /, ""), parts[1])
-                }
-            }
-        }
-
-        log("Images loaded: " + imageMap.size())
-        imageMap
     }
 
     /**

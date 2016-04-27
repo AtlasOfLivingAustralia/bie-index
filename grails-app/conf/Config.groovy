@@ -59,9 +59,13 @@ conservationLists {
 imageLists = [
     [ drUid: "dr4778", imageId: "imageId" ]
 ]
-// Preferred image sources
-imageSources = [
-        [ drUid: "dr130", boost: 10 ]
+// Preferred images - these will be added as boosts to help rank good-looking pictures
+imageBoosts = [
+        "record_type:Image^10",
+        "record_type:HumanObservaton^20",
+        "record_type:Observation^20",
+        "-record_type:PreservedSpecimen^20"
+        // "datasetID:dr130^10"   // Example dataset boost
 ]
 // The map of rank ids that deserve an image and what to use to find that image
 imageRanks = [
