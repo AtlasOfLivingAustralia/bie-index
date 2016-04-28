@@ -13,6 +13,7 @@ class IndexService {
 
     def liveSolrClient
     def offlineSolrClient
+    def updatingLiveSolrClient
 
     /**
      * Delete the supplied index doc type from the index.
@@ -29,9 +30,10 @@ class IndexService {
      * Index the supplied batch of docs.
      * @param docType
      * @param docsToIndex
+     * @param offline Use the offline index (defaults to true)
      */
-    def indexBatch(List docsToIndex){
-
+    def indexBatch(List docsToIndex, online = false){
+        def client = online ? updatingLiveSolrClient : offlineSolrClient
         def buffer = []
 
         //convert to SOLR input documents
@@ -50,10 +52,10 @@ class IndexService {
         }
 
         //add
-        offlineSolrClient.add(buffer)
+        client.add(buffer)
 
         //commit
-        offlineSolrClient.commit(true, false, true)
+        client.commit(true, false, true)
 
     }
 

@@ -302,8 +302,8 @@ class SearchService {
 
 
     def getChildConcepts(taxonID, queryString){
-
-        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1000&q=parentGuid:\"" + taxonID + "\""
+        def encID = URLEncoder.encode(taxonID, "UTF-8")
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&rows=1000&q=parentGuid:\"" + encID + "\""
 
         if(queryString){
             queryUrl = queryUrl + "&" + queryString
@@ -343,7 +343,8 @@ class SearchService {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
         }
 
-        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
+        def encID = URLEncoder.encode(taxonID, 'UTF-8')
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=guid:\"" + encID + "\"+OR+linkIdentifier:\"" + encID + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
         def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -423,7 +424,12 @@ class SearchService {
 
     def getTaxa(List guidList){
 
-        def postBody = [ q: "guid:(\"" + guidList.join( '","') + "\")", fq: "idxtype:" + + IndexDocType.TAXON.name(), wt: "json" ] // will be url-encoded
+        def queryList = guidList.collect({'"' + it + '"'}).join(',')
+        def postBody = [
+                q: "guid:(" + queryList + ") OR linkIdentifier:("  + queryList + ")",
+                fq: "idxtype:" + IndexDocType.TAXON.name(),
+                wt: "json"
+        ] // will be url-encoded
         def resp = doPostWithParams(grailsApplication.config.indexLiveBaseUrl +  "/select", postBody)
 
         //create the docs....
@@ -745,7 +751,8 @@ class SearchService {
     }
 
     private def retrieveTaxon(taxonID){
-        def solrServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + URLEncoder.encode(taxonID, 'UTF-8') + "\"&fq=idxtype:" + IndexDocType.TAXON.name()
+        def encID = URLEncoder.encode(taxonID, "UTF-8")
+        def solrServerUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=guid:\"" + encID + "\"+OR+linkIdentifier:\"" + encID +"\"&fq=idxtype:" + IndexDocType.TAXON.name()
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
