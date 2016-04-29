@@ -32,7 +32,7 @@ class IndexService {
      * @param docsToIndex
      * @param offline Use the offline index (defaults to true)
      */
-    def indexBatch(List docsToIndex, online = false){
+    def indexBatch(List docsToIndex, online = false) throws Exception {
         def client = online ? updatingLiveSolrClient : offlineSolrClient
         def buffer = []
 
