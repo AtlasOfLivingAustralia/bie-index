@@ -15,7 +15,6 @@ package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
-import au.org.ala.bie.search.IndexedTypes
 import au.org.ala.bie.indexing.RankedName
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
@@ -42,6 +41,9 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.zip.GZIPInputStream
 
 /**
@@ -611,6 +613,8 @@ class ImportService {
         log.debug "totalDocs = ${totalDocs} || totalPages = ${totalPages}"
         log("Processing ${totalDocs} taxa (via ${paramsMap.q})...<br>") // send to browser
         def promiseList = new PromiseList() // for biocaceh queries
+        Queue commitQueue = new ConcurrentLinkedQueue()  // queue to put docs to be indexes
+        ExecutorService executor = Executors.newSingleThreadExecutor() // consumer of queue - single blocking thread
 
         // iterate over pages
         (1..totalPages).each { page ->
@@ -634,9 +638,14 @@ class ImportService {
                 }
 
                 // update national list without occurrence record lookup
-                updateTaxaWithLocationInfo(taxaLocatedInHubCountry, true)
+                updateTaxaWithLocationInfo(taxaLocatedInHubCountry, commitQueue)
                 // update the rest via occurrence search (non blocking)
-                promiseList << { searchOccurrencesWithGuids(resultsDocs) }
+                promiseList << { searchOccurrencesWithGuids(resultsDocs, commitQueue) }
+                // run indexing on a new thread so it doesn't block - should queue execution of multiple instances on a single thread
+                executor.execute {
+                    indexDocInQueue(commitQueue, "page: ${page}") // will keep polling for a reasonable period then give up
+                }
+
                 paramsMap.cursorMark = searchResults?.nextCursorMark?:"" // update cursor
                 // update view via via JS
                 Double percentDone = (page / totalPages) * 100
@@ -649,10 +658,15 @@ class ImportService {
         }
 
         log("Waiting for all occurrence searches and SOLR commits to finish (could take some time)")
+
         //promiseList.get() // block until all promises are complete
         promiseList.onComplete { List results ->
-            log("<br>Total taxa found with occurrence records = ${results.sum()}")
-            log("Import finished.")
+            //executor.shutdownNow()
+            executor.execute {
+                indexDocInQueue(commitQueue, "<br>Import finished") // catch any running searches and index
+            }
+            log("Total taxa found with occurrence records = ${results.sum()}")
+            log("SOLR commits still running...")
         }
     }
 
@@ -661,11 +675,10 @@ class ImportService {
      * TODO extract field name into config: "isLocatedInHubCountry_b"
      *
      * @param docs
-     * @param isLocatedInHubCountry
+     * @param commitQueue
      * @return
      */
-    def updateTaxaWithLocationInfo(List docs, Boolean isLocatedInHubCountry = true) {
-        List updateDocs = []
+    def updateTaxaWithLocationInfo(List docs, Queue commitQueue) {
         def totalDocumentsUpdated = 0
 
         docs.each { Map doc ->
@@ -674,27 +687,57 @@ class ImportService {
                 updateDoc["id"] = doc.id // doc key
                 updateDoc["idxtype"] = ["set": doc.idxtype] // required field
                 updateDoc["guid"] = ["set": doc.guid] // required field
-                updateDoc["isLocatedInHubCountry_b"] = ["set": isLocatedInHubCountry]
-                updateDocs.add(updateDoc)
+                updateDoc["isLocatedInHubCountry_b"] = ["set": true]
+                commitQueue.offer(updateDoc) // throw it on the queue
+                totalDocumentsUpdated++
             } else {
                 log.warn "Updating doc error: missing keys ${doc}"
             }
         }
 
-        if (updateDocs) {
-            try {
-                // batch index docs
-                log("batch indexing: ${updateDocs.size()} docs")
-                indexService.indexBatch(updateDocs) // is async
-                totalDocumentsUpdated = updateDocs.size()
-            } catch (Exception ex) {
-                log.warn "Error batch indexing: ${ex.message}", ex
-                log.warn "updateDocs = ${updateDocs}"
-                log("ERROR batch indexing: ${ex.message} <br><code>${ex.stackTrace}</code>")
+        totalDocumentsUpdated
+    }
+
+    /**
+     * Poll the queue of docs and index in batches
+     *
+     * @param updateDocs
+     * @return
+     */
+    def indexDocInQueue(Queue updateDocs, msg) {
+        int failures = 5
+        int batchSize = 1000
+
+        while (failures > 0) {
+            log.debug "checking queue - ${updateDocs.size()}"
+            if (updateDocs.size() > 0) {
+                try {
+                    // batch index docs
+                    List batchDocs = []
+                    int end = (batchSize < updateDocs.size()) ? batchSize : updateDocs.size()
+
+                    (0..end).each {
+                        if (updateDocs.peek()) {
+                            batchDocs.add(updateDocs.poll())
+                        }
+                    }
+
+                    indexService.indexBatch(batchDocs) // index
+                } catch (Exception ex) {
+                    log.warn "Error batch indexing: ${ex.message}", ex
+                    log.warn "updateDocs = ${updateDocs}"
+                    log("ERROR batch indexing: ${ex.message} <br><code>${ex.stackTrace}</code>")
+                }
+            } else {
+                log.debug "queue is empty - failures = ${failures}"
+                failures--
+                sleep(1000)
             }
+
+            sleep(200)
         }
 
-        totalDocumentsUpdated
+        log("this commit thread is done: ${msg}")
     }
 
     /**
@@ -704,7 +747,7 @@ class ImportService {
      * @param docs
      * @return
      */
-    def searchOccurrencesWithGuids(List docs) {
+    def searchOccurrencesWithGuids(List docs, Queue commitQueue) {
         int batchSize = 20 // even with POST SOLR throws 400 code is batchSize is more than 100
         List guids = docs.collect { it.guid }
         int totalPages = ((guids.size() + batchSize - 1) / batchSize) -1
@@ -746,7 +789,7 @@ class ImportService {
 
         if (docsWithRecs.size() > 0) {
             log.debug "docsWithRecs size = ${docsWithRecs.size()} vs docs size = ${docs.size()}"
-            updateTaxaWithLocationInfo(docsWithRecs)
+            updateTaxaWithLocationInfo(docsWithRecs, commitQueue)
         }
 
     }

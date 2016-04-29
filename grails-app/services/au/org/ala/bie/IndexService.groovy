@@ -53,7 +53,7 @@ class IndexService {
 
         //add
         client.add(buffer)
-
+        log.debug "Doing SOLR commit for ${buffer.size()} docs"
         //commit
         client.commit(true, false, true)
 
