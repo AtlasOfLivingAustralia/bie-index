@@ -41,7 +41,31 @@
 				</tr>
 				<tr>
 					<td>Bulk lookup by GUID</td>
-					<td>${g.createLink(controller: 'search', action: 'bulkGuidLookup')}/{GUID}</td>
+					<td>${g.createLink(controller: 'search', action: 'bulkGuidLookup')} POST JSON [ "guid", ...]</td>
+				</tr>
+				<tr>
+					<td>Bulk lookup by name</td>
+					<td>${g.createLink(controller: 'search', action: 'speciesLookupBulk')} POST JSON { names: [ "name", ... ], "vernacular": fase }</td>
+				</tr>
+				<tr>
+					<td>Habitat list</td>
+					<td>${g.createLink(controller: 'search', action: 'habitats')} </td>
+				</tr>
+				<tr>
+					<td>Habitat tree</td>
+					<td>${g.createLink(controller: 'search', action: 'habitatTree')} </td>
+				</tr>
+				<tr>
+					<td>Habitats for species</td>
+					<td>${g.createLink(controller: 'search', action: 'getHabitatIDs')}/{GUID}</td>
+				</tr>
+				<tr>
+					<td>Habitat details</td>
+					<td>${g.createLink(controller: 'search', action: 'getHabitat')}/{GUID}</td>
+				</tr>
+				<tr>
+					<td>Recognised ranks</td>
+					<td>${g.createLink(controller: 'import', action: 'ranks')}</td>
 				</tr>
 			</table>
 		</div>

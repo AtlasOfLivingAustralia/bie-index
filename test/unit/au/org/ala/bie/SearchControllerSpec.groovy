@@ -40,7 +40,8 @@ class SearchControllerSpec extends Specification {
 
     void "test GET /guid/batch returns correct results for a number of q params"() {
         setup:
-        request.addHeader('Accept', JSON_CONTENT_TYPE)
+        // Documented request.contentType = JSON_CONTENT_TYPE doesn't work, nor will setting the 'Accept' header will not work since the config file is not read in unit testing
+        controller.response.format = 'json'
         request.addParameter('q', q.toArray(new String[q.size()]))
 
         when:
@@ -48,6 +49,7 @@ class SearchControllerSpec extends Specification {
 
         then:
         q.size() * searchService.getProfileForName(_) >>> result
+        response.contentType.startsWith(JSON_CONTENT_TYPE)
         response.json instanceof JSONObject
         q.every {
             response.json[it] instanceof JSONArray
@@ -83,7 +85,8 @@ class SearchControllerSpec extends Specification {
     void "test POST /species/lookup/bulk"() {
         setup:
         request.method = 'POST'
-        request.addHeader('Accept', JSON_CONTENT_TYPE)
+        // Documented request.contentType = JSON_CONTENT_TYPE doesn't work, nor will setting the 'Accept' header will not work since the config file is not read in unit testing
+        controller.response.format = 'json'
         request.contentType = JSON_CONTENT_TYPE
         request.json = [vernacular: vernacular, names: names]
 
@@ -95,6 +98,7 @@ class SearchControllerSpec extends Specification {
             String guid, filter, start, limit, field, order, exact, includeVernacular ->
                 return new SearchResultsDTO(totalRecords: result.size(), searchResults: [result[guid]])
         }
+        response.contentType.startsWith(JSON_CONTENT_TYPE)
         response.json instanceof JSONArray
         response.json.size() == names.size()
 

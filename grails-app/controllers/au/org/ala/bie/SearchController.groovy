@@ -2,6 +2,7 @@ package au.org.ala.bie
 
 import au.org.ala.bie.search.SearchResultsDTO
 import grails.converters.JSON
+import grails.converters.XML
 
 /**
  * A set of JSON based search web services.
@@ -81,8 +82,11 @@ class SearchController {
     }
 
     def getSpeciesForNames() {
-        respond params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
-    }
+        def result = params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
+        if (!result)
+            respond result
+        render result as JSON
+     }
 
     def bulkGuidLookup(){
         def guidList = request.JSON
@@ -125,13 +129,14 @@ class SearchController {
         boolean includeVernacular = req['vernacular'] ?: false
         List<String> guids = req['names']
 
-        respond guids.collect { guid ->
+        def result = guids.collect { guid ->
             //Need to sort the scores descended to get the highest score first
             SearchResultsDTO results = solrSearchService.findByScientificName(guid, null, 0, 1, "score", "desc", true, includeVernacular);
 
             // TODO repoUrlUtils.fixRepoUrls(results)
             results.getTotalRecords() > 0 ? results.searchResults.first() : null
         }
+        render result as JSON
     }
 
     def download(){
