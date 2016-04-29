@@ -22,11 +22,13 @@ class AdminControllerSpec extends Specification {
         def indexFieldDetails = [new IndexFieldDTO(name: 'a', dataType: 'b', indexed: true, stored: true, numberDistinctValues: null)].toSet()
 
         when:
-        request.addHeader('Accept', JSON_CONTENT_TYPE)
+        // Documented request.contentType = JSON_CONTENT_TYPE doesn't work, nor will setting the 'Accept' header will not work since the config file is not read in unit testing
+        controller.response.format = 'json'
         controller.indexFields()
 
         then:
         1 * indexService.getIndexFieldDetails(null) >> indexFieldDetails
+        response.contentType.startsWith(JSON_CONTENT_TYPE)
         response.json.length() == 1
         response.json[0].name == 'a'
         response.json[0].dataType == 'b'

@@ -2,6 +2,7 @@ package au.org.ala.bie
 
 import grails.test.mixin.TestFor
 import org.springframework.messaging.core.MessageSendingOperations
+import spock.lang.Ignore
 import spock.lang.Specification
 
 /**
@@ -21,17 +22,7 @@ class ImportServiceSpec extends Specification {
     def cleanup() {
     }
 
-    def testLoadImages() {
-        when:
-        grailsApplication.config.indexImages = true
-        grailsApplication.config.biocache.solr.url = "http://ala-rufus.it.csiro.au/solr/biocache"
-        def images = importService.indexImages()
-        then:
-        !images.isEmpty()
-
-    }
-
-
+    @Ignore("This can be used for debugging to trace the load images service")
     def testImportImage() {
         when:
         grailsApplication.config.indexOfflineBaseUrl = "http://localhost:8983/solr/bie-offline"

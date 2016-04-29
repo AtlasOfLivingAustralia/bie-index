@@ -31,6 +31,9 @@ indexImages = true
 importDir = "/data/bie/import"
 collectoryUrl = "http://collections.ala.org.au/ws"
 layersServicesUrl = "http://spatial.ala.org.au/ws"
+imageThumbnailUrl = "http://images.ala.org.au/image/proxyImageThumbnail?imageId="
+imageLargeUrl = "http://images.ala.org.au/image/proxyImage?imageId="
+imageSmallUrl = "http://images.ala.org.au/image/proxyImageThumbnailLarge?imageId="
 synonymCheckingEnabled = true
 synonymSourceAttribution = "National Species Lists"
 gazetteerLayerId = "2123"
@@ -93,6 +96,7 @@ skin.layout = "main"
 skin.orgNameLong = "Atlas of Living Australia"
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)
+grails.mime.use.accept.header = true
 grails.mime.disable.accept.header.userAgents = []
 grails.mime.types = [ // the first one is the default format
     all:           '*/*', // 'all' maps to '*' or the first available format in withFormat
