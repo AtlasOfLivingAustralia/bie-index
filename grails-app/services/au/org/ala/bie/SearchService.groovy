@@ -95,8 +95,8 @@ class SearchService {
             }
             // boost query syntax was removed from here. NdR.
 
-            // Add fuzzy search term modifier to simple queries (e.g. no braces)
-            if (!q.contains("(")) {
+            // Add fuzzy search term modifier to simple queries with > 1 term (e.g. no braces)
+            if (!q.contains("(") && q.trim() =~ /\s+/) {
                 def queryArray = []
                 q.split(/\s+/).each {
                     if (!(it =~ /AND|OR|NOT/)) {

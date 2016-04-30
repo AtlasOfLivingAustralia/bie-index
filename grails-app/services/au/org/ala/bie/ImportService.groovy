@@ -59,6 +59,7 @@ class ImportService {
     def brokerMessagingTemplate
 
     def static DYNAMIC_FIELD_EXTENSION = "_s"
+    def isKeepIndexing = true // so we can cancel indexing thread (single thread only so field is OK)
 
     static {
         TermFactory tf = TermFactory.instance()
@@ -581,7 +582,7 @@ class ImportService {
     }
 
     /**
-     * Paginate through taxon docs in SOLR and update their occurrrence status via either:
+     * Paginate through taxon docs in SOLR and update their occurrence status via either:
      * - checking against a list of datasetID codes (config)
      * OR
      * - searching for occurrence records with the (taxon concept) GUID
@@ -611,10 +612,14 @@ class ImportService {
         def totalDocs = searchCount?.response?.numFound?:0
         int totalPages = (totalDocs + pageSize - 1) / pageSize
         log.debug "totalDocs = ${totalDocs} || totalPages = ${totalPages}"
-        log("Processing ${totalDocs} taxa (via ${paramsMap.q})...<br>") // send to browser
+        log("Processing " + String.format("%,d", totalDocs) + " taxa (via ${paramsMap.q})...<br>") // send to browser
+
         def promiseList = new PromiseList() // for biocaceh queries
         Queue commitQueue = new ConcurrentLinkedQueue()  // queue to put docs to be indexes
         ExecutorService executor = Executors.newSingleThreadExecutor() // consumer of queue - single blocking thread
+        executor.execute {
+            indexDocInQueue(commitQueue, "initialised") // will keep polling the queue until terminated via cancel()
+        }
 
         // iterate over pages
         (1..totalPages).each { page ->
@@ -639,17 +644,12 @@ class ImportService {
 
                 // update national list without occurrence record lookup
                 updateTaxaWithLocationInfo(taxaLocatedInHubCountry, commitQueue)
-                // update the rest via occurrence search (non blocking)
+                // update the rest via occurrence search (non blocking via promiseList)
                 promiseList << { searchOccurrencesWithGuids(resultsDocs, commitQueue) }
-                // run indexing on a new thread so it doesn't block - should queue execution of multiple instances on a single thread
-                executor.execute {
-                    indexDocInQueue(commitQueue, "page: ${page}") // will keep polling for a reasonable period then give up
-                }
-
-                paramsMap.cursorMark = searchResults?.nextCursorMark?:"" // update cursor
+                // update cursor
+                paramsMap.cursorMark = searchResults?.nextCursorMark?:""
                 // update view via via JS
-                Double percentDone = (page / totalPages) * 100
-                log("${percentDone.round(1)}") // progress bar output (JS code detects numeric input)
+                updateProgressBar(totalPages, page)
                 log("${page}. taxaLocatedInHubCountry = ${taxaLocatedInHubCountry.size()} | taxaToSearchOccurrences = ${taxaToSearchOccurrences.size()}")
             } catch (Exception ex) {
                 log.warn "Error calling BIE SOLR: ${ex.message}", ex
@@ -662,11 +662,10 @@ class ImportService {
         //promiseList.get() // block until all promises are complete
         promiseList.onComplete { List results ->
             //executor.shutdownNow()
-            executor.execute {
-                indexDocInQueue(commitQueue, "<br>Import finished") // catch any running searches and index
-            }
+            isKeepIndexing = false // stop indexing thread
+            executor.shutdown()
             log("Total taxa found with occurrence records = ${results.sum()}")
-            log("SOLR commits still running...")
+            log("waiting for indexing to finish...")
         }
     }
 
@@ -705,18 +704,17 @@ class ImportService {
      * @return
      */
     def indexDocInQueue(Queue updateDocs, msg) {
-        int failures = 5
         int batchSize = 1000
 
-        while (failures > 0) {
-            log.debug "checking queue - ${updateDocs.size()}"
+        while (isKeepIndexing || updateDocs.size() > 0) {
             if (updateDocs.size() > 0) {
+                log.info "Starting indexing of ${updateDocs.size()} docs"
                 try {
                     // batch index docs
                     List batchDocs = []
                     int end = (batchSize < updateDocs.size()) ? batchSize : updateDocs.size()
 
-                    (0..end).each {
+                    (1..end).each {
                         if (updateDocs.peek()) {
                             batchDocs.add(updateDocs.poll())
                         }
@@ -729,15 +727,11 @@ class ImportService {
                     log("ERROR batch indexing: ${ex.message} <br><code>${ex.stackTrace}</code>")
                 }
             } else {
-                log.debug "queue is empty - failures = ${failures}"
-                failures--
-                sleep(1000)
+                sleep(500)
             }
-
-            sleep(200)
         }
 
-        log("this commit thread is done: ${msg}")
+        log("Indexing thread is done: ${msg}")
     }
 
     /**
@@ -753,7 +747,7 @@ class ImportService {
         int totalPages = ((guids.size() + batchSize - 1) / batchSize) -1
         log.debug "total = ${guids.size()} || batchSize = ${batchSize} || totalPages = ${totalPages}"
         List docsWithRecs = [] // docs to index
-        log("Getting occurrence data for ${docs.size()} docs")
+        //log("Getting occurrence data for ${docs.size()} docs")
 
         (0..totalPages).each { index ->
             int start = index * batchSize
@@ -763,11 +757,11 @@ class ImportService {
             def guidParamList = guidSubset.collect { String guid -> guid.encodeAsURL() } // URL encode guids
             def query = "taxon_concept_lsid:\"" + guidParamList.join("\"+OR+taxon_concept_lsid:\"") + "\""
             def filterQuery = "country:Australia+OR+cl21:*&fq=geospatial_kosher:true"
-//            def postBody = [ q: query, rows: 0, facet: true, "facet.field": "taxon_concept_lsid", "facet.mincount": 1, wt: "json" ] // will be url-encoded
+            //  def postBody = [ q: query, rows: 0, facet: true, "facet.field": "taxon_concept_lsid", "facet.mincount": 1, wt: "json" ] // will be url-encoded
 
             try {
-//                def json = searchService.doPostWithParamsExc(grailsApplication.config.biocache.solr.url +  "/select", postBody)
-//                log.debug "results = ${json?.resp?.response?.numFound}"
+                // def json = searchService.doPostWithParamsExc(grailsApplication.config.biocache.solr.url +  "/select", postBody)
+                // log.debug "results = ${json?.resp?.response?.numFound}"
                 def url = grailsApplication.config.biocache.solr.url + "/select?" +
                             "q=${query}&fq=${filterQuery}&wt=json&indent=true&rows=0&facet=true&facet.field=taxon_concept_lsid&facet.mincount=1"
                 def queryResponse = new URL(url).getText("UTF-8")
@@ -1768,5 +1762,10 @@ class ImportService {
     def log(msg) {
         log.info(msg)
         brokerMessagingTemplate.convertAndSend "/topic/import-feedback", msg.toString()
+    }
+
+    private updateProgressBar(int total, int current) {
+        Double percentDone = (current / total) * 100
+        log("${percentDone.round(1)}") // progress bar output (JS code detects numeric input)
     }
 }
