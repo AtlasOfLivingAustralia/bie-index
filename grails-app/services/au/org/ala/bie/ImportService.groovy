@@ -671,7 +671,7 @@ class ImportService {
 
     /**
      * Batch update of SOLR docs for occurrence/location info
-     * TODO extract field name into config: "isLocatedInHubCountry_b"
+     * TODO extract field name into config: "locatedInHubCountry"
      *
      * @param docs
      * @param commitQueue
@@ -686,7 +686,7 @@ class ImportService {
                 updateDoc["id"] = doc.id // doc key
                 updateDoc["idxtype"] = ["set": doc.idxtype] // required field
                 updateDoc["guid"] = ["set": doc.guid] // required field
-                updateDoc["isLocatedInHubCountry_b"] = ["set": true]
+                updateDoc["locatedInHubCountry"] = ["set": true]
                 commitQueue.offer(updateDoc) // throw it on the queue
                 totalDocumentsUpdated++
             } else {
