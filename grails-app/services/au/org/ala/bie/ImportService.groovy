@@ -756,14 +756,14 @@ class ImportService {
             def guidSubset = guids.subList(start,end)
             def guidParamList = guidSubset.collect { String guid -> guid.encodeAsURL() } // URL encode guids
             def query = "taxon_concept_lsid:\"" + guidParamList.join("\"+OR+taxon_concept_lsid:\"") + "\""
-            def filterQuery = "country:Australia+OR+cl21:*&fq=geospatial_kosher:true"
+            def filterQuery = "country:Australia+OR+cl21:*&fq=geospatial_kosher:true" // filter on Aust. terristrial and IMCRA marine areas
             //  def postBody = [ q: query, rows: 0, facet: true, "facet.field": "taxon_concept_lsid", "facet.mincount": 1, wt: "json" ] // will be url-encoded
 
             try {
                 // def json = searchService.doPostWithParamsExc(grailsApplication.config.biocache.solr.url +  "/select", postBody)
                 // log.debug "results = ${json?.resp?.response?.numFound}"
-                def url = grailsApplication.config.biocache.solr.url + "/select?" +
-                            "q=${query}&fq=${filterQuery}&wt=json&indent=true&rows=0&facet=true&facet.field=taxon_concept_lsid&facet.mincount=1"
+                def url = grailsApplication.config.biocache.solr.url + "/select?q=${query}&fq=${filterQuery}&" +
+                            "wt=json&indent=true&rows=0&facet=true&facet.field=taxon_concept_lsid&facet.mincount=1"
                 def queryResponse = new URL(url).getText("UTF-8")
                 JSONObject jsonObj = JSON.parse(queryResponse)
 
@@ -1024,10 +1024,6 @@ class ImportService {
                     } else if (datasetName) {
                         doc["datasetName"] = datasetName
                     }
-
-
-                    doc["imageAvailable"] = "no"
-
 
                     def distributions = distributionMap.get(taxonID)
                     if (distributions) {
@@ -1568,7 +1564,7 @@ class ImportService {
                         update["idxtype"] = ["set": doc.idxtype] // required field
                         update["guid"] = ["set": doc.guid] // required field
                         update["image"] = ["set": image.imageId]
-                        update["imageAvailable"] = ["set": "yes"]
+                        update["imageAvailable"] = ["set": true]
                         buffer << update
                         lastImage = image
                         added++
