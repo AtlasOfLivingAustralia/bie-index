@@ -16,11 +16,8 @@
         <li><g:link controller="import" action="localities">Localities import tool</g:link> - import localities information</li>
         <li><g:link controller="import" action="specieslist">Species List import tool</g:link> - import species lists information</li>
         <li><g:link controller="import" action="wordpress">WordPress import tool</g:link> - import WordPress pages</li>
-<<<<<<< Updated upstream
         <li><g:link controller="import" action="links">Add links</g:link> - construct link identifiers for unique names and image links</li>
-=======
         <li><g:link controller="import" action="occurrences">Occurrence data tool</g:link> - add occcurrence info to Taxa</li>
->>>>>>> Stashed changes
     </ul>
 </div>
 </body>
