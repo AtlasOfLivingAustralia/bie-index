@@ -701,11 +701,10 @@ class SearchService {
 
                 if(it.acceptedConceptID){
                     doc.put("acceptedConceptID", it.acceptedConceptID)
+                    if (it.acceptedConceptName)
+                        doc.put("acceptedConceptName", it.acceptedConceptName)
                     doc.put("guid", it.acceptedConceptID)
-                }
-
-                if(it.synonymDescription_s == "synonym"){
-                    doc.put("acceptedConceptName", it.acceptedConceptName)
+                    doc.put("linkIdentifier", null)  // Otherwise points to the synonym
                 }
 
                 if(it.image){
