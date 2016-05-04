@@ -48,6 +48,8 @@ class ImportController {
 
     def links(){}
 
+    def occurrences(){}
+
     /**
      * Import a DwC-A into this system.
      *
@@ -197,6 +199,21 @@ class ImportController {
                 log.info("Starting import of CMS pages....")
                 importService.importWordPressPages()
                 log.info("Finished import of CMS pages.")
+            }
+            asJson ([success:true] )
+
+    }
+
+    /**
+     * Index occurrence data
+     *
+     * @return
+     */
+    def importOccurrences(){
+            Thread.start {
+                log.info("Starting import of occurrences data....")
+                importService.importOccurrenceData()
+                log.info("Finished import of occurrences data.")
             }
             asJson ([success:true] )
 

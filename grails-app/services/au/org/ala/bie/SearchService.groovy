@@ -3,6 +3,7 @@ package au.org.ala.bie
 import au.org.ala.bie.search.IndexDocType
 import grails.converters.JSON
 import groovy.json.JsonSlurper
+import org.apache.solr.common.params.MapSolrParams
 import org.codehaus.groovy.grails.web.servlet.mvc.GrailsParameterMap
 import org.gbif.nameparser.NameParser
 
@@ -34,7 +35,7 @@ class SearchService {
             query = "q=*:*&fq=rkid_" + taxon.rank.toLowerCase() + ":\"" +  URLEncoder.encode(taxon.guid, "UTF-8") + "\""
         }
 
-        def additionalParams = "&wt=json&fq=rankID:%5B7000%20TO%20*%5D&fq=imageAvailable:yes"
+        def additionalParams = "&wt=json&fq=rankID:%5B7000%20TO%20*%5D&fq=imageAvailable:true"
 
         if(start){
             additionalParams = additionalParams + "&start=" + start
@@ -94,8 +95,8 @@ class SearchService {
             }
             // boost query syntax was removed from here. NdR.
 
-            // Add fuzzy search term modifier to simple queries (e.g. no braces)
-            if (!q.contains("(")) {
+            // Add fuzzy search term modifier to simple queries with > 1 term (e.g. no braces)
+            if (!q.contains("(") && q.trim() =~ /\s+/) {
                 def queryArray = []
                 q.split(/\s+/).each {
                     if (!(it =~ /AND|OR|NOT/)) {
@@ -809,6 +810,30 @@ class SearchService {
         }
     }
 
+    def doPostWithParamsExc(String url, Map params) throws Exception {
+        def conn = null
+        def charEncoding = 'utf-8'
+        String query = ""
+        boolean first = true
+        for (String name : params.keySet()) {
+            query += first ? "?" : "&"
+            first = false
+            query += name.encodeAsURL() + "=" + params.get(name).encodeAsURL()
+        }
+        log.debug(url + query)
+        conn = new URL(url + query).openConnection()
+        conn.setRequestMethod("POST")
+        conn.setDoOutput(true)
+        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+        OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream(), charEncoding)
+
+        wr.flush()
+        def resp = conn.inputStream.text
+        wr.close()
+        return [resp: JSON.parse(resp?:"{}")] // fail over to empty json object if empty response string otherwise JSON.parse fails
+    }
+
     def getDataset(String datasetID, Map datasets) {
         if (!datasetID)
             return null
@@ -857,5 +882,29 @@ class SearchService {
         }
 
         docs
+    }
+
+    /**
+     * Perform a cursor based SOLR search. USe of cursor results in more efficient and faster deep pagination of search results.
+     * Which is useful for iterating over a large search results set.
+     *
+     * @param query
+     * @param filterQuery
+     * @param rows
+     * @param cursor
+     * @param useOfflineIndex
+     */
+    def getCursorSearchResults(MapSolrParams params, Boolean useOfflineIndex = false) throws Exception {
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+        if (useOfflineIndex) {
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+        }
+        log.debug "SOLR params = ${params.toQueryString()}"
+        def solrServerUrl = indexServerUrlPrefix + "/select" + params.toQueryString()
+        def queryResponse = new URL(solrServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        json
     }
 }

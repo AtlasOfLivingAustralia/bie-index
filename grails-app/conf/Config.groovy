@@ -82,6 +82,8 @@ imageRanks = [
     //[ rank: "subspecies", idField: "subspecies_guid", nameField: "subspecies.p" ]
 ]
 
+nationalSpeciesDatasets = "" // "dr2699,dr2700,dr2702,dr2704,dr2703,dr3118"
+
 // SOLR additional params
 solr {
     qf = "doc_name^100+text"

@@ -438,7 +438,8 @@
    <field name="establishmentMeans" type="string" indexed="true" stored="true" required="false" omitNorms="true" multiValued="false" />
    <field name="distribution" type="string" indexed="true" stored="true" required="false" omitNorms="true" multiValued="false" />
    <field name="priority" type="int" indexed="false" stored="true" required="false" multiValued="false"/>
-   <field name="imageAvailable" type="string" indexed="true" stored="true" multiValued="false" omitNorms="true" />
+   <field name="imageAvailable" type="boolean" indexed="true" stored="true"  />
+   <field name="locatedInHubCountry" type="boolean" indexed="true" stored="true"  />
    <field name="image" type="string" indexed="true" stored="true" multiValued="false" omitNorms="true" />
    <field name="additionalIdentifiers" type="string" indexed="true" stored="true" required="false" multiValued="true"/>
    <field name="namePublishedIn" type="string" indexed="false" stored="true" required="false" multiValued="false"/>

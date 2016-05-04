@@ -15,16 +15,18 @@ package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
-import au.org.ala.bie.search.IndexedTypes
 import au.org.ala.bie.indexing.RankedName
 import au.org.ala.vocab.ALATerm
+import grails.async.PromiseList
 import grails.converters.JSON
 import groovy.json.JsonParserType
 import groovy.json.JsonSlurper
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
+import org.apache.solr.common.params.MapSolrParams
 import org.codehaus.groovy.grails.web.json.JSONElement
+import org.codehaus.groovy.grails.web.json.JSONObject
 import org.gbif.dwc.terms.DcTerm
 import org.gbif.dwc.terms.DwcTerm
 import org.gbif.dwc.terms.GbifTerm
@@ -39,6 +41,9 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.zip.GZIPInputStream
 
 /**
@@ -54,6 +59,7 @@ class ImportService {
     def brokerMessagingTemplate
 
     def static DYNAMIC_FIELD_EXTENSION = "_s"
+    def isKeepIndexing = true // so we can cancel indexing thread (single thread only so field is OK)
 
     static {
         TermFactory tf = TermFactory.instance()
@@ -576,6 +582,213 @@ class ImportService {
     }
 
     /**
+     * Paginate through taxon docs in SOLR and update their occurrence status via either:
+     * - checking against a list of datasetID codes (config)
+     * OR
+     * - searching for occurrence records with the (taxon concept) GUID
+     *
+     * Example cursor search
+     * http://bie-dev.ala.org.au/solr/bie/select?q=idxtype:TAXON+AND+taxonomicStatus:accepted&wt=json&rows=100&indent=true&sort=id+asc&cursorMark=*
+     * Pagination via cursor: https://cwiki.apache.org/confluence/display/solr/Pagination+of+Results
+     **/
+    def importOccurrenceData() throws Exception {
+        String nationalSpeciesDatasets = grailsApplication.config.nationalSpeciesDatasets // comma separated String
+        def pageSize = 10000
+        def paramsMap = [
+                q: "taxonomicStatus:accepted", // "taxonomicStatus:accepted",
+                //fq: "datasetID:dr2699", // testing only with AFD
+                cursorMark: "*", // gets updated by subsequent searches
+                fl: "id,idxtype,guid,scientificName,datasetID", // will restrict results to dos with these fields (bit like fq)
+                rows: pageSize,
+                sort: "id asc", // needed for cursor searching
+                wt: "json"
+        ]
+
+        // first get a count of results so we can determine number of pages to process
+        Map countMap = paramsMap.clone(); // shallow clone is OK
+        countMap.rows = 0
+        countMap.remove("cursorMark")
+        def searchCount = searchService.getCursorSearchResults(new MapSolrParams(countMap), true) // could throw exception
+        def totalDocs = searchCount?.response?.numFound?:0
+        int totalPages = (totalDocs + pageSize - 1) / pageSize
+        log.debug "totalDocs = ${totalDocs} || totalPages = ${totalPages}"
+        log("Processing " + String.format("%,d", totalDocs) + " taxa (via ${paramsMap.q})...<br>") // send to browser
+
+        def promiseList = new PromiseList() // for biocaceh queries
+        Queue commitQueue = new ConcurrentLinkedQueue()  // queue to put docs to be indexes
+        ExecutorService executor = Executors.newSingleThreadExecutor() // consumer of queue - single blocking thread
+        executor.execute {
+            indexDocInQueue(commitQueue, "initialised") // will keep polling the queue until terminated via cancel()
+        }
+
+        // iterate over pages
+        (1..totalPages).each { page ->
+            try {
+                MapSolrParams solrParams = new MapSolrParams(paramsMap)
+                log.debug "${page}. paramsMap = ${paramsMap}"
+                def searchResults = searchService.getCursorSearchResults(solrParams, true) // use offline index to search
+                def resultsDocs = searchResults?.response?.docs?:[]
+
+                // buckets to group results into
+                def taxaLocatedInHubCountry = []  // automatically get included
+                def taxaToSearchOccurrences = []  // need to search biocache to see if they are located in hub country
+
+                // iterate over the result set
+                resultsDocs.each { doc ->
+                    if (nationalSpeciesDatasets.contains(doc.datasetID)) {
+                        taxaLocatedInHubCountry.add(doc) // in national list so _assume_ it is located in host/hub county
+                    } else {
+                        taxaToSearchOccurrences.add(doc) // search occurrence records to determine if it is located in host/hub county
+                    }
+                }
+
+                // update national list without occurrence record lookup
+                updateTaxaWithLocationInfo(taxaLocatedInHubCountry, commitQueue)
+                // update the rest via occurrence search (non blocking via promiseList)
+                promiseList << { searchOccurrencesWithGuids(resultsDocs, commitQueue) }
+                // update cursor
+                paramsMap.cursorMark = searchResults?.nextCursorMark?:""
+                // update view via via JS
+                updateProgressBar(totalPages, page)
+                log("${page}. taxaLocatedInHubCountry = ${taxaLocatedInHubCountry.size()} | taxaToSearchOccurrences = ${taxaToSearchOccurrences.size()}")
+            } catch (Exception ex) {
+                log.warn "Error calling BIE SOLR: ${ex.message}", ex
+                log("ERROR calling SOLR: ${ex.message}")
+            }
+        }
+
+        log("Waiting for all occurrence searches and SOLR commits to finish (could take some time)")
+
+        //promiseList.get() // block until all promises are complete
+        promiseList.onComplete { List results ->
+            //executor.shutdownNow()
+            isKeepIndexing = false // stop indexing thread
+            executor.shutdown()
+            log("Total taxa found with occurrence records = ${results.sum()}")
+            log("waiting for indexing to finish...")
+        }
+    }
+
+    /**
+     * Batch update of SOLR docs for occurrence/location info
+     * TODO extract field name into config: "locatedInHubCountry"
+     *
+     * @param docs
+     * @param commitQueue
+     * @return
+     */
+    def updateTaxaWithLocationInfo(List docs, Queue commitQueue) {
+        def totalDocumentsUpdated = 0
+
+        docs.each { Map doc ->
+            if (doc.containsKey("id") && doc.containsKey("guid") && doc.containsKey("idxtype")) {
+                Map updateDoc = [:]
+                updateDoc["id"] = doc.id // doc key
+                updateDoc["idxtype"] = ["set": doc.idxtype] // required field
+                updateDoc["guid"] = ["set": doc.guid] // required field
+                updateDoc["locatedInHubCountry"] = ["set": true]
+                commitQueue.offer(updateDoc) // throw it on the queue
+                totalDocumentsUpdated++
+            } else {
+                log.warn "Updating doc error: missing keys ${doc}"
+            }
+        }
+
+        totalDocumentsUpdated
+    }
+
+    /**
+     * Poll the queue of docs and index in batches
+     *
+     * @param updateDocs
+     * @return
+     */
+    def indexDocInQueue(Queue updateDocs, msg) {
+        int batchSize = 1000
+
+        while (isKeepIndexing || updateDocs.size() > 0) {
+            if (updateDocs.size() > 0) {
+                log.info "Starting indexing of ${updateDocs.size()} docs"
+                try {
+                    // batch index docs
+                    List batchDocs = []
+                    int end = (batchSize < updateDocs.size()) ? batchSize : updateDocs.size()
+
+                    (1..end).each {
+                        if (updateDocs.peek()) {
+                            batchDocs.add(updateDocs.poll())
+                        }
+                    }
+
+                    indexService.indexBatch(batchDocs) // index
+                } catch (Exception ex) {
+                    log.warn "Error batch indexing: ${ex.message}", ex
+                    log.warn "updateDocs = ${updateDocs}"
+                    log("ERROR batch indexing: ${ex.message} <br><code>${ex.stackTrace}</code>")
+                }
+            } else {
+                sleep(500)
+            }
+        }
+
+        log("Indexing thread is done: ${msg}")
+    }
+
+    /**
+     * Extract a list of GUIDs from input list of docs and do paginated/batch search of occurrence records,
+     * updating index with occurrence status info (could be presence or record counts, etc)
+     *
+     * @param docs
+     * @return
+     */
+    def searchOccurrencesWithGuids(List docs, Queue commitQueue) {
+        int batchSize = 20 // even with POST SOLR throws 400 code is batchSize is more than 100
+        List guids = docs.collect { it.guid }
+        int totalPages = ((guids.size() + batchSize - 1) / batchSize) -1
+        log.debug "total = ${guids.size()} || batchSize = ${batchSize} || totalPages = ${totalPages}"
+        List docsWithRecs = [] // docs to index
+        //log("Getting occurrence data for ${docs.size()} docs")
+
+        (0..totalPages).each { index ->
+            int start = index * batchSize
+            int end = (start + batchSize < guids.size()) ? start + batchSize - 1 : guids.size()
+            log.debug "paging biocache search - ${start} to ${end}"
+            def guidSubset = guids.subList(start,end)
+            def guidParamList = guidSubset.collect { String guid -> guid.encodeAsURL() } // URL encode guids
+            def query = "taxon_concept_lsid:\"" + guidParamList.join("\"+OR+taxon_concept_lsid:\"") + "\""
+            def filterQuery = "country:Australia+OR+cl21:*&fq=geospatial_kosher:true" // filter on Aust. terristrial and IMCRA marine areas
+            //  def postBody = [ q: query, rows: 0, facet: true, "facet.field": "taxon_concept_lsid", "facet.mincount": 1, wt: "json" ] // will be url-encoded
+
+            try {
+                // def json = searchService.doPostWithParamsExc(grailsApplication.config.biocache.solr.url +  "/select", postBody)
+                // log.debug "results = ${json?.resp?.response?.numFound}"
+                def url = grailsApplication.config.biocache.solr.url + "/select?q=${query}&fq=${filterQuery}&" +
+                            "wt=json&indent=true&rows=0&facet=true&facet.field=taxon_concept_lsid&facet.mincount=1"
+                def queryResponse = new URL(url).getText("UTF-8")
+                JSONObject jsonObj = JSON.parse(queryResponse)
+
+                if (jsonObj.containsKey("facet_counts")) {
+                    jsonObj?.facet_counts?.facet_fields?.taxon_concept_lsid?.eachWithIndex { val, idx ->
+                        // facets results are a list with key, value, key, value, etc
+                        if (idx % 2 == 0) {
+                            docsWithRecs.add(docs.find { it.guid == val } )
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn "Error calling biocache SOLR: ${ex.message}", ex
+                log("ERROR calling biocache SOLR: ${ex.message}")
+            }
+        }
+
+        if (docsWithRecs.size() > 0) {
+            log.debug "docsWithRecs size = ${docsWithRecs.size()} vs docs size = ${docs.size()}"
+            updateTaxaWithLocationInfo(docsWithRecs, commitQueue)
+        }
+
+    }
+
+    /**
      * Update TAXON SOLR doc with conservation status info
      *
      * @param json
@@ -811,10 +1024,6 @@ class ImportService {
                     } else if (datasetName) {
                         doc["datasetName"] = datasetName
                     }
-
-
-                    doc["imageAvailable"] = "no"
-
 
                     def distributions = distributionMap.get(taxonID)
                     if (distributions) {
@@ -1355,7 +1564,7 @@ class ImportService {
                         update["idxtype"] = ["set": doc.idxtype] // required field
                         update["guid"] = ["set": doc.guid] // required field
                         update["image"] = ["set": image.imageId]
-                        update["imageAvailable"] = ["set": "yes"]
+                        update["imageAvailable"] = ["set": true]
                         buffer << update
                         lastImage = image
                         added++
@@ -1549,5 +1758,10 @@ class ImportService {
     def log(msg) {
         log.info(msg)
         brokerMessagingTemplate.convertAndSend "/topic/import-feedback", msg.toString()
+    }
+
+    private updateProgressBar(int total, int current) {
+        Double percentDone = (current / total) * 100
+        log("${percentDone.round(1)}") // progress bar output (JS code detects numeric input)
     }
 }
