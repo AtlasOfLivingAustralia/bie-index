@@ -18,6 +18,8 @@
         <li><g:link controller="import" action="wordpress">WordPress import tool</g:link> - import WordPress pages</li>
         <li><g:link controller="import" action="links">Add links</g:link> - construct link identifiers for unique names and image links</li>
         <li><g:link controller="import" action="occurrences">Occurrence data tool</g:link> - add occcurrence info to Taxa</li>
+        <br>
+        <li><g:link controller="alaAdmin" action="index">ALA admin functions</g:link> - view config, build info &amp; set banner message</li>
     </ul>
 </div>
 </body>
