@@ -100,7 +100,7 @@ class SearchService {
                 def queryArray = []
                 q.split(/\s+/).each {
                     if (!(it =~ /AND|OR|NOT/)) {
-                        queryArray.add(it + "~")
+                        queryArray.add(it + "~0.8")
                     } else {
                         queryArray.add(it)
                     }
