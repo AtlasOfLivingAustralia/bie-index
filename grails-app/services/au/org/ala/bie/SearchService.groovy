@@ -558,6 +558,7 @@ class SearchService {
                             datasetURL: datasetURL
                     ]
                 },
+                imageIdentifier: taxon.image,
                 conservationStatuses:conservationStatus,
                 extantStatuses: [],
                 habitats: [],
