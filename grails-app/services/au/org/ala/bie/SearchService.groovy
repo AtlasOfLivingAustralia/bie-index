@@ -372,6 +372,40 @@ class SearchService {
         json.response.docs[0]
     }
 
+    /**
+     * Request is for an old identifier - lookup current taxon
+     *
+     * @param identifier
+     * @param useOfflineIndex
+     * @return
+     * @throws Exception
+     */
+    private def lookupTaxonByIdentifier(String identifier, Boolean useOfflineIndex = false) throws Exception {
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+        if (useOfflineIndex) {
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+        }
+        def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=guid:\"" + URLEncoder.encode(identifier ,"UTF-8") +
+                 "\"&fq=idxtype:" + IndexDocType.IDENTIFIER.name()
+        log.debug "SOLR url = ${solrServerUrl}"
+        def queryResponse = new URL(solrServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        def taxonGuid = ""
+        def taxon = null
+
+        if (json.response?.docs) {
+            taxonGuid = json.response.docs[0].taxonGuid
+        }
+
+        if (taxonGuid) {
+            taxon = lookupTaxon(taxonGuid, useOfflineIndex)
+        }
+
+        taxon
+    }
+
 
     def getProfileForName(name){
 
@@ -467,6 +501,12 @@ class SearchService {
         def taxon = lookupTaxon(taxonLookup)
         if(!taxon){
             taxon = lookupTaxonByName(taxonLookup)
+//            if(!taxon){
+//                return null
+//            }
+        }
+        if(!taxon){
+            taxon = lookupTaxonByIdentifier(taxonLookup)
             if(!taxon){
                 return null
             }
