@@ -380,7 +380,7 @@ class SearchService {
      * @return
      * @throws Exception
      */
-    private def lookupTaxonByIdentifier(String identifier, Boolean useOfflineIndex = false) throws Exception {
+    private def lookupTaxonByPreviousIdentifier(String identifier, Boolean useOfflineIndex = false) throws Exception {
         def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
         if (useOfflineIndex) {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
@@ -506,7 +506,7 @@ class SearchService {
 //            }
         }
         if(!taxon){
-            taxon = lookupTaxonByIdentifier(taxonLookup)
+            taxon = lookupTaxonByPreviousIdentifier(taxonLookup)
             if(!taxon){
                 return null
             }
