@@ -59,6 +59,7 @@ class ImportService {
     def brokerMessagingTemplate
 
     def static DYNAMIC_FIELD_EXTENSION = "_s"
+    def static IMAGE_FIELDS = URLEncoder.encode("taxon_concept_lsid, kingdom, phylum, class, order, family, genus, species, taxon_name, image_url, data_resource_uid", "UTF-8")
     def isKeepIndexing = true // so we can cancel indexing thread (single thread only so field is OK)
 
     static {
@@ -108,9 +109,14 @@ class ImportService {
         }
         //try { importLocalities() } catch (Exception e) { log("Problem loading localities: " + e.getMessage())}
         try {
-            importSpeciesLists()
+            importConservationSpeciesLists()
         } catch (Exception e) {
-            log("Problem loading species lists: " + e.getMessage())
+            log("Problem loading conservation species lists: " + e.getMessage())
+        }
+        try {
+            importVernacularSpeciesLists()
+        } catch (Exception e) {
+            log("Problem loading vernacular species lists: " + e.getMessage())
         }
         try {
             importWordPressPages()
@@ -554,24 +560,60 @@ class ImportService {
      * </ul>
      * For each taxon in each list, update that taxon's SOLR doc with additional fields
      */
-    def importSpeciesLists() throws Exception {
+    def importConservationSpeciesLists() throws Exception {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
-        def conservationDefaultSourceField = grailsApplication.config.conservationList.defaultSourceField
-        Map speciesListMap = grailsApplication.config.conservationLists ?: [:]
+        JsonSlurper slurper = new JsonSlurper()
+        def config = slurper.parse(new URL(grailsApplication.config.conservationListsUrl))
+        def defaultSourceField = config.defaultSourceField
+        def lists = config.lists
         Integer listNum = 0
 
-        speciesListMap.each { drUid, status ->
+       lists.each { resource ->
             listNum++
-            Integer listProgress = (listNum / speciesListMap.size()) * 100 // percentage as int
-            String solrField = status.field ?: "conservationStatus_s"
-            String sourceField = status.sourceField ?: conservationDefaultSourceField
-            if (drUid && solrField) {
-                def url = "${speciesListUrl}${drUid}${speciesListParams}"
+            Integer listProgress = (listNum / lists.size()) * 100 // percentage as int
+            String uid = resource.uid
+            String solrField = resource.field ?: "conservationStatus_s"
+            String sourceField = resource.sourceField ?: defaultSourceField
+            if (uid && solrField) {
+                def url = "${speciesListUrl}${uid}${speciesListParams}"
                 log("Loading list from: " + url)
                 try {
                     JSONElement json = JSON.parse(getStringForUrl(url))
-                    updateDocsWithConservationStatus(json, sourceField, solrField, drUid, listProgress)
+                    updateDocsWithConservationStatus(json, sourceField, solrField, uid, listProgress)
+                } catch (Exception ex) {
+                    def msg = "Error calling webservice: ${ex.message}"
+                    log(msg)
+                    log.warn(msg, ex) // send to user via http socket
+                }
+            }
+        }
+    }
+
+    def importVernacularSpeciesLists() throws Exception {
+        def speciesListUrl = grailsApplication.config.speciesList.url
+        def speciesListParams = grailsApplication.config.speciesList.params
+        JsonSlurper slurper = new JsonSlurper()
+        def config = slurper.parse(new URL(grailsApplication.config.vernacularListsUrl))
+        def lists = config.lists
+        Integer listNum = 0
+
+        lists.each { resource ->
+            listNum++
+            Integer listProgress = (listNum / lists.size()) * 100 // percentage as int
+            String uid = resource.uid
+            String vernacularNameField = resource.vernacularNameField ?: config.defaultVernacularNameField
+            String nameIdField = resource.nameIdField ?: config.defaultNameIdField
+            String statusField = resource.statusField ?: config.defaultStatusField
+            String languageField = resource.languageField ?: config.defaultLanguageField
+            String sourceField = resource.sourceField ?: config.defaultSourceField
+            String resourceLanguage = resource.language ?: config.defaultLanguage
+            if (uid && vernacularNameField) {
+                def url = "${speciesListUrl}${resource.uid}${speciesListParams}"
+                log("Loading list from: " + url)
+                try {
+                    JSONElement json = JSON.parse(getStringForUrl(url))
+                    importAdditionalVernacularNames(json, vernacularNameField, nameIdField, statusField, languageField, sourceField, resourceLanguage, uid, listProgress)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -862,6 +904,123 @@ class ImportService {
             log("JSON not an array or has no elements - exiting")
         }
     }
+
+    private void importAdditionalVernacularNames(JSONElement json, String vernacularNameField, String nameIdField, String statusField, String languageField, String sourceField, String resourceLanguage, String uid, Integer listProgress) {
+        if (json.size() > 0) {
+            def totalDocs = json.size()
+            def buffer = []
+            def statusMap = vernacularNameStatus()
+            def commonStatus = statusMap.get("common")
+            def unmatchedTaxaCount = 0
+            def updateTaxa = [] as Set
+
+            log("${listProgress}||0") // reset progress bar
+            log("Updating vernacular names from ${uid}")
+            json.eachWithIndex { item, i ->
+                log.debug "item = ${item}"
+                def vernacularName = item.kvpValues.find { it.key == vernacularNameField }?.get("value")
+                def nameId = item.kvpValues.find { it.key == nameIdField }?.get("value")
+                def status = statusMap[item.kvpValues.find { it.key == statusField }?.get("value")]
+                def language = item.kvpValues.find { it.key == languageField }?.get("value") ?: resourceLanguage
+                def source = item.kvpValues.find { it.key == sourceField }?.get("value")
+
+                def taxonDoc
+                def vernacularDoc
+
+                if (!vernacularName) {
+                    log.warn("No vernacular name for ${item.lsid} ${item.name}, skipping")
+                    unmatchedTaxaCount++
+                    return
+                }
+                if (item.lsid)
+                    taxonDoc = searchService.lookupTaxon(item.lsid, true) // TODO cache call
+                if (!taxonDoc && item.name)
+                    taxonDoc = searchService.lookupTaxonByName(item.name, true) // TODO cache call
+                if (!taxonDoc) {
+                    log.warn("Can't find matching taxon document for ${item.lsid} ${item.name} for ${vernacularName}, skipping")
+                    unmatchedTaxaCount++
+                    return
+                }
+
+                vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
+
+                if (vernacularDoc) {
+                    // do a SOLR doc (atomic) update
+                    def doc = [:]
+                    doc["id"] = vernacularDoc.id // doc key
+                    doc["idxtype"] = ["set": vernacularDoc.idxtype] // required field
+                    doc["guid"] = ["set": vernacularDoc.guid ] // required field
+                    doc["taxonGuid"] = ["set": taxonDoc.guid]
+                    doc["name"] = ["set": vernacularName]
+                    doc["datasetID"] = ["set": uid]
+                    doc["language"] = ["set": language]
+                    if (nameId)
+                        doc["nameID"] = ["set": nameId]
+                    if (status)  {
+                        doc["status"] = ["set": status.status]
+                        doc["priority"] = ["set": status.priority]
+                    }
+                    if (source)
+                        doc["name"] = ["set": nameId]
+                    log.debug "adding to doc = ${doc}"
+                    buffer << doc
+                } else {
+                    // No match so add it as a vernacular name
+                    def doc = [:]
+                    doc["id"] = UUID.randomUUID().toString() // doc key
+                    doc["idxtype"] = IndexDocType.COMMON // required field
+                    doc["guid"] = doc.id
+                    doc["taxonGuid"] = taxonDoc.guid
+                    doc["datasetID"] = uid
+                    doc["name"] = vernacularName
+                    doc["status"] = status?.status ?: commonStatus.status
+                    doc["priority"] = status?.priority ?: commonStatus.priority
+                    doc["nameID"] = nameId
+                    doc["language"] = language
+                    log.debug "new name doc = ${doc} for ${vernacularName}"
+                    buffer << doc
+                    log("No existing name found for ${vernacularName}, so has been added as ${doc["guid"]}")
+                }
+                updateTaxa << taxonDoc.guid
+
+                if (i > 0) {
+                    Double percentDone = (i / totalDocs) * 100
+                    log("${listProgress}||${percentDone.round(1)}") // progress bar output
+                }
+            }
+
+            log("Committing names to SOLR...")
+            if (!buffer.isEmpty())
+                indexService.indexBatch(buffer)
+            log("${listProgress}||1000") // complete progress bar
+            log("Number of taxa unmatched: ${unmatchedTaxaCount}")
+            log("Updating common name lists in ${updateTaxa.size()} taxa")
+            buffer = []
+            updateTaxa.each {
+                def taxonDoc = searchService.lookupTaxon(it, true)
+                if (!taxonDoc)
+                    return
+                def commonNames = searchService.lookupVernacular(it, true)
+                if (!commonNames || commonNames.isEmpty())
+                    return
+                def doc = [:]
+                doc["id"] = taxonDoc.id // doc key
+                doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
+                doc["guid"] = ["set": taxonDoc.guid] // required field
+                doc["commonName"] = ["set": commonNames.collect { it.name } ]
+                doc["commonNameExact"] = ["set": commonNames.collect { it.name } ]
+                buffer << doc
+            }
+            log("Committing taxon updates to SOLR...")
+            if (!buffer.isEmpty())
+                indexService.indexBatch(buffer)
+            log("Import finished.")
+        } else {
+            log("JSON not an array or has no elements - exiting")
+        }
+
+    }
+
 
     def clearTaxaIndex() {
         log("Deleting existing taxon entries in index...")
@@ -1508,9 +1667,11 @@ class ImportService {
         def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+taxonomicStatus:accepted"
         def prevCursor = ""
         def cursor = "*"
-        def imageMap = collectImageLists()
-        def rankMap = grailsApplication.config.imageRanks.collectEntries { r -> [(r.rank): r] }
-        def boosts = grailsApplication.config.imageBoosts.collect({"bq=" + it}).join("&")
+        JsonSlurper slurper = new JsonSlurper()
+        def config = slurper.parse(new URL(grailsApplication.config.imageListsUrl))
+        def imageMap = collectImageLists(config.lists)
+        def rankMap = config.ranks.collectEntries { r -> [(r.rank): r] }
+        def boosts = config.boosts.collect({"bq=" + it}).join("&")
         def lastImage = [imageId: "none", taxonID: "none", name: "none"]
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
@@ -1589,13 +1750,13 @@ class ImportService {
     /**
      * Collect the list where images are specifically listed
      */
-    def collectImageLists() {
+    def collectImageLists(List lists) {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
         def imageMap = [:]
         log("Loading image lists")
-        grailsApplication.config.imageLists.each { list ->
-            String drUid = list.drUid
+        lists.each { list ->
+            String drUid = list.uid
             String imageIdName = list.imageId
             String imageUrlName = list.imageUrl
             if (drUid && (imageIdName || imageUrlName)) {

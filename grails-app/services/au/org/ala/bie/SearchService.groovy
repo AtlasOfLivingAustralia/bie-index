@@ -372,6 +372,50 @@ class SearchService {
         json.response.docs[0]
     }
 
+    /**
+     * Retrieve details of a specific vernacular name by taxonID
+     *
+     * @param taxonID The taxon identifier
+     * @param name The vernacular name
+     * @param useOfflineIndex
+     * @return
+     */
+    def lookupVernacular(String taxonID, String vernacularName, Boolean useOfflineIndex = false){
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+
+        if (useOfflineIndex)
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+
+        def encID = URLEncoder.encode(taxonID, 'UTF-8')
+        def encName = URLEncoder.encode(vernacularName, "UTF-8")
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:\"${encID}\"&fq=(idxtype:${IndexDocType.COMMON.name()}+AND+name:\"${encName}\")"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        json.response.docs[0]
+    }
+
+    /**
+     * Retrieve details of all vernacular names attached to a taxon.
+     *
+     * @param taxonID The taxon identifier
+     * @param useOfflineIndex
+     * @return
+     */
+    def lookupVernacular(String taxonID, Boolean useOfflineIndex = false){
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+
+        if (useOfflineIndex)
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+
+        def encID = URLEncoder.encode(taxonID, 'UTF-8')
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:\"${encID}\"&fq=idxtype:${IndexDocType.COMMON.name()}"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        json.response.docs
+    }
+
 
     def getProfileForName(name){
 
@@ -873,14 +917,14 @@ class SearchService {
                 Map results = doPostWithParams(url, params) // returns (JsonObject) Map with guid as key and count as value
                 Map guidsCountsMap = results.get("resp")?:[:]
                 docs.each {
-                    it.put("occurrenceCount", guidsCountsMap.get(it.guid))
+                    if (it.idxtype == IndexDocType.TAXON.name() && it.guid)
+                        it.put("occurrenceCount", guidsCountsMap.get(it.guid))
                 }
             } catch (Exception ex) {
                 // do nothing but log it
                 log.error("Error populating occurrence counts: ${ex.message}", ex);
             }
         }
-
         docs
     }
 
