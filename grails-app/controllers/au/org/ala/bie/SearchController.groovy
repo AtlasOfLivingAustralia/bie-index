@@ -106,16 +106,21 @@ class SearchController {
      * @return
      */
     def taxon(){
-
-        if(params.id == 'favicon') return; //not sure why this is happening....
-        if(!params.id){
+        def guid = params.id
+        if(guid == 'favicon') return; //not sure why this is happening....
+        if(!guid){
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        def model = searchService.getTaxon(params.id)
-        if(!model){
-            response.sendError(404,"GUID not recognised ${params.id}")
+        def model = searchService.getTaxon(guid)
+        log.debug "taxon model = ${model}"
+
+        if(!model) {
+            response.sendError(404, "GUID not recognised ${guid}")
             return null
+        } else if (model.taxonConcept?.guid && model.taxonConcept.guid != guid) {
+            // old identifier so redirect to current taxon page
+            redirect(action: "taxon", params:[id: model.taxonConcept.guid], permanent: true)
         } else {
             asJson model
         }

@@ -100,7 +100,7 @@ class SearchService {
                 def queryArray = []
                 q.split(/\s+/).each {
                     if (!(it =~ /AND|OR|NOT/)) {
-                        queryArray.add(it + "~")
+                        queryArray.add(it + "~0.8")
                     } else {
                         queryArray.add(it)
                     }
@@ -373,6 +373,40 @@ class SearchService {
     }
 
     /**
+     * Request is for an old identifier - lookup current taxon
+     *
+     * @param identifier
+     * @param useOfflineIndex
+     * @return
+     * @throws Exception
+     */
+    private def lookupTaxonByPreviousIdentifier(String identifier, Boolean useOfflineIndex = false) throws Exception {
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+        if (useOfflineIndex) {
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+        }
+        def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=guid:\"" + URLEncoder.encode(identifier ,"UTF-8") +
+                "\"&fq=idxtype:" + IndexDocType.IDENTIFIER.name()
+        log.debug "SOLR url = ${solrServerUrl}"
+        def queryResponse = new URL(solrServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        def taxonGuid = ""
+        def taxon = null
+
+        if (json.response?.docs) {
+            taxonGuid = json.response.docs[0].taxonGuid
+        }
+
+        if (taxonGuid) {
+            taxon = lookupTaxon(taxonGuid, useOfflineIndex)
+        }
+
+        taxon
+    }
+
+    /**
      * Retrieve details of a specific vernacular name by taxonID
      *
      * @param taxonID The taxon identifier
@@ -509,8 +543,11 @@ class SearchService {
     def getTaxon(taxonLookup){
 
         def taxon = lookupTaxon(taxonLookup)
-        if(!taxon){
+        if(!taxon) {
             taxon = lookupTaxonByName(taxonLookup)
+        }
+        if(!taxon) {
+            taxon = lookupTaxonByPreviousIdentifier(taxonLookup)
             if(!taxon){
                 return null
             }
@@ -602,6 +639,7 @@ class SearchService {
                             datasetURL: datasetURL
                     ]
                 },
+                imageIdentifier: taxon.image,
                 conservationStatuses:conservationStatus,
                 extantStatuses: [],
                 habitats: [],

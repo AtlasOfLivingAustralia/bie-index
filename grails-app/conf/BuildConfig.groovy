@@ -61,6 +61,7 @@ grails.project.dependency.resolution = {
         runtime(":ala-auth:1.3.1") {
             excludes "servlet-api"
         }
+        runtime ":ala-admin-plugin:1.2"
         compile ":spring-websocket:1.3.0"
 
         test ":geb:0.12.2"
