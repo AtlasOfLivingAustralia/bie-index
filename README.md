@@ -250,7 +250,7 @@ An example conservation status list configuration is
       "term": "conservationStatusVIC",
       "label": "VIC",
       "sourceField": "statusName"
-    },
+    }
   ]
 }```
 

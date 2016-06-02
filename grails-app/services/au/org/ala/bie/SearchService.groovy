@@ -11,6 +11,7 @@ import org.gbif.nameparser.NameParser
  * A set of search services for the BIE.
  */
 class SearchService {
+    static BULK_BATCH_SIZE = 20
 
     def grailsApplication
 
@@ -502,37 +503,61 @@ class SearchService {
     }
 
     def getTaxa(List guidList){
+        def resultMap = [:]
+        def matchingTaxa = []
 
+        while (!guidList.isEmpty()) {
+            def batch = guidList.take(BULK_BATCH_SIZE)
+            def batchSet = (batch.findAll { !resultMap.containsKey(it) }) as Set
+            def matches = getTaxaBatch(batchSet)
+            if (!(matches instanceof List)) // Error return
+                return matches
+            matches.each { match ->
+                resultMap[match.guid] = match
+                if (match.linkIdentifier)
+                    resultMap[match.linkIdentifier] = match
+            }
+            batch.each { guid ->
+                matchingTaxa << resultMap[guid]
+            }
+            guidList = guidList.drop(BULK_BATCH_SIZE)
+        }
+        return matchingTaxa
+    }
+
+    private getTaxaBatch(Collection guidList) {
         def queryList = guidList.collect({'"' + it + '"'}).join(',')
         def postBody = [
                 q: "guid:(" + queryList + ") OR linkIdentifier:("  + queryList + ")",
                 fq: "idxtype:" + IndexDocType.TAXON.name(),
+                rows: BULK_BATCH_SIZE,
                 wt: "json"
         ] // will be url-encoded
         def resp = doPostWithParams(grailsApplication.config.indexLiveBaseUrl +  "/select", postBody)
 
         //create the docs....
-        if(resp.resp.response){
+        if(resp?.resp?.response){
 
             def matchingTaxa = []
 
             resp.resp.response.docs.each { doc ->
-               def taxon = [
-                       guid: doc.guid,
-                       name: doc.scientificName,
-                       scientificName: doc.scientificName,
-                       author: doc.scientificNameAuthorship
-               ]
-               if(doc.image){
-                   taxon.put("thumbnailUrl", grailsApplication.config.imageThumbnailUrl + doc.image)
-                   taxon.put("smallImageUrl", grailsApplication.config.imageSmallUrl + doc.image)
-                   taxon.put("largeImageUrl", grailsApplication.config.imageLargeUrl + doc.image)
-               }
-               if(doc.commonName){
-                   taxon.put("commonNameSingle", doc.commonName.first())
-               }
-
-               matchingTaxa << taxon
+                def taxon = [
+                        guid: doc.guid,
+                        name: doc.scientificName,
+                        scientificName: doc.scientificName,
+                        author: doc.scientificNameAuthorship
+                ]
+                if(doc.image){
+                    taxon.put("thumbnailUrl", grailsApplication.config.imageThumbnailUrl + doc.image)
+                    taxon.put("smallImageUrl", grailsApplication.config.imageSmallUrl + doc.image)
+                    taxon.put("largeImageUrl", grailsApplication.config.imageLargeUrl + doc.image)
+                }
+                if (doc.linkIdentifier)
+                    taxon.put("linkIdentifier", doc.linkIdentifier)
+                if(doc.commonName){
+                    taxon.put("commonNameSingle", doc.commonName.first())
+                }
+                matchingTaxa << taxon
             }
             matchingTaxa
         } else {
