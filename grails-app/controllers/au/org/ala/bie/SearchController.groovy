@@ -85,7 +85,8 @@ class SearchController {
         def result = params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
         if (!result)
             respond result
-        render result as JSON
+        else
+            render result as JSON
      }
 
     def bulkGuidLookup(){
