@@ -1761,19 +1761,25 @@ class ImportService {
             String imageUrlName = list.imageUrl
             if (drUid && (imageIdName || imageUrlName)) {
                 def url = "${speciesListUrl}${drUid}${speciesListParams}"
-                JSONElement json = JSON.parse(getStringForUrl(url))
-                json.each { item ->
-                    def taxonID = item.lsid
-                    def name = item.name
-                    def imageId = imageIdName ? item.kvpValues.find { it.key == imageIdName }?.get("value") : null
-                    def imageUrl = imageUrlName ? item.kvpValues.find { it.key == imageUrlName }?.get("value") : null
-                    if (imageId || imageUrl) {
-                        def image = [taxonID: taxonID, name: name, imageId: imageId, imageUrl: imageUrl]
-                        if (taxonID && !imageMap.containsKey(taxonID))
-                            imageMap[taxonID] = image
-                        if (name && !imageMap.containsKey(name))
-                            imageMap[name] = image
+                try {
+                    JSONElement json = JSON.parse(getStringForUrl(url))
+                    json.each { item ->
+                        def taxonID = item.lsid
+                        def name = item.name
+                        def imageId = imageIdName ? item.kvpValues.find { it.key == imageIdName }?.get("value") : null
+                        def imageUrl = imageUrlName ? item.kvpValues.find {
+                            it.key == imageUrlName
+                        }?.get("value") : null
+                        if (imageId || imageUrl) {
+                            def image = [taxonID: taxonID, name: name, imageId: imageId, imageUrl: imageUrl]
+                            if (taxonID && !imageMap.containsKey(taxonID))
+                                imageMap[taxonID] = image
+                            if (name && !imageMap.containsKey(name))
+                                imageMap[name] = image
+                        }
                     }
+                } catch (Exception ex) {
+                    log("Unable to load image list at ${url}: ${ex.getMessage()} ... ignoring")
                 }
             }
         }
