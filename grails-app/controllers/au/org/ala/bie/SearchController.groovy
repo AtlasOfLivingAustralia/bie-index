@@ -132,7 +132,7 @@ class SearchController {
         if (!req) {
             response.sendError(400, "Body could not be parsed or was empty")
         }
-        boolean includeVernacular = req['vernacular'] ?: false
+        boolean includeVernacular = req.optBoolean('vernacular')
         List<String> guids = req['names']
 
         def result = guids.collect { guid ->
