@@ -14,6 +14,7 @@ class SearchService {
     static BULK_BATCH_SIZE = 20
 
     def grailsApplication
+    def conservationListsSource
 
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.
@@ -609,12 +610,13 @@ class SearchService {
         def taxonDatasetName = getDataset(taxon.datasetID, datasetMap)?.name
 
         // Conservation status map
-        def clists = grailsApplication.config.conservationLists ?: [:]
-        def conservationStatus = clists.collectEntries {
-            final cs = taxon[it.value.field]
-            log.info("${it.value.field}: $cs")
-            cs ? [ (it.value.label) : [ dr: it.key, status: cs ] ] : [:]
-        }
+        def clists = conservationListsSource.lists ?: []
+        def conservationStatus = clists.inject([], { ac, cl ->
+            final cs = taxon[cl.field]
+            if (cs)
+                ac << [ (cl.label) : [ dr: cl.uid, status: cs ] ]
+            ac
+        })
 
         def model = [
                 taxonConcept:[
