@@ -611,10 +611,10 @@ class SearchService {
 
         // Conservation status map
         def clists = conservationListsSource.lists ?: []
-        def conservationStatus = clists.inject([], { ac, cl ->
+        def conservationStatus = clists.inject([:], { ac, cl ->
             final cs = taxon[cl.field]
             if (cs)
-                ac << [ (cl.label) : [ dr: cl.uid, status: cs ] ]
+                ac.put(cl.label, [ dr: cl.uid, status: cs ])
             ac
         })
 
