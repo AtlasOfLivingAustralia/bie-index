@@ -55,6 +55,7 @@ class ImportService {
 
     def grailsApplication
     def speciesGroupService
+    def conservationListsSource
 
     def brokerMessagingTemplate
 
@@ -563,10 +564,8 @@ class ImportService {
     def importConservationSpeciesLists() throws Exception {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
-        JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(grailsApplication.config.conservationListsUrl))
-        def defaultSourceField = config.defaultSourceField
-        def lists = config.lists
+        def defaultSourceField = conservationListsSource.defaultSourceField
+        def lists =conservationListsSource.lists
         Integer listNum = 0
 
        lists.each { resource ->
