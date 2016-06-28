@@ -1356,7 +1356,7 @@ class ImportService {
     }
 
     static String normaliseRank(String rank) {
-        return rank?.replaceAll(" ", "_")?.toLowerCase()
+        return rank?.replaceAll("\\s", "_")?.toLowerCase()
     }
 
     /**

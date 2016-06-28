@@ -34,7 +34,7 @@ class SearchService {
             if(!taxon){
                 return []
             }
-            query = "q=*:*&fq=rkid_" + taxon.rank.toLowerCase() + ":\"" +  URLEncoder.encode(taxon.guid, "UTF-8") + "\""
+            query = "q=*:*&fq=rkid_" + taxon.rank.toLowerCase().replaceAll('\\s', '_') + ":\"" +  URLEncoder.encode(taxon.guid, "UTF-8") + "\""
         }
 
         def additionalParams = "&wt=json&fq=rankID:%5B7000%20TO%20*%5D&fq=imageAvailable:true"
