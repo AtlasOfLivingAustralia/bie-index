@@ -99,6 +99,7 @@ class SearchService {
 
             // Add fuzzy search term modifier to simple queries with > 1 term (e.g. no braces)
             if (!q.contains("(") && q.trim() =~ /\s+/) {
+                q = q.replaceAll('"', " ").trim()
                 def queryArray = []
                 q.split(/\s+/).each {
                     if (!(it =~ /AND|OR|NOT/)) {
@@ -109,7 +110,7 @@ class SearchService {
                 }
                 def nq = queryArray.join(" ")
                 log.debug "fuzzy nq = ${nq}"
-                params.q = nq
+                params.q = "\"${q}\"^100 ${nq}"
                 queryString = params.toQueryString()
             }
         } else {

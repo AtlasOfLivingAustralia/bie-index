@@ -56,8 +56,8 @@ nationalSpeciesDatasets = "" // "dr2699,dr2700,dr2702,dr2704,dr2703,dr3118"
 
 // SOLR additional params
 solr {
-    qf = "doc_name^100+text"
-    bq = "taxonomicStatus:accepted^1000+rankID:7000^1000"
+    qf = "scientificName^200+doc_name^100+text"
+    bq = "taxonomicStatus:accepted^1000+rankID:7000^500+rankID:6000^100"
     defType = "edismax"
     qAlt = "text:*"
     hl = "true&hl=true&hl.fl=*&hl.simple.pre=<b>&hl.simple.post=</b>"
