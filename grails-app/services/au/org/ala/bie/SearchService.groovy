@@ -75,7 +75,10 @@ class SearchService {
     def search(String q, GrailsParameterMap params, List requestedFacets) {
         params.remove("controller") // remove Grails stuff from query
         params.remove("action") // remove Grails stuff from query
-        String queryString = params.toQueryString()
+
+        //String queryString = params.toQueryString() //DM - this screws up FQs
+        def fqs = params.fq
+
         String qf = grailsApplication.config.solr.qf // dismax query fields
         String bq = grailsApplication.config.solr.bq  // dismax boost function
         String defType = grailsApplication.config.solr.defType // query parser type
@@ -87,11 +90,21 @@ class SearchService {
             additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
         }
 
-        if (queryString) {
+        if(fqs){
+            if(isCollectionOrArray(fqs)){
+                fqs.each {
+                    additionalParams = additionalParams + "&fq=" + URLEncoder.encode(it, 'UTF-8')
+                }
+            } else {
+                additionalParams = additionalParams + "&fq=" +  URLEncoder.encode(fqs, 'UTF-8')
+            }
+        }
+
+        if (q) {
             if (!q) {
-                queryString = queryString.replaceFirst("q=", "q=*:*")
+                q = q.replaceFirst("q=", "q=*:*")
             } else if (q.trim() == "*") {
-                queryString = queryString.replaceFirst("q=*", "q=*:*")
+                q = q.replaceFirst("q=*", "q=*:*")
             }
             // boost query syntax was removed from here. NdR.
 
@@ -108,13 +121,12 @@ class SearchService {
                 def nq = queryArray.join(" ")
                 log.debug "fuzzy nq = ${nq}"
                 params.q = nq
-                queryString = params.toQueryString()
             }
         } else {
-            queryString = "q=*:*"
+            q = "*:*"
         }
 
-        String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select" + queryString + additionalParams
+        String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?q=" + URLEncoder.encode(q, 'UTF-8') + additionalParams
         log.debug "solrUlr = ${solrUlr}"
         def queryResponse = new URL(solrUlr).getText("UTF-8")
         def js = new JsonSlurper()
@@ -167,6 +179,10 @@ class SearchService {
             results     : formatDocs(json.response.docs, json.highlighting),
             queryTitle  : queryTitle
         ]
+    }
+
+    boolean isCollectionOrArray(object) {
+        [Collection, Object[]].any { it.isAssignableFrom(object.getClass()) }
     }
 
     def getHabitats(){
@@ -421,7 +437,7 @@ class SearchService {
                 model << [
                     "identifier": result.guid,
                     "name": result.scientificName,
-                    "acceptedIdentifier": result.acceptedConceptID,
+                    "acceptedIdentifier": result.acceptedConceptID ?: result.guid,
                     "acceptedName": result.acceptedConceptName
                 ]
             }
