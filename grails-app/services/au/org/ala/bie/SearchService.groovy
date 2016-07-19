@@ -493,7 +493,15 @@ class SearchService {
                        guid: doc.guid,
                        name: doc.scientificName,
                        scientificName: doc.scientificName,
-                       author: doc.scientificNameAuthorship
+                       author: doc.scientificNameAuthorship,
+                       nameComplete: doc.nameComplete?:doc.scientificName,
+                       rank: doc.rank,
+                       kingdom: doc.rk_kingdom,
+                       phylum: doc.rk_phylum,
+                       classs: doc.rk_class,
+                       order: doc.rk_order,
+                       family: doc.rk_family,
+                       genus: doc.rk_genus
                ]
                if(doc.image){
                    taxon.put("thumbnailUrl", grailsApplication.config.imageThumbnailUrl + doc.image)
