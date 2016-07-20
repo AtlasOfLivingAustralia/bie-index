@@ -944,12 +944,12 @@ class SearchService {
         return [resp: JSON.parse(resp?:"{}")] // fail over to empty json object if empty response string otherwise JSON.parse fails
     }
 
-    def getDataset(String datasetID, Map datasets) {
+    def getDataset(String datasetID, Map datasets, boolean offline = false) {
         if (!datasetID)
             return null
         def dataset = datasets.get(datasetID)
         if (!dataset) {
-            def datasetQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
+            def datasetQueryUrl = (offline ? grailsApplication.config.indexOfflineBaseUrl : grailsApplication.config.indexLiveBaseUrl) + "/select?wt=json&q=" +
                     URLEncoder.encode("datasetID:\"" + datasetID + "\"", "UTF-8") + "&fq=idxtype:" + IndexDocType.DATARESOURCE.name()
             def datasetQueryResponse = new URL(datasetQueryUrl).getText("UTF-8")
             def js = new JsonSlurper()

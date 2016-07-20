@@ -174,6 +174,7 @@ class ImportService {
                 if (parentNameUsageID) {
                     childParentMap.put(taxonID, [cn: scientificName, cr: taxonRank, p: parentNameUsageID])
                 } else {
+                    childParentMap.put(taxonID, [cn: scientificName, cr: taxonRank])
                     parentLess << taxonID
                 }
             }
@@ -212,9 +213,13 @@ class ImportService {
             return currentList
         }
         def info = childParentMap.get(id)
-        if (info && info['p'] && !currentList.contains(id + '|' + info['cn'] + '|' + info['cr'])) {
-            currentList << id + '|' + info['cn'] + '|' + info['cr']
-            denormaliseTaxon(info['p'], currentList, childParentMap, stackLevel + 1)
+        if (info) {
+            def track = id + '|' + info['cn'] + '|' + info['cr']
+            if (!currentList.contains(track)) {
+                currentList << track
+                if (info['p'])
+                    denormaliseTaxon(info['p'], currentList, childParentMap, stackLevel + 1)
+            }
         }
         currentList
     }
@@ -1049,10 +1054,10 @@ class ImportService {
 
             // Archive metadata available
             log("Archive metadata detected: " + (archive.metadataLocation != null))
-            def datasetName = null
+            def defaultDatasetName = null
             if (archive.metadataLocation) {
-                datasetName = archive.metadata.title?.trim()
-                log("Dataset name from metadata: " + datasetName)
+                defaultDatasetName = archive.metadata.title?.trim()
+                log("Default dataset name from metadata: " + defaultDatasetName)
             }
 
             //vernacular names extension available?
@@ -1082,6 +1087,7 @@ class ImportService {
             log("Common names read for " + commonNamesMap.size() + " taxa")
 
             //retrieve datasets
+            def datasetMap = [:]
             def attributionMap = readAttribution(datasetArchiveFile)
             log("Datasets read: " + attributionMap.size())
 
@@ -1175,12 +1181,19 @@ class ImportService {
                         }
                     }
 
-                    def attribution = attributionMap.get(record.value(DwcTerm.datasetID))
+                    def attribution = attributionMap.get(datasetID)
+                    if (!attribution) {
+                        def dataset = searchService.getDataset(datasetID, datasetMap, true)
+                        if (dataset && dataset["name"]) {
+                            attribution = [datasetName: dataset["name"]]
+                            attributionMap.put(datasetID, attribution)
+                        }
+                    }
                     if (attribution) {
                         doc["datasetName"] = attribution["datasetName"]
                         doc["rightsHolder"] = attribution["rightsHolder"]
-                    } else if (datasetName) {
-                        doc["datasetName"] = datasetName
+                    } else if (defaultDatasetName) {
+                        doc["datasetName"] = defaultDatasetName
                     }
 
                     def distributions = distributionMap.get(taxonID)
@@ -1694,6 +1707,7 @@ class ImportService {
 
                 docs.each { doc ->
                     def taxonID = doc.guid
+                    def kingdom = doc.rk_kingdom
                     def name = doc.scientificName ?: doc.name
                     def rank = rankMap[doc.rank]
                     def image = null
@@ -1703,15 +1717,19 @@ class ImportService {
                             image = imageMap[taxonID] ?: imageMap[name]
                             if (!image) {
                                 def query = null
-                                query = addImageSearch(query, "lsid", taxonID, 100)
+                                 query = addImageSearch(query, "lsid", taxonID, 100)
                                 query = addImageSearch(query, rank.nameField, name, 50)
                                 query = addImageSearch(query, rank.idField, taxonID, 20)
                                 if (query) {
-                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=1&wt=json&fl=${IMAGE_FIELDS}"
+                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=5&wt=json&fl=${IMAGE_FIELDS}"
                                     def taxonResponse = taxonSearchUrl.toURL().getText("UTF-8")
                                     def taxonJson = js.parseText(taxonResponse)
-                                    if (taxonJson.response.numFound > 0)
-                                        image = [taxonID: taxonID, name: name, imageId: taxonJson.response.docs[0].image_url]
+                                    if (taxonJson.response.numFound > 0) {
+                                        // Case does not necessarily match between bie and biocache
+                                        def occurrence = taxonJson.response.docs.find { !kingdom || kingdom.equalsIgnoreCase(it.kingdom) }
+                                        if (occurrence)
+                                            image = [taxonID: taxonID, name: name, imageId: occurrence.image_url]
+                                    }
                                 }
                             }
                         } catch (Exception ex) {
@@ -1725,9 +1743,9 @@ class ImportService {
                         update["guid"] = ["set": doc.guid] // required field
                         update["image"] = ["set": image.imageId]
                         update["imageAvailable"] = ["set": true]
+                        added++
                         buffer << update
                         lastImage = image
-                        added++
                     }
                     processed++
                 }
