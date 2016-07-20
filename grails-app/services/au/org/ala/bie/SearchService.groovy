@@ -34,7 +34,8 @@ class SearchService {
             if(!taxon){
                 return []
             }
-            query = "q=*:*&fq=rkid_" + taxon.rank.toLowerCase().replaceAll('\\s', '_') + ":\"" +  URLEncoder.encode(taxon.guid, "UTF-8") + "\""
+            def tid = URLEncoder.encode(taxon.guid, "UTF-8")
+            query = "q=(guid:\"${tid}\"+OR+rkid_${taxon.rank.toLowerCase().replaceAll('\\s', '_')}:\"${tid}\")"
         }
 
         def additionalParams = "&wt=json&fq=rankID:%5B7000%20TO%20*%5D&fq=imageAvailable:true"
@@ -123,8 +124,7 @@ class SearchService {
                 }
                 def nq = queryArray.join(" ")
                 log.debug "fuzzy nq = ${nq}"
-                params.q = "\"${q}\"^100 ${nq}"
-                q = params.toQueryString()
+                q = "\"${q}\"^100 ${nq}"
             }
         } else {
             q = "*:*"
@@ -564,7 +564,7 @@ class SearchService {
                        guid: doc.guid,
                        name: doc.scientificName,
                        scientificName: doc.scientificName,
-                       author: doc.scientificNameAuthorship
+                       author: doc.scientificNameAuthorship,
                        nameComplete: doc.nameComplete?:doc.scientificName,
                        rank: doc.rank,
                        kingdom: doc.rk_kingdom,

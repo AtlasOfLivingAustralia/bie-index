@@ -1181,14 +1181,7 @@ class ImportService {
                         }
                     }
 
-                    def attribution = attributionMap.get(datasetID)
-                    if (!attribution) {
-                        def dataset = searchService.getDataset(datasetID, datasetMap, true)
-                        if (dataset && dataset["name"]) {
-                            attribution = [datasetName: dataset["name"]]
-                            attributionMap.put(datasetID, attribution)
-                        }
-                    }
+                    def attribution = findAttribution(datasetID, attributionMap, datasetMap)
                     if (attribution) {
                         doc["datasetName"] = attribution["datasetName"]
                         doc["rightsHolder"] = attribution["rightsHolder"]
@@ -1266,12 +1259,12 @@ class ImportService {
                                 sdoc["taxonomicStatus"] = "synonym"
                                 sdoc["source"] = synonym['source']
 
-                                def synAttribution = attributionMap.get(synonym['datasetID'])
+                                def synAttribution = findAttribution(synonym['datasetID'], attributionMap, datasetMap)
                                 if (synAttribution) {
                                     sdoc["datasetName"] = synAttribution["datasetName"]
                                     sdoc["rightsHolder"] = synAttribution["rightsHolder"]
-                                } else if (datasetName) {
-                                    sdoc["datasetName"] = datasetName
+                                } else if (defaultDatasetName) {
+                                    sdoc["datasetName"] = defaultDatasetName
                                 }
 
                                 counter++
@@ -1299,12 +1292,12 @@ class ImportService {
                             cdoc["language"] = commonName['language']
                             cdoc["nameID"] = commonName['nameID']
 
-                            def cnAttribution = attributionMap.get(commonName['datasetID'])
+                            def cnAttribution = findAttribution(commonName['datasetID'], attributionMap, datasetMap)
                             if (cnAttribution) {
                                 cdoc["datasetName"] = cnAttribution["datasetName"]
                                 cdoc["rightsHolder"] = cnAttribution["rightsHolder"]
-                            } else if (datasetName) {
-                                cdoc["datasetName"] = datasetName
+                            } else if (defaultDatasetName) {
+                                cdoc["datasetName"] = defaultDatasetName
                             }
 
                             buffer << cdoc
@@ -1332,12 +1325,12 @@ class ImportService {
                             idoc["subject"] = identifier['subject']
                             idoc["format"] = identifier['format']
 
-                            def idAttribution = attributionMap.get(identifier['datasetID'])
+                            def idAttribution = findAttribution(identifier['datasetID'], attributionMap, datasetMap)
                             if (idAttribution) {
                                 idoc["datasetName"] = idAttribution["datasetName"]
                                 idoc["rightsHolder"] = idAttribution["rightsHolder"]
-                            } else if (datasetName) {
-                                idoc["datasetName"] = datasetName
+                            } else if (defaultDatasetName) {
+                                idoc["datasetName"] = defaultDatasetName
                             }
                             buffer << idoc
                         }
@@ -1947,5 +1940,17 @@ class ImportService {
     private updateProgressBar(int total, int current) {
         Double percentDone = (current / total) * 100
         log("${percentDone.round(1)}") // progress bar output (JS code detects numeric input)
+    }
+
+    private findAttribution(datasetID, attributionMap, datasetMap) {
+        def attribution = attributionMap.get(datasetID)
+        if (!attribution) {
+            def dataset = searchService.getDataset(datasetID, datasetMap, true)
+            if (dataset && dataset["name"]) {
+                attribution = [datasetName: dataset["name"]]
+                attributionMap.put(datasetID, attribution)
+            }
+        }
+        return attribution
     }
 }
