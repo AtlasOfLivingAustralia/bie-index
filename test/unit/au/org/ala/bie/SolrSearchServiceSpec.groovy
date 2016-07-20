@@ -1,5 +1,6 @@
 package au.org.ala.bie
 
+import au.org.ala.bie.util.ConservationListsSource
 import com.google.common.io.Resources
 import grails.test.mixin.TestFor
 import org.apache.solr.client.solrj.SolrClient
@@ -16,10 +17,14 @@ import spock.lang.Unroll
 class SolrSearchServiceSpec extends Specification {
 
     SolrClient liveSolrClient
+    ConservationListsSource conservationListsSource
 
     def setup() {
         liveSolrClient = Mock(SolrClient)
+        conservationListsSource = Mock(ConservationListsSource)
+
         service.liveSolrClient = liveSolrClient
+        service.conservationListsSource = conservationListsSource
     }
 
     def cleanup() {

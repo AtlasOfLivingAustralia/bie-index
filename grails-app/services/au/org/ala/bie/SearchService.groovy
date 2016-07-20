@@ -11,8 +11,10 @@ import org.gbif.nameparser.NameParser
  * A set of search services for the BIE.
  */
 class SearchService {
+    static BULK_BATCH_SIZE = 20
 
     def grailsApplication
+    def conservationListsSource
 
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.
@@ -32,7 +34,8 @@ class SearchService {
             if(!taxon){
                 return []
             }
-            query = "q=*:*&fq=rkid_" + taxon.rank.toLowerCase() + ":\"" +  URLEncoder.encode(taxon.guid, "UTF-8") + "\""
+            def tid = URLEncoder.encode(taxon.guid, "UTF-8")
+            query = "q=(guid:\"${tid}\"+OR+rkid_${taxon.rank.toLowerCase().replaceAll('\\s', '_')}:\"${tid}\")"
         }
 
         def additionalParams = "&wt=json&fq=rankID:%5B7000%20TO%20*%5D&fq=imageAvailable:true"
@@ -110,6 +113,7 @@ class SearchService {
 
             // Add fuzzy search term modifier to simple queries with > 1 term (e.g. no braces)
             if (!q.contains("(") && q.trim() =~ /\s+/) {
+                q = q.replaceAll('"', " ").trim()
                 def queryArray = []
                 q.split(/\s+/).each {
                     if (!(it =~ /AND|OR|NOT/)) {
@@ -120,7 +124,7 @@ class SearchService {
                 }
                 def nq = queryArray.join(" ")
                 log.debug "fuzzy nq = ${nq}"
-                params.q = nq
+                q = "\"${q}\"^100 ${nq}"
             }
         } else {
             q = "*:*"
@@ -402,7 +406,7 @@ class SearchService {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
         }
         def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=guid:\"" + URLEncoder.encode(identifier ,"UTF-8") +
-                 "\"&fq=idxtype:" + IndexDocType.IDENTIFIER.name()
+                "\"&fq=idxtype:" + IndexDocType.IDENTIFIER.name()
         log.debug "SOLR url = ${solrServerUrl}"
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
@@ -420,6 +424,50 @@ class SearchService {
         }
 
         taxon
+    }
+
+    /**
+     * Retrieve details of a specific vernacular name by taxonID
+     *
+     * @param taxonID The taxon identifier
+     * @param name The vernacular name
+     * @param useOfflineIndex
+     * @return
+     */
+    def lookupVernacular(String taxonID, String vernacularName, Boolean useOfflineIndex = false){
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+
+        if (useOfflineIndex)
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+
+        def encID = URLEncoder.encode(taxonID, 'UTF-8')
+        def encName = URLEncoder.encode(vernacularName, "UTF-8")
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:\"${encID}\"&fq=(idxtype:${IndexDocType.COMMON.name()}+AND+name:\"${encName}\")"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        json.response.docs[0]
+    }
+
+    /**
+     * Retrieve details of all vernacular names attached to a taxon.
+     *
+     * @param taxonID The taxon identifier
+     * @param useOfflineIndex
+     * @return
+     */
+    def lookupVernacular(String taxonID, Boolean useOfflineIndex = false){
+        def indexServerUrlPrefix = grailsApplication.config.indexLiveBaseUrl
+
+        if (useOfflineIndex)
+            indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
+
+        def encID = URLEncoder.encode(taxonID, 'UTF-8')
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:\"${encID}\"&fq=idxtype:${IndexDocType.COMMON.name()}"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        json.response.docs
     }
 
 
@@ -474,17 +522,40 @@ class SearchService {
     }
 
     def getTaxa(List guidList){
+        def resultMap = [:]
+        def matchingTaxa = []
 
+        while (!guidList.isEmpty()) {
+            def batch = guidList.take(BULK_BATCH_SIZE)
+            def batchSet = (batch.findAll { !resultMap.containsKey(it) }) as Set
+            def matches = getTaxaBatch(batchSet)
+            if (!(matches instanceof List)) // Error return
+                return matches
+            matches.each { match ->
+                resultMap[match.guid] = match
+                if (match.linkIdentifier)
+                    resultMap[match.linkIdentifier] = match
+            }
+            batch.each { guid ->
+                matchingTaxa << resultMap[guid]
+            }
+            guidList = guidList.drop(BULK_BATCH_SIZE)
+        }
+        return matchingTaxa
+    }
+
+    private getTaxaBatch(Collection guidList) {
         def queryList = guidList.collect({'"' + it + '"'}).join(',')
         def postBody = [
                 q: "guid:(" + queryList + ") OR linkIdentifier:("  + queryList + ")",
                 fq: "idxtype:" + IndexDocType.TAXON.name(),
+                rows: BULK_BATCH_SIZE,
                 wt: "json"
         ] // will be url-encoded
         def resp = doPostWithParams(grailsApplication.config.indexLiveBaseUrl +  "/select", postBody)
 
         //create the docs....
-        if(resp.resp.response){
+        if(resp?.resp?.response){
 
             def matchingTaxa = []
 
@@ -508,10 +579,11 @@ class SearchService {
                    taxon.put("smallImageUrl", grailsApplication.config.imageSmallUrl + doc.image)
                    taxon.put("largeImageUrl", grailsApplication.config.imageLargeUrl + doc.image)
                }
+                if (doc.linkIdentifier)
+                    taxon.put("linkIdentifier", doc.linkIdentifier)
                if(doc.commonName){
                    taxon.put("commonNameSingle", doc.commonName.first())
                }
-
                matchingTaxa << taxon
             }
             matchingTaxa
@@ -523,13 +595,10 @@ class SearchService {
     def getTaxon(taxonLookup){
 
         def taxon = lookupTaxon(taxonLookup)
-        if(!taxon){
+        if(!taxon) {
             taxon = lookupTaxonByName(taxonLookup)
-//            if(!taxon){
-//                return null
-//            }
         }
-        if(!taxon){
+        if(!taxon) {
             taxon = lookupTaxonByPreviousIdentifier(taxonLookup)
             if(!taxon){
                 return null
@@ -567,12 +636,13 @@ class SearchService {
         def taxonDatasetName = getDataset(taxon.datasetID, datasetMap)?.name
 
         // Conservation status map
-        def clists = grailsApplication.config.conservationLists ?: [:]
-        def conservationStatus = clists.collectEntries {
-            final cs = taxon[it.value.field]
-            log.info("${it.value.field}: $cs")
-            cs ? [ (it.value.label) : [ dr: it.key, status: cs ] ] : [:]
-        }
+        def clists = conservationListsSource.lists ?: []
+        def conservationStatus = clists.inject([:], { ac, cl ->
+            final cs = taxon[cl.field]
+            if (cs)
+                ac.put(cl.label, [ dr: cl.uid, status: cs ])
+            ac
+        })
 
         def model = [
                 taxonConcept:[
@@ -899,12 +969,12 @@ class SearchService {
         return [resp: JSON.parse(resp?:"{}")] // fail over to empty json object if empty response string otherwise JSON.parse fails
     }
 
-    def getDataset(String datasetID, Map datasets) {
+    def getDataset(String datasetID, Map datasets, boolean offline = false) {
         if (!datasetID)
             return null
         def dataset = datasets.get(datasetID)
         if (!dataset) {
-            def datasetQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
+            def datasetQueryUrl = (offline ? grailsApplication.config.indexOfflineBaseUrl : grailsApplication.config.indexLiveBaseUrl) + "/select?wt=json&q=" +
                     URLEncoder.encode("datasetID:\"" + datasetID + "\"", "UTF-8") + "&fq=idxtype:" + IndexDocType.DATARESOURCE.name()
             def datasetQueryResponse = new URL(datasetQueryUrl).getText("UTF-8")
             def js = new JsonSlurper()
@@ -938,14 +1008,14 @@ class SearchService {
                 Map results = doPostWithParams(url, params) // returns (JsonObject) Map with guid as key and count as value
                 Map guidsCountsMap = results.get("resp")?:[:]
                 docs.each {
-                    it.put("occurrenceCount", guidsCountsMap.get(it.guid))
+                    if (it.idxtype == IndexDocType.TAXON.name() && it.guid)
+                        it.put("occurrenceCount", guidsCountsMap.get(it.guid))
                 }
             } catch (Exception ex) {
                 // do nothing but log it
                 log.error("Error populating occurrence counts: ${ex.message}", ex);
             }
         }
-
         docs
     }
 

@@ -220,17 +220,32 @@ class ImportController {
     }
 
      /**
-     * Import/index Species Lists
+     * Import/index Conservation Species Lists
      *
      * @return
      */
-    def importSpeciesLists(){
+    def importConservationSpeciesLists(){
             Thread.start {
-                log.info("Starting import of Species Lists....")
-                importService.importSpeciesLists()
-                log.info("Finished import of Species Lists.")
+                log.info("Starting import of Conservation Species Lists....")
+                importService.importConservationSpeciesLists()
+                log.info("Finished import of Conservation Species Lists.")
             }
             asJson ([success:true] )
+
+    }
+
+    /**
+     * Import/index Vernacular Species Lists
+     *
+     * @return
+     */
+    def importVernacularSpeciesLists(){
+        Thread.start {
+            log.info("Starting import of Vernacular Species Lists....")
+            importService.importVernacularSpeciesLists()
+            log.info("Finished import of Vernacular Species Lists.")
+        }
+        asJson ([success:true] )
 
     }
 

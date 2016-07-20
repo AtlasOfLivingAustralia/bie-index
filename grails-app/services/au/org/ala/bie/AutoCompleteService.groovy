@@ -113,9 +113,11 @@ class AutoCompleteService {
             scientificNames.add(name);
         }
 
-        scientificNames.add(doc.get("nameComplete"));
-
-        autoDto.setScientificNameMatches(getHighlightedNames([doc.get("nameComplete")], value, "<b>", "</b>"));
+        String nc = doc.get("nameComplete")
+        if (nc != null) {
+            scientificNames.add(nc);
+            autoDto.setScientificNameMatches(getHighlightedNames([nc], value, "<b>", "</b>"));
+        }
         matchedNames.addAll(getHighlightedNames(scientificNames, value, "", ""));
 
         if(!matchedNames){

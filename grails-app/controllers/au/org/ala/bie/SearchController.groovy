@@ -85,7 +85,8 @@ class SearchController {
         def result = params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
         if (!result)
             respond result
-        render result as JSON
+        else
+            render result as JSON
      }
 
     def bulkGuidLookup(){
@@ -131,7 +132,7 @@ class SearchController {
         if (!req) {
             response.sendError(400, "Body could not be parsed or was empty")
         }
-        boolean includeVernacular = req['vernacular'] ?: false
+        boolean includeVernacular = req.optBoolean('vernacular')
         List<String> guids = req['names']
 
         def result = guids.collect { guid ->
