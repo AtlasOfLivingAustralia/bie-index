@@ -502,8 +502,11 @@ class SearchService {
     def getProfileForName(name){
 
         def additionalParams = "&wt=json"
-        def queryString = "q=" + URLEncoder.encode(name, "UTF-8") + "&fq=idxtype:" + IndexDocType.TAXON.name()
-
+        def queryString = "q=" + URLEncoder.encode(
+                "commonNameExact:\"" + name + "\" OR scientificName:\"" + name + "\" OR exact_text:\"" + name + "\"",
+                "UTF-8" // exact_text added to handle case differences in query vs index
+        ) + "&fq=idxtype:" + IndexDocType.TAXON.name()
+        log.debug "profile search for query: ${queryString}"
         def queryResponse = new URL(grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
