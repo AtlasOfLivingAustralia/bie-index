@@ -5,7 +5,7 @@
 # This fires a number of web service calls at the bie-index to see if it breaks
 # If you want to do it several times, just spawn multiple instances
 #
-ws=http://bie.ala.org.au/ws
+ws=${1:-http://bie.ala.org.au/ws}
 dir=`dir $0`
 source=scientific.csv
 log=/tmp/hammer$$.log
