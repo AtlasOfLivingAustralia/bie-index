@@ -711,6 +711,10 @@ class SearchService {
                     ]
                 }
         ]
+        if (taxon.acceptedConceptID)
+            model.taxonConcept["acceptedConceptID"] = taxon.acceptedConceptID
+        if (taxon.acceptedConceptName)
+            model.taxonConcept["acceptedConceptName"] = taxon.acceptedConceptName
         model
     }
 
