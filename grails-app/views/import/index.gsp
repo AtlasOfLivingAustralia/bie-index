@@ -18,6 +18,10 @@
     <p class="lead">
         Place expanded (unzipped) DwC-A files in the import directory /data/bie/import on this machine.
     </p>
+    <p>
+        If you are importing additional DwC-A files for vernacular names or identifiers, import them after all taxon
+        files have been imported.
+    </p>
 
     <div>
         <table class="table">
