@@ -88,6 +88,7 @@ class SearchService {
         String qAlt = grailsApplication.config.solr.qAlt // if no query specified use this query
         String hl = grailsApplication.config.solr.hl // highlighting params (can be multiple)
         def additionalParams = "&qf=${qf}&bq=${bq}&defType=${defType}&q.alt=${qAlt}&hl=${hl}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
+        def queryTitle = q
 
         if (requestedFacets) {
             additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
@@ -1039,7 +1040,7 @@ class SearchService {
                 Map results = doPostWithParams(url, params) // returns (JsonObject) Map with guid as key and count as value
                 Map guidsCountsMap = results.get("resp")?:[:]
                 docs.each {
-                    if (it.idxtype == IndexDocType.TAXON.name() && it.guid)
+                    if (it.idxtype == IndexDocType.TAXON.name() && it.guid && guidsCountsMap.containsKey(it.guid))
                         it.put("occurrenceCount", guidsCountsMap.get(it.guid))
                 }
             } catch (Exception ex) {
