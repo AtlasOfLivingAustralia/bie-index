@@ -962,11 +962,10 @@ class ImportService {
             doc["id"] = identifierDoc.id // doc key
             doc["idxtype"] = ["set": identifierDoc.idxtype] // required field
             doc["guid"] = ["set": identifierDoc.guid] // required field
-            doc["taxonGuid"] = ["set": identifierDoc.guid]
-            doc["identifier"] = ["set": identifier]
+            doc["taxonGuid"] = ["set": taxonDoc.guid]
             doc["datasetID"] = ["set": datasetID]
             if (title)
-                doc["title"] = ["set": title]
+                doc["name"] = ["set": title]
             if (subject)
                 doc["subject"] = ["set": subject]
             if (format)
@@ -983,20 +982,18 @@ class ImportService {
             // No match so add it as a vernacular name
             def doc = [:]
             doc["id"] = UUID.randomUUID().toString() // doc key
-            doc["idxtype"] = IndexDocType.COMMON // required field
-            doc["guid"] = doc.id
+            doc["idxtype"] = IndexDocType.IDENTIFIER // required field
+            doc["guid"] = identifier
             doc["taxonGuid"] = taxonDoc.guid
             doc["datasetID"] = datasetID
-            doc["identifier"] = identifier
             doc["status"] = status?.status ?: defaultStatus.status
             doc["priority"] = status?.priority ?: defaultStatus.priority
-            doc["title"] = title
+            doc["name"] = title
             doc["subject"] = subject
             doc["format"] = format
             doc["source"] = source
             log.debug "new identifier doc = ${doc} for ${identifier}"
             buffer << doc
-            log("No existing name found for ${identifier}, so has been added as ${doc["guid"]}")
         }
         updateTaxa << taxonDoc.guid
         return true
@@ -1056,7 +1053,7 @@ class ImportService {
         return true
     }
 
-    private void commitVernacularNames(List buffer, List updateTaxa) {
+    private void commitVernacularNames(List buffer, Set updateTaxa) {
             if (!buffer.isEmpty())
                 indexService.indexBatch(buffer)
             buffer = []
@@ -1079,7 +1076,7 @@ class ImportService {
                 indexService.indexBatch(buffer)
     }
 
-    private void commitIdentifiers(List buffer, List updateTaxa) {
+    private void commitIdentifiers(List buffer, Set updateTaxa) {
         if (!buffer.isEmpty())
             indexService.indexBatch(buffer)
         buffer = []
@@ -1094,7 +1091,7 @@ class ImportService {
             doc["id"] = taxonDoc.id // doc key
             doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
             doc["guid"] = ["set": taxonDoc.guid] // required field
-            doc["additionalIdentifiers"] = ["set": identifiers.collect { it.identifier } ]
+            doc["additionalIdentifiers"] = ["set": identifiers.collect { it.guid } ]
             buffer << doc
         }
         if (!buffer.isEmpty())
@@ -1131,9 +1128,9 @@ class ImportService {
                 log("Unable to import an archive of type " + rowType)
             log("Import finished.")
         } catch (Exception ex) {
-            log("There was problem with the import: " + e.getMessage())
+            log("There was problem with the import: " + ex.getMessage())
             log("See server logs for more details.")
-            log.error(e.getMessage(), e)
+            log.error(e.getMessage(), ex)
         }
 
     }
@@ -1456,6 +1453,7 @@ class ImportService {
         String defaultLanguage = grailsApplication.config.commonNameDefaultLanguage
         def buffer = []
         def updateTaxa = [] as Set
+        def count = 0
         for (Record record: archive.core) {
             String taxonID = record.value(DwcTerm.taxonID)
             String vernacularName = record.value(DwcTerm.vernacularName)
@@ -1466,10 +1464,12 @@ class ImportService {
             String datasetID = record.value(DwcTerm.datasetID)
 
             addVernacularName(taxonID, null, vernacularName, nameID, status, language, source, datasetID, buffer, updateTaxa, commonStatus)
-            if (buffer.size() > 100) {
+            count++
+            if (buffer.size() > 1000) {
                 commitVernacularNames(buffer, updateTaxa)
                 buffer.clear()
                 updateTaxa.clear()
+                log("Processed ${count} records")
             }
         }
         if (buffer.size() > 0 || updateTaxa.size() > 0)
@@ -1483,6 +1483,7 @@ class ImportService {
         def unknownStatus = statusMap.get("unknown")
         def buffer = []
         def updateTaxa = [] as Set
+        def count = 0
         for (Record record: archive.core) {
             def taxonID = record.id()
             def identifier = record.value(DcTerm.identifier)
@@ -1495,10 +1496,12 @@ class ImportService {
             def status = idStatus ? statusMap.get(idStatus.toLowerCase()) : null
 
             addIdentifier(taxonID, null, identifier, title, subject, format, status, source, datasetID, buffer, updateTaxa, unknownStatus)
-            if (buffer.size() > 100) {
+            count++
+            if (buffer.size() > 1000) {
                 commitIdentifiers(buffer, updateTaxa)
                 buffer.clear()
                 updateTaxa.clear()
+                log("Processed ${count} records")
             }
         }
         if (buffer.size() > 0 || updateTaxa.size() > 0)
