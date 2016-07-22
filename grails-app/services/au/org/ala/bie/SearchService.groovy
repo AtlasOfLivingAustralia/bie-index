@@ -383,8 +383,8 @@ class SearchService {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
         }
         def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=" +URLEncoder.encode(
-                "commonNameExact:\"" + taxonName + "\" OR scientificName:\"" + taxonName + "\"",
-                "UTF-8"
+                "commonNameExact:\"" + taxonName + "\" OR scientificName:\"" + taxonName + "\" OR exact_text:\"" + taxonName + "\"",
+                "UTF-8" // exact_text added to handle case differences in query vs index
         )
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
