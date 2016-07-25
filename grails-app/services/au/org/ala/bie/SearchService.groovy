@@ -87,7 +87,7 @@ class SearchService {
         String defType = grailsApplication.config.solr.defType // query parser type
         String qAlt = grailsApplication.config.solr.qAlt // if no query specified use this query
         String hl = grailsApplication.config.solr.hl // highlighting params (can be multiple)
-        def additionalParams = "&qf=${qf}&bq=${bq}&defType=${defType}&q.alt=${qAlt}&hl=${hl}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
+        def additionalParams = "&qf=${qf}&${bq}&defType=${defType}&q.alt=${qAlt}&hl=${hl}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
         def queryTitle = q
 
         if (requestedFacets) {
@@ -548,7 +548,9 @@ class SearchService {
                 family: classification.family?:""
         ]
 
-        if(taxon.commonName){
+        if (taxon.commonNameSingle) {
+            model.put("commonName",  taxon.commonNameSingle)
+        } else if (taxon.commonName){
             model.put("commonName",  taxon.commonName.first())
         }
 
@@ -619,7 +621,9 @@ class SearchService {
                }
                 if (doc.linkIdentifier)
                     taxon.put("linkIdentifier", doc.linkIdentifier)
-               if(doc.commonName){
+               if (doc.commonNameSingle) {
+                   taxon.put("commonNameSingle", doc.commonNameSingle)
+               } else if (doc.commonName) {
                    taxon.put("commonNameSingle", doc.commonName.first())
                }
                matchingTaxa << taxon
@@ -657,7 +661,7 @@ class SearchService {
                 URLEncoder.encode("taxonGuid:\"" + taxon.guid + "\"", "UTF-8") + "&fq=idxtype:" + IndexDocType.COMMON.name()
         def commonQueryResponse = new URL(commonQueryUrl).getText("UTF-8")
         def commonJson = js.parseText(commonQueryResponse)
-        def commonNames = commonJson.response.docs
+        def commonNames = commonJson.response.docs.sort { n1, n2 -> n2.priority - n1.priority }
 
 
         //retrieve any additional identifiers
@@ -850,9 +854,12 @@ class SearchService {
 
                 def commonNameSingle = ""
                 def commonNames = ""
+                if (it.commonNameSingle)
+                    commonNameSingle = it.commonNameSingle
                 if(it.commonName){
-                    commonNameSingle = it.commonName.get(0)
-                    commonNames = it.commonName.join(", ")
+                     commonNames = it.commonName.join(", ")
+                    if (commonNameSingle.isEmpty())
+                        commonNameSingle = it.commonName.first()
                 }
 
                 Map doc = [
