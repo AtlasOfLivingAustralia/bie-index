@@ -1396,7 +1396,7 @@ class ImportService {
                     }
                     doc["commonName"] = commonNames.collect { it.name }
                     doc["commonNameExact"] = commonNames.collect { it.name }
-                    doc["commonNameSingle"] = commonNames.first()
+                    doc["commonNameSingle"] = commonNames.first().name
                 }
 
                 // identifiers
