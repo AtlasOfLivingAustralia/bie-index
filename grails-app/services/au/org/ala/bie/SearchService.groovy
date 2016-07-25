@@ -95,7 +95,7 @@ class SearchService {
         }
 
         //pagination params
-        additionalParams += "&start=${params.start?:0}&rows=${params.rows?:10}"
+        additionalParams += "&start=${params.start?:0}&rows=${params.rows?:params.pageSize?:10}"
 
         if (params.sort) {
             additionalParams += "&sort=${params.sort}%20${params.dir?:'acs'}" // sort dir example "&sort=name asc"
