@@ -78,7 +78,7 @@ class SearchService {
     def search(String q, GrailsParameterMap params, List requestedFacets) {
         params.remove("controller") // remove Grails stuff from query
         params.remove("action") // remove Grails stuff from query
-
+        log.debug "params = ${params.toMapString()}"
         //String queryString = params.toQueryString() //DM - this screws up FQs
         def fqs = params.fq
 
@@ -92,6 +92,13 @@ class SearchService {
 
         if (requestedFacets) {
             additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
+        }
+
+        //pagination params
+        additionalParams += "&start=${params.start?:0}&rows=${params.rows?:10}"
+
+        if (params.sort) {
+            additionalParams += "&sort=${params.sort}%20${params.dir?:'acs'}" // sort dir example "&sort=name asc"
         }
 
         if(fqs){
