@@ -83,11 +83,11 @@ class SearchService {
         def fqs = params.fq
 
         String qf = grailsApplication.config.solr.qf // dismax query fields
-        String bq = grailsApplication.config.solr.bq  // dismax boost function
+        String bq = grailsApplication.config.solr.bq  // dismax boost function encoded with bq= inside to allow multiple boosts
         String defType = grailsApplication.config.solr.defType // query parser type
         String qAlt = grailsApplication.config.solr.qAlt // if no query specified use this query
         String hl = grailsApplication.config.solr.hl // highlighting params (can be multiple)
-        def additionalParams = "&qf=${qf}&bq=${bq}&defType=${defType}&q.alt=${qAlt}&hl=${hl}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
+        def additionalParams = "&qf=${qf}&${bq}&defType=${defType}&q.alt=${qAlt}&hl=${hl}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
         def queryTitle = q
 
         if (requestedFacets) {
@@ -613,7 +613,7 @@ class SearchService {
                 if (doc.linkIdentifier)
                     taxon.put("linkIdentifier", doc.linkIdentifier)
                if(doc.commonName){
-                   taxon.put("commonNameSingle", doc.commonName.first())
+                   taxon.put("commonNameSingle", doc.commonNameSingle)
                }
                matchingTaxa << taxon
             }
@@ -650,7 +650,7 @@ class SearchService {
                 URLEncoder.encode("taxonGuid:\"" + taxon.guid + "\"", "UTF-8") + "&fq=idxtype:" + IndexDocType.COMMON.name()
         def commonQueryResponse = new URL(commonQueryUrl).getText("UTF-8")
         def commonJson = js.parseText(commonQueryResponse)
-        def commonNames = commonJson.response.docs
+        def commonNames = commonJson.response.docs.sort { n1, n2 -> n2.priority - n1.priority }
 
 
         //retrieve any additional identifiers
@@ -841,10 +841,8 @@ class SearchService {
         docs.each {
             if(it.idxtype == IndexDocType.TAXON.name()){
 
-                def commonNameSingle = ""
                 def commonNames = ""
                 if(it.commonName){
-                    commonNameSingle = it.commonName.get(0)
                     commonNames = it.commonName.join(", ")
                 }
 
@@ -864,7 +862,7 @@ class SearchService {
                         "rank": it.rank,
                         "rankID": it.rankID ?: -1,
                         "commonName" : commonNames,
-                        "commonNameSingle" : commonNameSingle,
+                        "commonNameSingle" : it.commonNameSingle ?: "",
                         "occurrenceCount" : it.occurrenceCount,
                         "conservationStatus" : it.conservationStatus
                 ]

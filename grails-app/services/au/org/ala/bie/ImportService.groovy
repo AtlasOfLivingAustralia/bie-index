@@ -1064,12 +1064,14 @@ class ImportService {
                 def commonNames = searchService.lookupVernacular(it, true)
                 if (!commonNames || commonNames.isEmpty())
                     return
+                commonNames = commonNames.sort { n1, n2 -> n2.priority - n1.priority }
                 def doc = [:]
                 doc["id"] = taxonDoc.id // doc key
                 doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
                 doc["guid"] = ["set": taxonDoc.guid] // required field
                 doc["commonName"] = ["set": commonNames.collect { it.name } ]
                 doc["commonNameExact"] = ["set": commonNames.collect { it.name } ]
+                doc["commonNameSingle"] = ["set": commonNames.first().name ]
                 buffer << doc
             }
             if (!buffer.isEmpty())
@@ -1394,6 +1396,7 @@ class ImportService {
                     }
                     doc["commonName"] = commonNames.collect { it.name }
                     doc["commonNameExact"] = commonNames.collect { it.name }
+                    doc["commonNameSingle"] = commonNames.first()
                 }
 
                 // identifiers
