@@ -67,6 +67,33 @@ class SearchService {
                 results: formatDocs(json.response.docs, null)
         ]
     }
+    /**
+     * Retrieve species & subspecies for the supplied taxon which have images.
+     *
+     * @param taxonID
+     * @param start
+     * @param rows
+     * @return
+     */
+    def imageLinkSearch(taxonID, type, queryContext){
+        def result = imageSearch(taxonID, 0, 1, queryContext)
+        if (!result || result.isEmpty() || result.totalRecords == 0) {
+            return null
+        }
+        def taxon = result.results.get(0)
+        if (!taxon.image || taxon.image.isEmpty()) {
+            return null
+        }
+        if (type == 'thumbnail') {
+            return grailsApplication.config.imageThumbnailUrl + taxon.image
+        } else if (type == 'small') {
+            return grailsApplication.config.imageSmallUrl + taxon.image
+        } else if (type == 'large') {
+            return grailsApplication.config.imageLargeUrl + taxon.image
+        } else {
+            return grailsApplication.config.imageLargeUrl + taxon.image
+        }
+    }
 
 
     /**
