@@ -98,7 +98,7 @@ class SearchService {
         additionalParams += "&start=${params.start?:0}&rows=${params.rows?:params.pageSize?:10}"
 
         if (params.sort) {
-            additionalParams += "&sort=${params.sort}%20${params.dir?:'acs'}" // sort dir example "&sort=name asc"
+            additionalParams += "&sort=${params.sort}%20${params.dir?:'asc'}" // sort dir example "&sort=name asc"
         }
 
         if(fqs){
@@ -174,7 +174,7 @@ class SearchService {
                 def shortProfile = getShortProfile(guid)
                 queryTitle = rankName + " " + shortProfile.scientificName
             } catch (Exception e){
-                //log.debug("Exception thrown parsing name..", e)
+                log.warn("Exception thrown parsing name..", e)
             }
         }
 
