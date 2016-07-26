@@ -612,7 +612,9 @@ class SearchService {
                        classs: doc.rk_class,
                        order: doc.rk_order,
                        family: doc.rk_family,
-                       genus: doc.rk_genus
+                       genus: doc.rk_genus,
+                       datasetName: doc.datasetName,
+                       datasetID: doc.datasetID
                ]
                if(doc.image){
                    taxon.put("thumbnailUrl", grailsApplication.config.imageThumbnailUrl + doc.image)
