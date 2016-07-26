@@ -125,7 +125,7 @@ class SearchService {
         additionalParams += "&start=${params.start?:0}&rows=${params.rows?:params.pageSize?:10}"
 
         if (params.sort) {
-            additionalParams += "&sort=${params.sort}%20${params.dir?:'acs'}" // sort dir example "&sort=name asc"
+            additionalParams += "&sort=${params.sort}%20${params.dir?:'asc'}" // sort dir example "&sort=name asc"
         }
 
         if(fqs){
@@ -201,7 +201,7 @@ class SearchService {
                 def shortProfile = getShortProfile(guid)
                 queryTitle = rankName + " " + shortProfile.scientificName
             } catch (Exception e){
-                //log.debug("Exception thrown parsing name..", e)
+                log.warn("Exception thrown parsing name..", e)
             }
         }
 
@@ -639,7 +639,9 @@ class SearchService {
                        classs: doc.rk_class,
                        order: doc.rk_order,
                        family: doc.rk_family,
-                       genus: doc.rk_genus
+                       genus: doc.rk_genus,
+                       datasetName: doc.datasetName,
+                       datasetID: doc.datasetID
                ]
                if(doc.image){
                    taxon.put("thumbnailUrl", grailsApplication.config.imageThumbnailUrl + doc.image)
