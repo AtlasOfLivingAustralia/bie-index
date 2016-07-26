@@ -2,8 +2,6 @@ package au.org.ala.bie
 
 import au.org.ala.bie.search.SearchResultsDTO
 import grails.converters.JSON
-import grails.converters.XML
-
 /**
  * A set of JSON based search web services.
  */
@@ -36,6 +34,23 @@ class SearchController {
      */
     def imageSearch(){
         asJson ([searchResults:searchService.imageSearch(params.id, params.start, params.rows, params.qc)])
+    }
+
+    /**
+     * Returns a redirect to an image of the appropriate type
+     */
+    def imageLinkSearch() {
+        def showNoImage = params.containsKey("showNoImage") ? params.boolean("showNoImage") : true
+        def url = searchService.imageLinkSearch(params.id, params.imageType, params.qc)
+
+        if (!url && showNoImage) {
+            url = resource(dir: "images", file: "noImage85.jpg", absolute: true)
+        }
+        if (!url) {
+            response.sendError(404, "No image for " + params.id)
+            return null
+        }
+        redirect(url: url)
     }
 
     /**

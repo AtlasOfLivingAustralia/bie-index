@@ -40,6 +40,10 @@
 					<td>${g.createLink(controller: 'search', action: 'imageSearch')}/{GUID}</td>
 				</tr>
 				<tr>
+					<td>Image link</td>
+					<td>${g.createLink(controller: 'search')}/image/{type(thumbnail,small,large)}/{GUID}</td>
+				</tr>
+				<tr>
 					<td>Bulk lookup by GUID</td>
 					<td>${g.createLink(controller: 'search', action: 'bulkGuidLookup')} POST JSON [ "guid", ...]</td>
 				</tr>
