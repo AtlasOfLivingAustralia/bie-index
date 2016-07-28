@@ -769,6 +769,7 @@ class SearchService {
                 habitats: [],
                 categories: [],
                 simpleProperties: [],
+                images: [],
                 identifiers: identifiers.collect { identifier ->
                     def datasetURL = getDataset(identifier.datasetID, datasetMap)?.guid
                     def datasetName = getDataset(identifier.datasetID, datasetMap)?.name
