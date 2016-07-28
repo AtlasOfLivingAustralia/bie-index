@@ -769,6 +769,8 @@ class SearchService {
                 conservationStatuses:conservationStatus,
                 extantStatuses: [],
                 habitats: [],
+                categories: [],
+                simpleProperties: [],
                 identifiers: identifiers.collect { identifier ->
                     def datasetURL = getDataset(identifier.datasetID, datasetMap)?.guid
                     def datasetName = getDataset(identifier.datasetID, datasetMap)?.name
