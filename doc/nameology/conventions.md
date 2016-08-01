@@ -56,7 +56,7 @@ identification into two parts.
 | synonym | yes? | An unspecified synonym. By default, this is treated as deterministic, since we dont have any reason to suppose it's not. |
 | homotypicSynonym | yes | A nomenclatural synonym, meaning that the same taxon has gone under a different name. The zoological term is objective synonym. This can occur when two people describe the same species. |
 | heterotypicSynonym | yes | A taxonomic synonym, meaning that a species that was originally considered to be separate has been lumped into another species. The zoological term is subjective synonym, since whether they are synonymns or not is a matter of opinion. |
-| proParteSynonym | no | A synonym where part of an original taxon has been divided. This means that the original name may still be in use or may have been mapped onto several other taxa. Here be dragons. |
+|   | no | A synonym where part of an original taxon has been divided. This means that the original name may still be in use or may have been mapped onto several other taxa. Here be dragons. |
 | misapplied | no | A name incorrectly applied in a publication to a different species. However, the name itself is perfectly valid and has its own taxon. |
 | excluded | no | A name that shouldn't be used, since it refers to something not found in the region of the occurrence record. |
 
@@ -189,7 +189,7 @@ It contains the following columns
 
 | Term | Essential (Required column for processing) | Required (Must not be empty) | Usage |
 | ---- | --------- | -------- | ----- |
-| [taxonID](http://rs.tdwg.org/dwc/terms/taxonID) | yes | yes | The main taxon identifier. This is the taxon concept ID for a taxon and the scientific name ID for a synonym |
+| [taxonID](http://rs.tdwg.org/dwc/terms/taxonID) | yes | yes | The main taxon identifier. If not supplied, this is the taxon concept ID for a taxon and the scientific name ID for a synonym |
 | [parentNameUsageID](http://rs.tdwg.org/dwc/terms/parentNameUsageID) | yes | no | If this is an accepted name then the taxonID of the parent in the taxonomic tree. Empty if a synonym. |
 | [acceptedNameUsageID](http://rs.tdwg.org/dwc/terms/acceptedNameUsageID) | yes | no | If this is an synonym then the taxonID of the accepted name. Empty if an accepted name. |
 | [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | no | The UID of the source collectory dataset for this taxon |
@@ -211,6 +211,10 @@ It contains the following columns
 senior- or self-synonyms are not included in taxon.csv.
 Zoological convention is to regard the current name as a senior synonym.
 However, this just doubles the index to no purpose.
+
+A source may have a taxon ID (the current information about the taxon) 
+a taxon concept ID (the more stable representation of the taxon) 
+and a scientific nane ID (the stable name for the taxon).
 
 ### vernacularNames.csv
 

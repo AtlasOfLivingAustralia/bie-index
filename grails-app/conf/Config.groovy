@@ -59,7 +59,7 @@ solr {
     qf = "exact_text^200+doc_name^100+text"
     // We like accepted taxa, species or genus, stuff high in the taxonmic tree. We don't like hybrids which tend to multi-match
     // Note bq has multiple bq entries and has bq= encoded in the field
-    bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
+    bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=scientificName:(*+-\"*+x+*\")^500&bq=taxonomicStatus:(*+-misapplied+-excluded)^1000"
     defType = "edismax"
     qAlt = "text:*"
     hl = "true&hl=true&hl.fl=*&hl.simple.pre=<b>&hl.simple.post=</b>"
