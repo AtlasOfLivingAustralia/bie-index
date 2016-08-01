@@ -786,6 +786,10 @@ class SearchService {
                     ]
                 }
         ]
+        if (taxon.taxonConceptID)
+            model.taxonConcept["taxonConceptID"] = taxon.taxonConceptID
+        if (taxon.scientificNameID)
+            model.taxonConcept["scientificNameID"] = taxon.scientificNameID
         if (taxon.acceptedConceptID)
             model.taxonConcept["acceptedConceptID"] = taxon.acceptedConceptID
         if (taxon.acceptedConceptName)
