@@ -1,6 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.search.AutoCompleteDTO
+import grails.converters.JSON
 import groovy.json.JsonSlurper
 import org.apache.solr.client.solrj.util.ClientUtils
 
@@ -77,8 +78,8 @@ class AutoCompleteService {
      * @param value
      * @return
      */
-    private def createAutoCompleteFromIndex( doc, String value){
-
+    private def createAutoCompleteFromIndex(Map doc, String value){
+        log.debug "doc = ${doc as JSON}"
         def autoDto = new AutoCompleteDTO();
         autoDto.guid = doc.guid
         autoDto.name = doc.scientificName
@@ -113,7 +114,7 @@ class AutoCompleteService {
             scientificNames.add(name);
         }
 
-        String nc = doc.get("nameComplete")
+        String nc = doc.get("scientificName")
         if (nc != null) {
             scientificNames.add(nc);
             autoDto.setScientificNameMatches(getHighlightedNames([nc], value, "<b>", "</b>"));
