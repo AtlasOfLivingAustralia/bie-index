@@ -175,7 +175,25 @@ class SearchController {
      */
     def auto(){
         log.debug("auto called with q = " + params.q)
-        def autoCompleteList = autoCompleteService.auto(params.q, request.queryString)
+        log.debug("auto called with queryString = " + request.queryString)
+        def fqString = ""
+        def limit = params.limit
+        def idxType = params.idxType
+        def geoOnly = params.geoOnly
+
+        if (limit) {
+            fqString += "&rows=${limit}"
+        }
+
+        if (idxType) {
+            fqString += "&fq=idxtype:${idxType.toUpperCase()}"
+        }
+
+        if (geoOnly) {
+            // TODO needs WS lookup to biocache-service (?)
+        }
+
+        def autoCompleteList = autoCompleteService.auto(params.q, fqString)
         def payload = [autoCompleteList:autoCompleteList]
         asJson payload
     }
