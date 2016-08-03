@@ -1257,7 +1257,7 @@ class ImportService {
                 def inSchema = [
                         DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.nomenclaturalStatus,
                         DwcTerm.scientificNameID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear,
-                        DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.license, DcTerm.rights, DcTerm.rightsHolder,
+                        DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder,
                         ALATerm.status, ALATerm.nameID
                 ]
 
@@ -1348,7 +1348,7 @@ class ImportService {
                             sdoc["nameFormatted"] = synonym['nameFormatted']
                             sdoc["acceptedConceptName"] = doc['nameComplete']
                             sdoc["acceptedConceptID"] = taxonID
-                            sdoc["taxonomicStatus"] = "synonym"
+                            sdoc["taxonomicStatus"] = synonym["taxonomicStatus"] ?: "synonym"
                             sdoc["source"] = synonym['source']
 
                             def synAttribution = findAttribution(synonym['datasetID'], attributionMap, datasetMap)
@@ -1595,6 +1595,7 @@ class ImportService {
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
             def scientificName = record.value(DwcTerm.scientificName)
             def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
+            def taxonomicStatus = record.value(DwcTerm.taxonomicStatus)
             def nameComplete = record.value(ALATerm.nameComplete)
             def nameFormatted = record.value(ALATerm.nameFormatted)
             def taxonRank = record.value(DwcTerm.taxonRank)?.toLowerCase() ?: "unknown"
@@ -1616,6 +1617,7 @@ class ImportService {
                         scientificNameAuthorship: scientificNameAuthorship,
                         nameComplete            : buildNameComplete(nameComplete, scientificName, scientificNameAuthorship),
                         nameFormatted           : buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks),
+                        taxonomicStatus         : taxonomicStatus,
                         datasetID               : datasetID,
                         source                  : source
                 ]

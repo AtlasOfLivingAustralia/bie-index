@@ -723,6 +723,7 @@ class SearchService {
                         nameComplete: taxon.nameComplete,
                         nameFormatted: taxon.nameFormatted,
                         author: taxon.scientificNameAuthorship,
+                        taxonomicStatus: taxon.taxonomicStatus,
                         rankString: taxon.rank,
                         nameAuthority: taxon.datasetName ?: taxonDatasetName ?: grailsApplication.config.defaultNameSourceAttribution,
                         rankID:taxon.rankID,
@@ -742,6 +743,7 @@ class SearchService {
                             nameComplete: synonym.nameComplete,
                             nameFormatted: synonym.nameFormatted,
                             nameGuid: synonym.guid,
+                            taxonomicStatus: synonym.taxonomicStatus,
                             namePublishedIn: synonym.namePublishedIn,
                             namePublishedInYear: synonym.namePublishedInYear,
                             namePublishedInID: synonym.namePublishedInID,
@@ -785,6 +787,10 @@ class SearchService {
                     ]
                 }
         ]
+        if (taxon.taxonConceptID)
+            model.taxonConcept["taxonConceptID"] = taxon.taxonConceptID
+        if (taxon.scientificNameID)
+            model.taxonConcept["scientificNameID"] = taxon.scientificNameID
         if (taxon.acceptedConceptID)
             model.taxonConcept["acceptedConceptID"] = taxon.acceptedConceptID
         if (taxon.acceptedConceptName)
