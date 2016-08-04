@@ -1,0 +1,14 @@
+{
+  "defaultVernacularNameField": "vernacularName",
+  "defaultNameIdField": "nameID",
+  "defaultStatusField": "status",
+  "defaultLanguageField": "language",
+  "defaultsourceField": "source",
+  "defaultStatus": "common",
+  "defaultLanguage": "en",
+  "lists": [
+    {
+      "uid": "drt1464664375273"
+    }
+  ]
+}

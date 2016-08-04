@@ -25,7 +25,7 @@ biocacheService.baseUrl = "http://biocache.ala.org.au/ws"
 biocache.solr.url="http://localhost:8080/solr/biocache"
 defaultNameSourceAttribution = "National Species Lists"
 commonNameSourceAttribution = "National Species Lists"
-commonNameDefaultLanguage = "en-XX"
+commonNameDefaultLanguage = "en-AU"
 identifierSourceAttribution = "National Species Lists"
 indexImages = true
 importDir = "/data/bie/import"
@@ -45,49 +45,21 @@ wordPress {
 }
 speciesList.url = "http://lists.ala.org.au/ws/speciesListItems/"
 speciesList.params = "?includeKVP=true"
-// Conservation lists to index
-conservationList.defaultSourceField = "status"
-conservationLists {
-    dr656 = [ field: "conservationStatusAUS_s", term: "conservationStatusAUS", label: "AUS"]
-    dr649 = [ field: "conservationStatusACT_s", term: "conservationStatusACT", label: "ACT"]
-    dr650 = [ field: "conservationStatusNSW_s", term: "conservationStatusNSW", label: "NSW"]
-    dr652 = [ field: "conservationStatusQLD_s", term: "conservationStatusQLD", label: "QLD"]
-    dr655 = [ field: "conservationStatusVIC_s", term: "conservationStatusVIC", label: "VIC", sourceField: 'status']
-    dr654 = [ field: "conservationStatusTAS_s", term: "conservationStatusTAS", label: "TAS"]
-    dr653 = [ field: "conservationStatusSA_s", term: "conservationStatusSA", label: "SA"]
-    dr2201 = [ field: "conservationStatusWA_s", term: "conservationStatusWA", label: "WA"]
-    dr651 = [ field: "conservationStatusNT_s", term: "conservationStatusNT", label: "NT"]
-}
-// Image lists to use, highest priority first
-imageLists = [
-    [ drUid: "dr4778", imageId: "imageId" ]
-]
-// Preferred images - these will be added as boosts to help rank good-looking pictures
-imageBoosts = [
-        "record_type:Image^10",
-        "record_type:HumanObservaton^20",
-        "record_type:Observation^20",
-        "-record_type:PreservedSpecimen^20"
-        // "datasetID:dr130^10"   // Example dataset boost
-]
-// The map of rank ids that deserve an image and what to use to find that image
-imageRanks = [
-    //[ rank: "kingdom", idField: "kingdomID.p", nameField: "kingdom" ],
-    [ rank: "phylum", idField: null, nameField: "phylum" ],
-    [ rank: "class", idField: null, nameField: "class" ],
-    [ rank: "order", idField: null, nameField: "order" ],
-    [ rank: "family", idField: null, nameField: "family" ],
-    [ rank: "genus", idField: "genus_guid", nameField: "genus" ],
-    [ rank: "species", idField: "species_guid", nameField: "taxon_name" ]
-    //[ rank: "subspecies", idField: "subspecies_guid", nameField: "subspecies.p" ]
-]
+// Location of conservation lists
+conservationListsUrl = this.class.getResource("/default-conservation-lists.json").toString()
+// Location of vernacular name lists (null for default)
+vernacularListsUrl = this.class.getResource("/default-vernacular-lists.json").toString()
+// Location of image lists (null for default)
+imagesListsUrl = this.class.getResource("/default-image-lists.json").toString()
 
 nationalSpeciesDatasets = "" // "dr2699,dr2700,dr2702,dr2704,dr2703,dr3118"
 
 // SOLR additional params
 solr {
-    qf = "doc_name^100+text"
-    bq = "taxonomicStatus:accepted^1000+rankID:7000^1000"
+    qf = "exact_text^200+doc_name^100+text"
+    // We like accepted taxa, species or genus, stuff high in the taxonmic tree. We don't like hybrids which tend to multi-match
+    // Note bq has multiple bq entries and has bq= encoded in the field
+    bq = "bq=taxonomicStatus:accepted^2000&bq=rankID:7000^500&bq=rankID:6000^100&bq=scientificName:(*+-\"*+x+*\")^500&bq=taxonomicStatus:(*+-misapplied+-excluded+-\"miscellaneous+literature\")^1000"
     defType = "edismax"
     qAlt = "text:*"
     hl = "true&hl=true&hl.fl=*&hl.simple.pre=<b>&hl.simple.post=</b>"

@@ -1,6 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.search.AutoCompleteDTO
+import grails.converters.JSON
 import groovy.json.JsonSlurper
 import org.apache.solr.client.solrj.util.ClientUtils
 
@@ -19,42 +20,30 @@ class AutoCompleteService {
      * Autocomplete service
      *
      * @param q
-     * @param queryString
+     * @param otherParams
      * @return
      */
-    def auto(q, queryString){
+    def auto(String q, String otherParams){
         log.debug("auto called with q = " + q)
-        def autoCompleteList = []
-        def additionalParams = "&wt=json"
 
-        if(queryString) {
-            if (!q) {
-                queryString = queryString.replaceFirst("q=", "q=*:*")
-            } else if (q.trim() == "*") {
-                queryString = queryString.replaceFirst("q=*", "q=*:*")
-            } else if (q) {
-                //remove the exist query param
-                queryString = queryString.replaceAll("q\\=[\\w\\+ ]*", "")
-                //append a wildcard to the search term
-                queryString = queryString +
-                        "&q=" + URLEncoder.encode(
-                        "commonNameExact:\"" + q + "\"^10000000000" +
-                        " OR commonName:\"" + q.replaceAll(" ","") + "\"^100000" +
-                        " OR commonName:\"" + q + "\"^100000" +
-                        " OR rk_genus:\"" + q.capitalize() + "\"" +
-                        " OR exact_text:\"" + q + "\"" +
-                        " OR auto_text:\"" + q + "\"" +
-                        " OR auto_text:\"" + q + "*\"",
-                "UTF-8")
-            }
-        } else {
-            queryString = "q=*:*"
+        def autoCompleteList = []
+        // TODO store param string in config var
+        String qf = "qf=commonNameSingle^100+commonName^100+auto_text^100+text"
+        String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
+        def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
+        String query = ""
+
+        if (!q || q.trim() == "*") {
+            query = otherParams + "&q=*:*"
+        } else if (q) {
+            // encode query (no fields needed due to qf params
+            query = otherParams + "&q=" + URLEncoder.encode("" + q + "","UTF-8")
         }
 
-        log.info(queryString)
+        log.info "queryString = ${otherParams}"
 
-        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams
-
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + query + additionalParams
+        log.debug "queryUrl = |${queryUrl}|"
         def queryResponse = new URL(queryUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -63,8 +52,8 @@ class AutoCompleteService {
             autoCompleteList << createAutoCompleteFromIndex(it, q)
         }
 
-        //sort by rank ID
-        autoCompleteList = autoCompleteList.sort { it.rankID }
+        // sort by rank ID
+        // code removed by Nick (2016-08-02) see issue #72 - boost query values now perform same function
 
         log.debug("results: " + autoCompleteList.size())
         autoCompleteList
@@ -77,8 +66,8 @@ class AutoCompleteService {
      * @param value
      * @return
      */
-    private def createAutoCompleteFromIndex( doc, String value){
-
+    private def createAutoCompleteFromIndex(Map doc, String value){
+        log.debug "doc = ${doc as JSON}"
         def autoDto = new AutoCompleteDTO();
         autoDto.guid = doc.guid
         autoDto.name = doc.scientificName
@@ -113,10 +102,18 @@ class AutoCompleteService {
             scientificNames.add(name);
         }
 
-        scientificNames.add(doc.get("nameComplete"));
+        String nc = doc.get("scientificName")
+        if (nc != null) {
+            scientificNames.add(nc);
+            autoDto.setScientificNameMatches(getHighlightedNames([nc], value, "<b>", "</b>"));
+        }
 
-        autoDto.setScientificNameMatches(getHighlightedNames([doc.get("nameComplete")], value, "<b>", "</b>"));
-        matchedNames.addAll(getHighlightedNames(scientificNames, value, "", ""));
+        if (scientificNames) {
+            matchedNames.addAll(getHighlightedNames(scientificNames, value, "", ""));
+        } else if (doc.doc_name) {
+            matchedNames.addAll(getHighlightedNames(doc.doc_name, value, "", ""));
+        }
+
 
         if(!matchedNames){
             matchedNames << autoDto.name
