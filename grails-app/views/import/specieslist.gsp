@@ -42,7 +42,10 @@
     </p>
 
     <div>
-        <button id="start-import" onclick="javascript:loadSpeciesLists()" class="btn btn-primary">Import species lists</button>
+        <button id="start-conservation-import" onclick="javascript:loadConservationSpeciesLists()" class="btn btn-primary">Import conservation species lists</button>
+    </div>
+    <div>
+        <button id="start-vernacular-import" onclick="javascript:loadVernacularSpeciesLists()" class="btn btn-primary">Import vernacular name species lists</button>
     </div>
 
     <div class="well import-info alert-info hide" style="margin-top:20px;">
@@ -61,11 +64,11 @@
     </div>
 
     <r:script>
-        function loadSpeciesLists(){
-            $.get("${createLink(controller:'import', action:'importSpeciesLists')}", function( data ) {
+        function loadConservationSpeciesLists(){
+            $.get("${createLink(controller:'import', action:'importConservationSpeciesLists')}", function( data ) {
               if(data.success){
                 $('.import-info p').html('Import successfully started....')
-                $('#start-import').prop('disabled', true);
+                $('#start-conservation-import').prop('disabled', true);
               } else {
                 $('.import-info p').html('Import failed. Check file path...')
               }
@@ -73,6 +76,20 @@
               $('.progress').removeClass('hide');
             });
         }
+
+        function loadVernacularSpeciesLists(){
+            $.get("${createLink(controller:'import', action:'importVernacularSpeciesLists')}", function( data ) {
+              if(data.success){
+                $('.import-info p').html('Import successfully started....')
+                $('#start-vernacular-import').prop('disabled', true);
+              } else {
+                $('.import-info p').html('Import failed. Check file path...')
+              }
+              $('.import-info').removeClass('hide');
+              $('.progress').removeClass('hide');
+            });
+        }
+
     </r:script>
 
     <r:script>

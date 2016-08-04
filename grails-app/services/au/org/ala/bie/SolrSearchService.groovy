@@ -13,7 +13,6 @@ import au.org.ala.bie.search.SearchRegionDTO
 import au.org.ala.bie.search.SearchResultsDTO
 import au.org.ala.bie.search.SearchTaxonConceptDTO
 import au.org.ala.bie.search.SearchWordpressDTO
-import au.org.ala.bie.search.StatusType
 import org.apache.commons.lang.StringUtils
 import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.SolrServerException
@@ -37,6 +36,7 @@ class SolrSearchService {
 
     def grailsApplication
     def liveSolrClient
+    def conservationListsSource
 
     SearchResultsDTO<SearchTaxonConceptDTO> findByScientificName(
             String query, List<String> filterQuery = [], Integer startIndex = 0,
@@ -439,7 +439,7 @@ class SolrSearchService {
      * @return
      */
     private SearchTaxonConceptDTO createTaxonConceptFromIndex(QueryResponse qr, SolrDocument doc) {
-        def clists = grailsApplication.config.conservationLists?.values ?: []
+        def clists = conservationListsSource.lists ?: []
         def conservationStatus = clists.inject([:], { map, region ->
             def cs = (String) doc.getFirstValue(region.field)
             if (cs) map.put(region.term, cs)

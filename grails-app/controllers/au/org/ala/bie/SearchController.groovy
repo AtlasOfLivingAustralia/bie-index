@@ -2,8 +2,6 @@ package au.org.ala.bie
 
 import au.org.ala.bie.search.SearchResultsDTO
 import grails.converters.JSON
-import grails.converters.XML
-
 /**
  * A set of JSON based search web services.
  */
@@ -36,6 +34,23 @@ class SearchController {
      */
     def imageSearch(){
         asJson ([searchResults:searchService.imageSearch(params.id, params.start, params.rows, params.qc)])
+    }
+
+    /**
+     * Returns a redirect to an image of the appropriate type
+     */
+    def imageLinkSearch() {
+        def showNoImage = params.containsKey("showNoImage") ? params.boolean("showNoImage") : true
+        def url = searchService.imageLinkSearch(params.id, params.imageType, params.qc)
+
+        if (!url && showNoImage) {
+            url = resource(dir: "images", file: "noImage85.jpg", absolute: true)
+        }
+        if (!url) {
+            response.sendError(404, "No image for " + params.id)
+            return null
+        }
+        redirect(url: url)
     }
 
     /**
@@ -85,7 +100,8 @@ class SearchController {
         def result = params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
         if (!result)
             respond result
-        render result as JSON
+        else
+            render result as JSON
      }
 
     def bulkGuidLookup(){
@@ -131,7 +147,7 @@ class SearchController {
         if (!req) {
             response.sendError(400, "Body could not be parsed or was empty")
         }
-        boolean includeVernacular = req['vernacular'] ?: false
+        boolean includeVernacular = req.optBoolean('vernacular')
         List<String> guids = req['names']
 
         def result = guids.collect { guid ->
@@ -159,7 +175,25 @@ class SearchController {
      */
     def auto(){
         log.debug("auto called with q = " + params.q)
-        def autoCompleteList = autoCompleteService.auto(params.q, request.queryString)
+        log.debug("auto called with queryString = " + request.queryString)
+        def fqString = ""
+        def limit = params.limit
+        def idxType = params.idxType
+        def geoOnly = params.geoOnly
+
+        if (limit) {
+            fqString += "&rows=${limit}"
+        }
+
+        if (idxType) {
+            fqString += "&fq=idxtype:${idxType.toUpperCase()}"
+        }
+
+        if (geoOnly) {
+            // TODO needs WS lookup to biocache-service (?)
+        }
+
+        def autoCompleteList = autoCompleteService.auto(params.q, fqString)
         def payload = [autoCompleteList:autoCompleteList]
         asJson payload
     }
