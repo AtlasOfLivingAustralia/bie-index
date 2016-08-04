@@ -537,7 +537,7 @@ class SearchService {
 
         def additionalParams = "&wt=json"
         def queryString = "q=" + URLEncoder.encode(
-                "commonNameExact:\"" + name + "\" OR scientificName:\"" + name + "\" OR exact_text:\"" + name + "\"",
+                "commonName:\"" + name + "\" OR scientificName:\"" + name + "\" OR exact_text:\"" + name + "\"",
                 "UTF-8" // exact_text added to handle case differences in query vs index
         ) + "&fq=idxtype:" + IndexDocType.TAXON.name()
         log.debug "profile search for query: ${queryString}"
