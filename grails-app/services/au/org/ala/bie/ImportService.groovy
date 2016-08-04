@@ -108,7 +108,11 @@ class ImportService {
         } catch (Exception e) {
             log("Problem loading regions: " + e.getMessage())
         }
-        //try { importLocalities() } catch (Exception e) { log("Problem loading localities: " + e.getMessage())}
+        try {
+            importLocalities()
+        } catch (Exception e) {
+            log("Problem loading localities: " + e.getMessage())
+        }
         try {
             importConservationSpeciesLists()
         } catch (Exception e) {
@@ -252,15 +256,19 @@ class ImportService {
     }
 
     def importLocalities() {
-        indexService.deleteFromIndex(IndexDocType.LOCALITY)
-        log("Starting indexing ${grailsApplication.config.gazetteerLayerId}")
-        def metadataUrl = grailsApplication.config.layersServicesUrl + "/layer/" + grailsApplication.config.gazetteerLayerId + "?enabledOnly=false"
-        log("Getting metadata for layer: ${metadataUrl}")
-        def js = new JsonSlurper()
-        def layer = js.parseText(new URL(metadataUrl).getText("UTF-8"))
-        log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
-        importLayer(layer)
-        log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
+        if(grailsApplication.config.gazetteerLayerId) {
+            indexService.deleteFromIndex(IndexDocType.LOCALITY)
+            log("Starting indexing ${grailsApplication.config.gazetteerLayerId}")
+            def metadataUrl = grailsApplication.config.layersServicesUrl + "/layer/" + grailsApplication.config.gazetteerLayerId + "?enabledOnly=false"
+            log("Getting metadata for layer: ${metadataUrl}")
+            def js = new JsonSlurper()
+            def layer = js.parseText(new URL(metadataUrl).getText("UTF-8"))
+            log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
+            importLayer(layer)
+            log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
+        } else {
+            log("Skipping localities, no gazetteer layer ID configured")
+        }
     }
 
     def importRegions() {
@@ -1230,7 +1238,9 @@ class ImportService {
             Record record = iter.next()
 
             counter++
-            def taxonID = record.id()
+
+            //use the taxonID - in catalogue of life archives id() is a numeric, taxonID is the GUID (which we want)
+            def taxonID = record.value(DwcTerm.taxonID)
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
 
             if (taxonID == acceptedNameUsageID || acceptedNameUsageID == "" || acceptedNameUsageID == null) {
