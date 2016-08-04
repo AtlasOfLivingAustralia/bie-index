@@ -146,19 +146,25 @@ class ImportService {
         def childParentMap = [:]
         def parentLess = []
         def parents = [] as Set
-        def count = 0
+        def counter = 0
+        def synonymCount = 0
 
         Iterator<Record> iter = taxaFile.iterator()
 
         while (iter.hasNext()) {
 
+            counter ++
+            if(counter % 10000 == 0){
+                log("Denormalised ${counter}")
+            }
+
             Record record = iter.next()
 
-            def taxonID = record.id()
-            def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
-            def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
-            def scientificName = record.value(DwcTerm.scientificName)
-            def taxonRank = record.value(DwcTerm.taxonRank) ?: "".toLowerCase()
+            String taxonID = record.value(DwcTerm.taxonID)
+            String parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
+            String acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
+            String scientificName = record.value(DwcTerm.scientificName)
+            String taxonRank = record.value(DwcTerm.taxonRank) ?: "".toLowerCase()
 
             parents << parentNameUsageID
 
@@ -169,14 +175,16 @@ class ImportService {
                 } else {
                     parentLess << taxonID
                 }
+            } else {
+                synonymCount ++
             }
         }
 
-        log("Parent-less: ${parentLess.size()}, Parent-child: ${childParentMap.size()}")
+        log("Parents: ${parents.size()}, Parent-less: ${parentLess.size()}, Parent-child: ${childParentMap.size()}, Synonym count: ${synonymCount}")
 
         def taxonDenormLookup = [:]
 
-        log("Starting denormalisation lookups")
+        log("Starting de-normalisation lookups")
         childParentMap.keySet().each {
             //don't bother de-normalising terminal taxa
             if (parents.contains(it)) {
@@ -974,7 +982,7 @@ class ImportService {
                 Record record = iter.next()
 
                 counter++
-                def taxonID = record.id()
+                def taxonID = record.value(DwcTerm.taxonID)
                 def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
 
                 if (taxonID == acceptedNameUsageID || acceptedNameUsageID == "" || acceptedNameUsageID == null) {
@@ -1271,8 +1279,10 @@ class ImportService {
 
         def synonyms = [:]
         def iter = taxaFile.iterator()
+        def counter = 0
 
         while (iter.hasNext()) {
+            counter++
 
             def record = iter.next()
 
@@ -1286,7 +1296,14 @@ class ImportService {
             def datasetID = record.value(DwcTerm.datasetID)
             def source = record.value(DcTerm.source)
 
-            if (taxonID && scientificName && acceptedNameUsageID != taxonID && acceptedNameUsageID != "" && acceptedNameUsageID != null) {
+            if(counter % 10000 == 0) log("${counter} records read for synonyms")
+
+            if (taxonID
+                    && scientificName
+                    && acceptedNameUsageID != taxonID
+                    && acceptedNameUsageID != ""
+                    && acceptedNameUsageID != null
+                    && acceptedNameUsageID != taxonID) {
                 //we have a synonym
                 def synonymList = synonyms.get(acceptedNameUsageID)
                 if (!synonymList) {
