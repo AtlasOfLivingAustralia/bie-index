@@ -931,6 +931,10 @@ class SearchService {
 
                 if(it.image){
                     doc.put("image", it.image)
+                    doc.put("imageUrl", "${grailsApplication.config.imageSmallUrl}${it.image}")
+                    doc.put("thumbnailUrl", "${grailsApplication.config.imageThumbnailUrl}${it.image}")
+                    doc.put("smallImageUrl", "${grailsApplication.config.imageSmallUrl}${it.image}")
+                    doc.put("largeImageUrl", "${grailsApplication.config.imageLargeUrl}${it.image}")
                 }
 
                 //add de-normalised fields
