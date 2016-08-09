@@ -54,11 +54,16 @@ identification into two parts.
 | ---- | ------------- | ----------- |
 | accepted | yes | The currently accepted taxon. The zoological term valid is not use, largely so that "accepted" in DwC terms make sense. |
 | synonym | yes? | An unspecified synonym. By default, this is treated as deterministic, since we dont have any reason to suppose it's not. |
-| homotypicSynonym | yes | A nomenclatural synonym, meaning that the same taxon has gone under a different name. The zoological term is objective synonym. This can occur when two people describe the same species. |
+| homotypicSynonym | yes | A nomenclatural synonym, meaning that the same taxon has gone under a different name. This can occur when two people describe the same species. |
+| objectiveSynonym | yes | The zoological term for a nomenclatural synonym. The two terms are kept since they should be displayed in different forms  |
 | heterotypicSynonym | yes | A taxonomic synonym, meaning that a species that was originally considered to be separate has been lumped into another species. The zoological term is subjective synonym, since whether they are synonymns or not is a matter of opinion. |
-|   | no | A synonym where part of an original taxon has been divided. This means that the original name may still be in use or may have been mapped onto several other taxa. Here be dragons. |
+| subjectiveSynonym | yes | A taxonomic synonym, meaning that a species that was originally considered to be separate has been lumped into another species. The zoological term is subjective synonym, since whether they are synonymns or not is a matter of opinion. |
+| proParteSynonym | no | A synonym where part of an original taxon has been divided. This means that the original name may still be in use or may have been mapped onto several other taxa. Here be dragons. |
 | misapplied | no | A name incorrectly applied in a publication to a different species. However, the name itself is perfectly valid and has its own taxon. |
 | excluded | no | A name that shouldn't be used, since it refers to something not found in the region of the occurrence record. |
+| miscellaneousLiterature | no | A name that occurs in other literature. |
+
+Informationm about the type of name is placed in the nomenclaturalStatus term.
 
 ## <a name="taxon-rank"/> Taxon Rank
 
