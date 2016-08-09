@@ -391,7 +391,7 @@ class ImportService {
         ].each { entityType, indexDocType ->
             def js = new JsonSlurper()
             def entities = []
-            def drLists = js.parseText(new URL(grailsApplication.config.collectoryUrl + "/${entityType}").getText("UTF-8"))
+            def drLists = js.parseText(new URL(grailsApplication.config.collectoryServicesUrl + "/${entityType}").getText("UTF-8"))
             log("About to import ${drLists.size()} ${entityType}")
             log("Clearing existing: ${entityType}")
             indexService.deleteFromIndex(indexDocType)

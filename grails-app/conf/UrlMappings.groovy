@@ -37,11 +37,14 @@ class UrlMappings {
 
         "/admin"(controller: "admin")
         "/admin/"(controller: "admin")
-        "/admin/indexFields(.$format)?"(controller: "admin", action: "indexFields")
+        "/admin/indexFields(.$format)?"(controller: "misc", action: "indexFields")
+        "/indexFields(.$format)?"(controller: "misc", action: "indexFields")
 
         "/admin/import/$action?/$id?(.$format)?"(controller: "import")
 
         "/ws/subgroups(.json)?"(controller: 'misc', action: 'speciesGroups')
+        "/subgroups.json"(controller: 'misc', action: 'speciesGroups')
+        "/subgroups"(controller: 'misc', action: 'speciesGroups')
 
         "/"(view: "/index")
         "500"(view: '/error')

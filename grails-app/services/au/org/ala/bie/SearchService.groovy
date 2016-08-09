@@ -917,7 +917,9 @@ class SearchService {
                         "commonName" : commonNames,
                         "commonNameSingle" : commonNameSingle,
                         "occurrenceCount" : it.occurrenceCount,
-                        "conservationStatus" : it.conservationStatus
+                        "conservationStatus" : it.conservationStatus,
+                        "infoSourceName" : it.datasetName,
+                        "infoSourceURL" : "${grailsApplication.config.collectoryBaseUrl}/public/show/${it.datasetID}"
                 ]
 
                 if(it.acceptedConceptID){

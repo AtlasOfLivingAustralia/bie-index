@@ -6,16 +6,11 @@ import grails.converters.XML
 @AlaSecured(value = "ROLE_ADMIN", redirectUri = "/")
 class AdminController {
 
-    def indexService
-
-    def index() {}
+    def index() {
+        redirect(controller: "alaAdmin")
+    }
 
     def indexFields() {
-        def fields = indexService.getIndexFieldDetails(null)
-        withFormat {
-            xml { render fields as XML }
-            '*' { render fields as JSON }
-        }
-
+        redirect(controller: "misc", action: "indexFields") // shouldn't get triggered due UrlMappings
     }
 }
