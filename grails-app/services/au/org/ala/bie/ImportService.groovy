@@ -50,6 +50,12 @@ import java.util.zip.GZIPInputStream
  * Services for data importing.
  */
 class ImportService {
+    static IN_SCHEMA = [
+            DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.nomenclaturalStatus,
+            DwcTerm.scientificNameID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear,
+            DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder,
+            ALATerm.status, ALATerm.nameID
+    ]
 
     def indexService, searchService
 
@@ -1254,17 +1260,11 @@ class ImportService {
                 doc["scientificNameAuthorship"] = scientificNameAuthorship
                 doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
                 doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
-                def inSchema = [
-                        DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.nomenclaturalStatus,
-                        DwcTerm.scientificNameID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear,
-                        DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder,
-                        ALATerm.status, ALATerm.nameID
-                ]
 
                 //index additional fields that are supplied in the core
                 record.terms().each { term ->
                     if (!alreadyIndexed.contains(term)) {
-                        if (inSchema.contains(term)) {
+                        if (IN_SCHEMA.contains(term)) {
                             doc[term.simpleName()] = record.value(term)
                         } else {
                             //use a dynamic field extension
@@ -1351,12 +1351,19 @@ class ImportService {
                             sdoc["taxonomicStatus"] = synonym["taxonomicStatus"] ?: "synonym"
                             sdoc["source"] = synonym['source']
 
+
                             def synAttribution = findAttribution(synonym['datasetID'], attributionMap, datasetMap)
                             if (synAttribution) {
                                 sdoc["datasetName"] = synAttribution["datasetName"]
                                 sdoc["rightsHolder"] = synAttribution["rightsHolder"]
                             } else if (defaultDatasetName) {
                                 sdoc["datasetName"] = defaultDatasetName
+                            }
+                            for (Term term: IN_SCHEMA) {
+                                def key = term.simpleName()
+                                def value = synonym.get(key)
+                                if (value != null && !sdoc.containsKey(key))
+                                    sdoc.put(key, value)
                             }
 
                             counter++
@@ -1391,7 +1398,6 @@ class ImportService {
                         } else if (defaultDatasetName) {
                             cdoc["datasetName"] = defaultDatasetName
                         }
-
                         buffer << cdoc
                     }
                     doc["commonName"] = commonNames.collect { it.name }
@@ -1610,8 +1616,7 @@ class ImportService {
                     synonyms.put(acceptedNameUsageID, synonymList)
                 }
 
-                //lets ignore lexicographically the same names....
-                synonymList << [
+                def synonym = [
                         taxonID                 : taxonID,
                         scientificName          : scientificName,
                         scientificNameAuthorship: scientificNameAuthorship,
@@ -1621,6 +1626,15 @@ class ImportService {
                         datasetID               : datasetID,
                         source                  : source
                 ]
+                for (Term term: IN_SCHEMA) {
+                    def value = record.value(term)
+                    def key = term.simpleName()
+                    if (value != null && !synonym.containsKey(key))
+                        synonym.put(key, value)
+                }
+
+                //lets ignore lexicographically the same names....
+                synonymList << synonym
             }
         }
         synonyms
