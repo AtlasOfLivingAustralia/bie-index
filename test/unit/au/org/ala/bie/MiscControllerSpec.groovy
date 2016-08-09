@@ -4,8 +4,8 @@ import au.org.ala.bie.search.IndexFieldDTO
 import grails.test.mixin.TestFor
 import spock.lang.Specification
 
-@TestFor(AdminController)
-class AdminControllerSpec extends Specification {
+@TestFor(MiscController)
+class MiscControllerSpec extends Specification {
 
     IndexService indexService
 
@@ -17,7 +17,7 @@ class AdminControllerSpec extends Specification {
     def cleanup() {
     }
 
-    void "test GET /admin/indexFields JSON response"() {
+    void "test GET /indexFields JSON response"() {
         given:
         def indexFieldDetails = [new IndexFieldDTO(name: 'a', dataType: 'b', indexed: true, stored: true, numberDistinctValues: null)].toSet()
 

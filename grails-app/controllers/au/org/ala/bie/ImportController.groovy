@@ -109,7 +109,7 @@ class ImportController {
      * @return
      */
     def importCollectory(){
-        if(grailsApplication.config.collectoryUrl){
+        if(grailsApplication.config.collectoryServicesUrl){
             Thread.start {
                 log.info("Starting import of collectory....")
                 importService.importCollectory()
@@ -117,7 +117,7 @@ class ImportController {
             }
             asJson ([success:true] )
         } else {
-            asJson ([success: false, message: 'collectoryUrl not configured'] )
+            asJson ([success: false, message: 'collectoryServicesUrl not configured'] )
         }
     }
 

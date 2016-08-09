@@ -439,8 +439,7 @@ class SearchService {
         if (useOfflineIndex) {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
         }
-        def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=guid:\"" + URLEncoder.encode(identifier ,"UTF-8") +
-                "\"&fq=idxtype:" + IndexDocType.IDENTIFIER.name()
+        def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=guid:\"" + URLEncoder.encode(identifier ,"UTF-8") +"\""
         log.debug "SOLR url = ${solrServerUrl}"
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
@@ -537,7 +536,7 @@ class SearchService {
 
         def additionalParams = "&wt=json"
         def queryString = "q=" + URLEncoder.encode(
-                "commonNameExact:\"" + name + "\" OR scientificName:\"" + name + "\" OR exact_text:\"" + name + "\"",
+                "commonName:\"" + name + "\" OR scientificName:\"" + name + "\" OR exact_text:\"" + name + "\"",
                 "UTF-8" // exact_text added to handle case differences in query vs index
         ) + "&fq=idxtype:" + IndexDocType.TAXON.name()
         log.debug "profile search for query: ${queryString}"
@@ -921,7 +920,9 @@ class SearchService {
                         "commonName" : commonNames,
                         "commonNameSingle" : commonNameSingle,
                         "occurrenceCount" : it.occurrenceCount,
-                        "conservationStatus" : it.conservationStatus
+                        "conservationStatus" : it.conservationStatus,
+                        "infoSourceName" : it.datasetName,
+                        "infoSourceURL" : "${grailsApplication.config.collectoryBaseUrl}/public/show/${it.datasetID}"
                 ]
 
                 if(it.acceptedConceptID){
@@ -934,6 +935,10 @@ class SearchService {
 
                 if(it.image){
                     doc.put("image", it.image)
+                    doc.put("imageUrl", "${grailsApplication.config.imageSmallUrl}${it.image}")
+                    doc.put("thumbnailUrl", "${grailsApplication.config.imageThumbnailUrl}${it.image}")
+                    doc.put("smallImageUrl", "${grailsApplication.config.imageSmallUrl}${it.image}")
+                    doc.put("largeImageUrl", "${grailsApplication.config.imageLargeUrl}${it.image}")
                 }
 
                 //add de-normalised fields
