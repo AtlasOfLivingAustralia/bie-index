@@ -6,9 +6,7 @@ import grails.converters.XML
 @AlaSecured(value = "ROLE_ADMIN", redirectUri = "/")
 class AdminController {
 
-    def index() {
-        redirect(controller: "alaAdmin")
-    }
+    def index() {} // GSP only index
 
     def indexFields() {
         redirect(controller: "misc", action: "indexFields") // shouldn't get triggered due UrlMappings
