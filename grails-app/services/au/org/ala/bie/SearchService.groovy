@@ -531,29 +531,36 @@ class SearchService {
         json.response.docs
     }
 
-
-    def getProfileForName(name){
-
-        def additionalParams = "&wt=json"
-        def queryString = "q=" + URLEncoder.encode(
-                "commonName:\"" + name + "\" OR scientificName:\"" + name + "\" OR exact_text:\"" + name + "\"",
-                "UTF-8" // exact_text added to handle case differences in query vs index
-        ) + "&fq=idxtype:" + IndexDocType.TAXON.name()
+    /**
+     * Return a simplified profile object for the docs that match the provided name
+     *
+     * @param name
+     * @return Map with 4 fields
+     */
+    def getProfileForName(String name){
+        String qf = "qf=scientificName^100+commonName^100+exact_text^10"
+        String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
+        def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
+        def queryString = "&q=" + URLEncoder.encode("\"" + name + "\"","UTF-8") + "&fq=idxtype:" + IndexDocType.TAXON.name()
         log.debug "profile search for query: ${queryString}"
-        def queryResponse = new URL(grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
+        log.debug "profile search url: ${url}"
+        String url = grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams
+        def queryResponse = new URL(url).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         def model = []
-        if(json.response.numFound > 0){
+
+        if (json.response.numFound > 0) {
             json.response.docs.each { result ->
                 model << [
                     "identifier": result.guid,
                     "name": result.scientificName,
                     "acceptedIdentifier": result.acceptedConceptID ?: result.guid,
-                    "acceptedName": result.acceptedConceptName
+                    "acceptedName": result.acceptedConceptName ?: result.scientificName
                 ]
             }
         }
+
         model
     }
 
