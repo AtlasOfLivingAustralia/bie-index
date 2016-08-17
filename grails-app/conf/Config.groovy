@@ -35,6 +35,7 @@ layersServicesUrl = "http://spatial.ala.org.au/ws"
 imageThumbnailUrl = "http://images.ala.org.au/image/proxyImageThumbnail?imageId="
 imageLargeUrl = "http://images.ala.org.au/image/proxyImage?imageId="
 imageSmallUrl = "http://images.ala.org.au/image/proxyImageThumbnailLarge?imageId="
+imageMetaDataUrl = "http://images.ala.org.au/ws/image/"
 synonymCheckingEnabled = true
 synonymSourceAttribution = "National Species Lists"
 gazetteerLayerId = "2123"

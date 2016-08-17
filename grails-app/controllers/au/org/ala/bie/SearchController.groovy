@@ -148,15 +148,14 @@ class SearchController {
             response.sendError(400, "Body could not be parsed or was empty")
         }
         boolean includeVernacular = req.optBoolean('vernacular')
-        List<String> guids = req['names']
+        List<String> names = req['names']
+        Map result = [:]
 
-        def result = guids.collect { guid ->
-            //Need to sort the scores descended to get the highest score first
-            SearchResultsDTO results = solrSearchService.findByScientificName(guid, null, 0, 1, "score", "desc", true, includeVernacular);
-
-            // TODO repoUrlUtils.fixRepoUrls(results)
-            results.getTotalRecords() > 0 ? results.searchResults.first() : null
+        names.eachWithIndex { name, idx ->
+            log.debug "$idx. Looking up name: ${name}"
+            result.put(idx, searchService.getLongProfileForName(name))
         }
+
         render result as JSON
     }
 
