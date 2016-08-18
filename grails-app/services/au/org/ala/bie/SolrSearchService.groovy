@@ -77,7 +77,7 @@ class SolrSearchService {
                 }
                 if (exactInput) {
                     canonicalSciName = "\"$canonicalSciName\""
-                    queryString.append(" OR scientificNameText:")
+                    queryString.append(" OR scientificName:")
                     queryString.append(canonicalSciName)
                 }
                 if (includeVernacular) {
