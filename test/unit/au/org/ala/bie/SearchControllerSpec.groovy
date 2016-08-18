@@ -94,10 +94,15 @@ class SearchControllerSpec extends Specification {
         controller.speciesLookupBulk()
 
         then:
-        names.size() * solrSearchService.findByScientificName(_, _, _, _, _, _, _, vernacular) >> {
-            String guid, filter, start, limit, field, order, exact, includeVernacular ->
-                return new SearchResultsDTO(totalRecords: result.size(), searchResults: [result[guid]])
+//        names.size() * solrSearchService.findByScientificName(_, _, _, _, _, _, _, vernacular) >> {
+//            String guid, filter, start, limit, field, order, exact, includeVernacular ->
+//                return new SearchResultsDTO(totalRecords: result.size(), searchResults: [result[guid]])
+//        }
+        names.size() * searchService.getLongProfileForName(_) >> {
+            String name ->
+                return [totalRecords: result.size(), searchResults: [result[name]]]
         }
+
         response.contentType.startsWith(JSON_CONTENT_TYPE)
         response.json instanceof JSONArray
         response.json.size() == names.size()

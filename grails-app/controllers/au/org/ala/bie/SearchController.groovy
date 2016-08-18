@@ -149,11 +149,11 @@ class SearchController {
         }
         boolean includeVernacular = req.optBoolean('vernacular')
         List<String> names = req['names']
-        Map result = [:]
+        List result = []
 
         names.eachWithIndex { name, idx ->
             log.debug "$idx. Looking up name: ${name}"
-            result.put(idx, searchService.getLongProfileForName(name))
+            result.add(searchService.getLongProfileForName(name))
         }
 
         render result as JSON
