@@ -564,12 +564,13 @@ class SearchService {
     }
 
     Map getLongProfileForName(String name){
-        String qf = "qf=scientificName^100+commonName^100+exact_text^10"
+        String qf = "qf=scientificName^100+commonName^100+exact_text^10+doc_name"
         String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
         def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
         def queryString = "&q=" + URLEncoder.encode("\"" + name + "\"","UTF-8") + "&fq=idxtype:" + IndexDocType.TAXON.name()
         log.debug "profile search for query: ${queryString}"
         String url = grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams
+        log.debug "profile searcURL: ${url}"
         def queryResponse = new URL(url).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
