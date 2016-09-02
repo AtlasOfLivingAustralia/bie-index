@@ -101,7 +101,7 @@ class SearchController {
         if (!result)
             respond result
         else
-            render result as JSON
+            asJson result
      }
 
     def bulkGuidLookup(){
