@@ -101,7 +101,7 @@ class SearchController {
         if (!result)
             respond result
         else
-            asJson result
+            asJsonP(params,result)
      }
 
     def bulkGuidLookup(){
@@ -232,6 +232,25 @@ class SearchController {
 
     def getHabitatIDs(){
         asJson([searchResults: searchService.getHabitatsIDsByGuid(params.guid)])
+    }
+
+    /**
+     * Due to bug in Grails that prevents the JSONP filter from working with the render method,
+     * this utility method is a work around and allows the JSONP callback to be added.
+     * And it prevent the unit test from breaking.
+     *
+     * @param params
+     * @param responseBody
+     * @return
+     */
+    private asJsonP(params, responseBody) {
+        response.setContentType("application/json;charset=UTF-8")
+        def output = responseBody as JSON
+        if (params.callback) {
+            log.debug "adding callback"
+            output = params.callback + "(" + (responseBody as JSON) + ")"
+        }
+        render output
     }
 
 
