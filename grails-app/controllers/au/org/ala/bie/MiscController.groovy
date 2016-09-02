@@ -16,6 +16,7 @@ class MiscController {
             details.is.withStream { is ->
                 response.contentLength = details.size
                 response.contentType = 'application/json'
+                // next line causes link to download file to downloads folder, is this needed? (NdR)
                 response.setHeader(CONTENT_DISPOSITION, "attachment; filename=subgroups.json")
                 response.setDateHeader(LAST_MODIFIED, details.lastModified)
                 response.outputStream << is
