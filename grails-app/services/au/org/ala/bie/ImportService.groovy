@@ -1249,7 +1249,11 @@ class ImportService {
                 doc["datasetID"] = datasetID
                 doc["parentGuid"] = parentNameUsageID
                 doc["rank"] = taxonRank
-                doc["rankID"] = taxonRankID
+
+                //only add the ID if we have a recognised rank
+                if(taxonRankID > 0){
+                    doc["rankID"] = taxonRankID
+                }
                 doc["scientificName"] = scientificName
                 doc["scientificNameAuthorship"] = scientificNameAuthorship
                 doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
@@ -1341,7 +1345,9 @@ class ImportService {
                             sdoc["guid"] = synonym["taxonID"]
                             sdoc["datasetID"] = synonym['datasetID']
                             sdoc["rank"] = taxonRank
-                            sdoc["rankID"] = taxonRankID
+                            if(taxonRankID > 0) {
+                                sdoc["rankID"] = taxonRankID
+                            }
                             sdoc["scientificName"] = synonym['scientificName']
                             sdoc["scientificNameAuthorship"] = synonym['scientificNameAuthorship']
                             sdoc["nameComplete"] = synonym['nameComplete']
