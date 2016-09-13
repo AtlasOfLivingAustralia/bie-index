@@ -11,6 +11,7 @@ import org.gbif.nameparser.NameParser
  * A set of search services for the BIE.
  */
 class SearchService {
+
     static BULK_BATCH_SIZE = 20
 
     def grailsApplication
@@ -942,7 +943,9 @@ class SearchService {
         def formatted = []
 
         // add occurrence counts
-        docs = populateOccurrenceCounts(docs)
+        if(grailsApplication.config.occurrenceCounts.enabled.asBoolean()){
+            docs = populateOccurrenceCounts(docs)
+        }
 
         docs.each {
             if(it.idxtype == IndexDocType.TAXON.name()){

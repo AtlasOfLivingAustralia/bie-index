@@ -17,7 +17,8 @@ class AutoCompleteService {
     def serviceMethod() {}
 
     /**
-     * Autocomplete service
+     * Autocomplete service. This relies on the /suggest service which should be configured
+     * in SOLR in the files solrconfig.xml and schema.xml.
      *
      * @param q
      * @param otherParams
@@ -27,12 +28,8 @@ class AutoCompleteService {
         log.debug("auto called with q = " + q)
 
         def autoCompleteList = []
-        // TODO store param string in config var
-        String qf = "qf=commonNameSingle^100+commonName^100+auto_text^100+text"
-        String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
-        def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
-        String query = ""
 
+        String query = ""
         if (!q || q.trim() == "*") {
             query = otherParams + "&q=*:*"
         } else if (q) {
@@ -42,19 +39,15 @@ class AutoCompleteService {
 
         log.info "queryString = ${otherParams}"
 
-        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + query + additionalParams
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/suggest?wt=json&" + query
         log.debug "queryUrl = |${queryUrl}|"
         def queryResponse = new URL(queryUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
 
-        json.response.docs.each {
-            autoCompleteList << createAutoCompleteFromIndex(it, q)
+        json.grouped.scientificName_s.groups.each { group ->
+            autoCompleteList << createAutoCompleteFromIndex(group.doclist.docs[0], q)
         }
-
-        // sort by rank ID
-        // code removed by Nick (2016-08-02) see issue #72 - boost query values now perform same function
-
         log.debug("results: " + autoCompleteList.size())
         autoCompleteList
     }
