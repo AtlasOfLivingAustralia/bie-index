@@ -54,6 +54,9 @@ imagesListsUrl = this.class.getResource("/default-image-lists.json").toString()
 
 nationalSpeciesDatasets = "" // "dr2699,dr2700,dr2702,dr2704,dr2703,dr3118"
 
+//toggle for the population of occurrence counts
+occurrenceCounts.enabled = true
+
 // SOLR additional params
 solr {
     qf = "exact_text^200+doc_name^100+text"
