@@ -1,12 +1,16 @@
 # Processing - The Basics
 
-Going from a buch of files to a shiney new DwCA tends to follow more or less the same pattern,
+Going from a bunch of files to a shiney new DwCA tends to follow more or less the same pattern,
 no matter how ropey and deranged the originating data is.
 
 ## Tools
 
 [Talend OS](http://www.talend.com/) is used as a processing engine.
-The processing scripts are in the form of a vast snarl of 
+The processing scripts are in the form of a vast snarl of Talend jobs.
+However, each job generally follows the same sequence, outlined below.
+Each data source has a job that sequences pre-processing, parent identification, DwCA construction and DwCA packaging.
+A job sequences processing for each data source, since some sources depend on previous, higher-priority sources
+being processed to provide names for 
 
 ## Source Data
 
@@ -31,7 +35,7 @@ This means checking that the fields you use contain data that looks like it shou
 Generally, this involves:
 
 * Checking to see whether identifiers pass muster
-* Checking to see whether there is an name at all.
+* Checking to see whether there is a name at all.
 It would be nice to be able to check to see whether the name fits the established rules for
 the branch of biology but this is almost always a fool's errand.
 [Phrase names](glossary.md#def-phrase-name) and the like usually play merry hell with whatever rules you come up with.
@@ -39,7 +43,7 @@ the branch of biology but this is almost always a fool's errand.
 ### Cleaning
 
 It may be necessary to remove notes and additional data from the supplied data.
-In particular, year of publication seems to cause a desire to prevaricate in ways unknown to 
+In particular, year of publication seems to cause a desire to prevaricate in ways unknown to machines.
 
 ### Currency
 
@@ -59,7 +63,8 @@ Identification involves mapping taxa onto pre-existing identifiers, or building 
 
 Where necessary, the supplied identifier is left in place  and a parallel `identifier` column is used
 to carry the final identifier.
-This process is useful 
+This process is useful in ensuring that additional identifiers and names can be passed through for taxa
+that have a higher-priority predecessor but carry additional information.
 
 #### <a name="name-matching"/> Name Matching
 
