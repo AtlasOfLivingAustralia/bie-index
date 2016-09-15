@@ -1247,6 +1247,10 @@ class ImportService {
 
             //use the taxonID - in catalogue of life archives id() is a numeric, taxonID is the GUID (which we want)
             def taxonID = record.value(DwcTerm.taxonID)
+            if(!taxonID){
+                taxonID = record.id()
+            }
+
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
 
             if (taxonID == acceptedNameUsageID || acceptedNameUsageID == "" || acceptedNameUsageID == null) {
@@ -1330,7 +1334,7 @@ class ImportService {
                                 def rn = new RankedName(name: name.toLowerCase(), rank: normalisedRank)
                                 if (speciesGroupMapping.containsKey(rn)) {
                                     def speciesGroup = speciesGroupMapping[rn]
-                                    log.debug("Adding group ${speciesGroup.group} and subgroup ${speciesGroup.subGroup} to $scientificName")
+                                    //log.debug("Adding group ${speciesGroup.group} and subgroup ${speciesGroup.subGroup} to $scientificName")
                                     speciesGroups << speciesGroup.group
                                     speciesSubGroups << speciesGroup.subGroup
                                 }
