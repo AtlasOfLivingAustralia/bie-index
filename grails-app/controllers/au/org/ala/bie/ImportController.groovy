@@ -260,6 +260,17 @@ class ImportController {
 
     }
 
+    def denormaliseTaxa() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        Thread.start {
+            log.info("Starting taxon denormalisaion....")
+            importService.denormaliseTaxa(online)
+            log.info("Finished taxon denormalisaion.")
+        }
+        asJson ([success:true] )
+
+    }
+
     def loadImages() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
         Thread.start {
