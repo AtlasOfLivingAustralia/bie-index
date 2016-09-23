@@ -101,7 +101,7 @@ class SearchController {
         if (!result)
             respond result
         else
-            render result as JSON
+            asJsonP(params,result)
      }
 
     def bulkGuidLookup(){
@@ -148,15 +148,14 @@ class SearchController {
             response.sendError(400, "Body could not be parsed or was empty")
         }
         boolean includeVernacular = req.optBoolean('vernacular')
-        List<String> guids = req['names']
+        List<String> names = req['names']
+        List result = []
 
-        def result = guids.collect { guid ->
-            //Need to sort the scores descended to get the highest score first
-            SearchResultsDTO results = solrSearchService.findByScientificName(guid, null, 0, 1, "score", "desc", true, includeVernacular);
-
-            // TODO repoUrlUtils.fixRepoUrls(results)
-            results.getTotalRecords() > 0 ? results.searchResults.first() : null
+        names.eachWithIndex { name, idx ->
+            log.debug "$idx. Looking up name: ${name}"
+            result.add(searchService.getLongProfileForName(name))
         }
+
         render result as JSON
     }
 
@@ -233,6 +232,25 @@ class SearchController {
 
     def getHabitatIDs(){
         asJson([searchResults: searchService.getHabitatsIDsByGuid(params.guid)])
+    }
+
+    /**
+     * Due to bug in Grails that prevents the JSONP filter from working with the render method,
+     * this utility method is a work around and allows the JSONP callback to be added.
+     * And it prevent the unit test from breaking.
+     *
+     * @param params
+     * @param responseBody
+     * @return
+     */
+    private asJsonP(params, responseBody) {
+        response.setContentType("application/json;charset=UTF-8")
+        def output = responseBody as JSON
+        if (params.callback) {
+            log.debug "adding callback"
+            output = params.callback + "(" + (responseBody as JSON) + ")"
+        }
+        render output
     }
 
 

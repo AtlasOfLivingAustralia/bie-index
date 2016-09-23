@@ -114,7 +114,11 @@ class ImportService {
         } catch (Exception e) {
             log("Problem loading regions: " + e.getMessage())
         }
-        //try { importLocalities() } catch (Exception e) { log("Problem loading localities: " + e.getMessage())}
+        try {
+            importLocalities()
+        } catch (Exception e) {
+            log("Problem loading localities: " + e.getMessage())
+        }
         try {
             importConservationSpeciesLists()
         } catch (Exception e) {
@@ -258,15 +262,19 @@ class ImportService {
     }
 
     def importLocalities() {
-        indexService.deleteFromIndex(IndexDocType.LOCALITY)
-        log("Starting indexing ${grailsApplication.config.gazetteerLayerId}")
-        def metadataUrl = grailsApplication.config.layersServicesUrl + "/layer/" + grailsApplication.config.gazetteerLayerId + "?enabledOnly=false"
-        log("Getting metadata for layer: ${metadataUrl}")
-        def js = new JsonSlurper()
-        def layer = js.parseText(new URL(metadataUrl).getText("UTF-8"))
-        log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
-        importLayer(layer)
-        log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
+        if(grailsApplication.config.gazetteerLayerId) {
+            indexService.deleteFromIndex(IndexDocType.LOCALITY)
+            log("Starting indexing ${grailsApplication.config.gazetteerLayerId}")
+            def metadataUrl = grailsApplication.config.layersServicesUrl + "/layer/" + grailsApplication.config.gazetteerLayerId + "?enabledOnly=false"
+            log("Getting metadata for layer: ${metadataUrl}")
+            def js = new JsonSlurper()
+            def layer = js.parseText(new URL(metadataUrl).getText("UTF-8"))
+            log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
+            importLayer(layer)
+            log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
+        } else {
+            log("Skipping localities, no gazetteer layer ID configured")
+        }
     }
 
     def importRegions() {
@@ -1236,7 +1244,13 @@ class ImportService {
             Record record = iter.next()
 
             counter++
-            def taxonID = record.id()
+
+            //use the taxonID - in catalogue of life archives id() is a numeric, taxonID is the GUID (which we want)
+            def taxonID = record.value(DwcTerm.taxonID)
+            if(!taxonID){
+                taxonID = record.id()
+            }
+
             def acceptedNameUsageID = record.value(DwcTerm.acceptedNameUsageID)
 
             if (taxonID == acceptedNameUsageID || acceptedNameUsageID == "" || acceptedNameUsageID == null) {
@@ -1255,7 +1269,11 @@ class ImportService {
                 doc["datasetID"] = datasetID
                 doc["parentGuid"] = parentNameUsageID
                 doc["rank"] = taxonRank
-                doc["rankID"] = taxonRankID
+
+                //only add the ID if we have a recognised rank
+                if(taxonRankID > 0){
+                    doc["rankID"] = taxonRankID
+                }
                 doc["scientificName"] = scientificName
                 doc["scientificNameAuthorship"] = scientificNameAuthorship
                 doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
@@ -1316,7 +1334,7 @@ class ImportService {
                                 def rn = new RankedName(name: name.toLowerCase(), rank: normalisedRank)
                                 if (speciesGroupMapping.containsKey(rn)) {
                                     def speciesGroup = speciesGroupMapping[rn]
-                                    log.debug("Adding group ${speciesGroup.group} and subgroup ${speciesGroup.subGroup} to $scientificName")
+                                    //log.debug("Adding group ${speciesGroup.group} and subgroup ${speciesGroup.subGroup} to $scientificName")
                                     speciesGroups << speciesGroup.group
                                     speciesSubGroups << speciesGroup.subGroup
                                 }
@@ -1341,7 +1359,9 @@ class ImportService {
                             sdoc["guid"] = synonym["taxonID"]
                             sdoc["datasetID"] = synonym['datasetID']
                             sdoc["rank"] = taxonRank
-                            sdoc["rankID"] = taxonRankID
+                            if(taxonRankID > 0) {
+                                sdoc["rankID"] = taxonRankID
+                            }
                             sdoc["scientificName"] = synonym['scientificName']
                             sdoc["scientificNameAuthorship"] = synonym['scientificNameAuthorship']
                             sdoc["nameComplete"] = synonym['nameComplete']

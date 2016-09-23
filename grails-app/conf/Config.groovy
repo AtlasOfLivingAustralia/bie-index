@@ -35,6 +35,7 @@ layersServicesUrl = "http://spatial.ala.org.au/ws"
 imageThumbnailUrl = "http://images.ala.org.au/image/proxyImageThumbnail?imageId="
 imageLargeUrl = "http://images.ala.org.au/image/proxyImage?imageId="
 imageSmallUrl = "http://images.ala.org.au/image/proxyImageThumbnailLarge?imageId="
+imageMetaDataUrl = "http://images.ala.org.au/ws/image/"
 synonymCheckingEnabled = true
 synonymSourceAttribution = "National Species Lists"
 gazetteerLayerId = "2123"
@@ -54,6 +55,9 @@ vernacularListsUrl = this.class.getResource("/default-vernacular-lists.json").to
 imagesListsUrl = this.class.getResource("/default-image-lists.json").toString()
 
 nationalSpeciesDatasets = "" // "dr2699,dr2700,dr2702,dr2704,dr2703,dr3118"
+
+//toggle for the population of occurrence counts
+occurrenceCounts.enabled = true
 
 // SOLR additional params
 solr {

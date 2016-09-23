@@ -11,6 +11,7 @@ import org.gbif.nameparser.NameParser
  * A set of search services for the BIE.
  */
 class SearchService {
+
     static BULK_BATCH_SIZE = 20
 
     def grailsApplication
@@ -531,29 +532,85 @@ class SearchService {
         json.response.docs
     }
 
-
-    def getProfileForName(name){
-
-        def additionalParams = "&wt=json"
-        def queryString = "q=" + URLEncoder.encode(
-                "commonName:\"" + name + "\" OR scientificName:\"" + name + "\" OR exact_text:\"" + name + "\"",
-                "UTF-8" // exact_text added to handle case differences in query vs index
-        ) + "&fq=idxtype:" + IndexDocType.TAXON.name()
+    /**
+     * Return a simplified profile object for the docs that match the provided name
+     *
+     * @param name
+     * @return Map with 4 fields
+     */
+    def getProfileForName(String name){
+        String qf = "qf=scientificName^100+commonName^100+exact_text^10"
+        String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
+        def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
+        def queryString = "&q=" + URLEncoder.encode("\"" + name + "\"","UTF-8") + "&fq=idxtype:" + IndexDocType.TAXON.name()
         log.debug "profile search for query: ${queryString}"
-        def queryResponse = new URL(grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams).getText("UTF-8")
+        String url = grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams
+        def queryResponse = new URL(url).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         def model = []
-        if(json.response.numFound > 0){
+
+        if (json.response.numFound > 0) {
             json.response.docs.each { result ->
                 model << [
                     "identifier": result.guid,
                     "name": result.scientificName,
                     "acceptedIdentifier": result.acceptedConceptID ?: result.guid,
-                    "acceptedName": result.acceptedConceptName
+                    "acceptedName": result.acceptedConceptName ?: result.scientificName
                 ]
             }
         }
+
+        model
+    }
+
+    Map getLongProfileForName(String name){
+        String qf = "qf=scientificName^100+commonName^100+exact_text^10+doc_name"
+        String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
+        def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
+        def queryString = "&q=" + URLEncoder.encode("\"" + name + "\"","UTF-8") + "&fq=idxtype:" + IndexDocType.TAXON.name()
+        log.debug "profile search for query: ${queryString}"
+        String url = grailsApplication.config.indexLiveBaseUrl + "/select?" + queryString + additionalParams
+        log.debug "profile searcURL: ${url}"
+        def queryResponse = new URL(url).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        def model = [:]
+
+        if (json.response.numFound > 0) {
+            def result = json.response.docs[0]
+            //json.response.docs.each { result ->
+                model = [
+                        "identifier": result.guid,
+                        "guid": result.guid,
+                        "parentGuid": result.parentGuid,
+                        "name": result.scientificName,
+                        "nameComplete": result.nameComplete,
+                        "commonName" : result.commonName,
+                        "commonNameSingle" : result.commonNameSingle,
+                        "rank" : result.rank,
+                        "rankId" : result.rankID,
+                        "acceptedConceptGuid": result.acceptedConceptID ?: result.guid,
+                        "acceptedConceptName": result.acceptedConceptName ?: result.scientificName,
+                        "taxonomicStatus": result.taxonomicStatus,
+                        "imageId": result.image,
+                        "imageUrl": (result.image) ? grailsApplication.config.imageLargeUrl + result.image : "",
+                        "thumbnailUrl": (result.image) ? grailsApplication.config.imageThumbnailUrl + result.image : "",
+                        "largeImageUrl": (result.image) ? grailsApplication.config.imageSmallUrl + result.image : "",
+                        "smallImageUrl": (result.image) ? grailsApplication.config.imageSmallUrl + result.image : "",
+                        "imageMetadataUrl": (result.image) ? grailsApplication.config.imageMetaDataUrl + result.image : "",
+                        "kingdom": result.rk_kingdom,
+                        "phylum": result.rk_phylum,
+                        "classs": result.rk_class,
+                        "order":result.rk_order,
+                        "family": result.rk_family,
+                        "genus": result.rk_genus,
+                        "author": result.scientificNameAuthorship,
+                        "linkIdentifier": result.linkIdentifier
+                ]
+
+        }
+
         model
     }
 
@@ -886,7 +943,9 @@ class SearchService {
         def formatted = []
 
         // add occurrence counts
-        docs = populateOccurrenceCounts(docs)
+        if(grailsApplication.config.occurrenceCounts.enabled.asBoolean()){
+            docs = populateOccurrenceCounts(docs)
+        }
 
         docs.each {
             if(it.idxtype == IndexDocType.TAXON.name()){
