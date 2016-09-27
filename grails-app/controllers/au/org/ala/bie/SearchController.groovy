@@ -159,12 +159,18 @@ class SearchController {
         render result as JSON
     }
 
+    /**
+     * Download CSV file for given search query (q & fq)
+     * User provided params: q, fq, file, fields
+     *
+     * @return
+     */
     def download(){
         response.setHeader("Cache-Control", "must-revalidate");
         response.setHeader("Pragma", "must-revalidate");
-        response.setHeader("Content-Disposition", "attachment;filename=species.csv");
+        response.setHeader("Content-Disposition", "attachment;filename=${params.file?:'species.csv'}");
         response.setContentType("text/csv");
-        downloadService.download(request.queryString, params.q, response.outputStream)
+        downloadService.download(request.queryString, params, response.outputStream, request.locale)
     }
 
     /**
