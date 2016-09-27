@@ -555,8 +555,8 @@ class SearchService {
                 model << [
                     "identifier": result.guid,
                     "name": result.scientificName,
-                    "acceptedIdentifier": result.acceptedConceptID ?: result.guid,
-                    "acceptedName": result.acceptedConceptName ?: result.scientificName
+                    "acceptedIdentifier": result.acceptedConceptID ?: (result.taxonomicStatus == "accepted" ? result.guid : ""),
+                    "acceptedName": result.acceptedConceptName ?: (result.taxonomicStatus == "accepted" ? result.scientificName : "")
                 ]
             }
         }
