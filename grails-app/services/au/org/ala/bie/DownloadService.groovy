@@ -35,7 +35,7 @@ class DownloadService {
             fields = params.fields
         }
 
-        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=csv&fl=" +
+        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=csv&defType=edismax&fl=" +
                 fields + "&csv.header=false&rows=" + Integer.MAX_VALUE +
                 "&" + queryString
 
