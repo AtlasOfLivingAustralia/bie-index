@@ -58,7 +58,7 @@ class ImportService {
             ALATerm.status, ALATerm.nameID
     ]
 
-    def indexService, searchService
+    def indexService, searchService, bieAuthService
 
     def grailsApplication
     def speciesGroupService
@@ -1507,6 +1507,60 @@ class ImportService {
         }
         log("Loaded image lists")
         return imageMap
+    }
+
+    def updateDocsWithPreferredImage(List<Map> preferredImagesList){
+
+        List<String> guidList = []
+
+        preferredImagesList.each {Map guidImageMap ->
+            guidList.push(guidImageMap.guid)
+        }
+
+        String guids = guidList.join(",")
+
+        def paramsMap = [
+                q: "guid:\"" + guids +"\"",
+                wt: "json"
+        ]
+        def buffer = []
+        MapSolrParams solrParams = new MapSolrParams(paramsMap)
+        def searchResults = searchService.getCursorSearchResults(solrParams, false)
+        def resultsDocs = searchResults?.response?.docs?:[]
+        def totalDocumentsUpdated = 0
+        resultsDocs.each { Map doc ->
+            if (doc.containsKey("id") && doc.containsKey("guid") && doc.containsKey("idxtype")) {
+                String imageId = getImageFromParamList(preferredImagesList, doc.guid)
+                if (!doc.containsKey("image") || (doc.containsKey("image") && doc.image != imageId)) {
+                    Map updateDoc = [:]
+                    updateDoc["id"] = doc.id // doc key
+                    updateDoc["idxtype"] = ["set": doc.idxtype] // required field
+                    updateDoc["guid"] = ["set": doc.guid] // required field
+                    updateDoc["image"] = ["set": imageId]
+                    updateDoc["imageAvailable"] = ["set": true]
+                    totalDocumentsUpdated ++
+                    buffer << updateDoc
+                }
+            } else {
+                log.warn "Updating doc error: missing keys ${doc}"
+            }
+        }
+
+        def updatedTaxa = []
+
+        if (buffer.size() > 0) {
+            log("Committing to SOLR...")
+            indexService.indexBatch(buffer, true)
+            updatedTaxa = searchService.getTaxa(guidList)
+        } else {
+            log.info "Nothing to update"
+        }
+
+        updatedTaxa
+    }
+
+    private String getImageFromParamList (List<Map> preferredImagesList, String guid) {
+        return preferredImagesList.grep{it.guid == guid}.image[0]
     }
 
     /**

@@ -22,7 +22,7 @@ import au.org.ala.web.AlaSecured
 @AlaSecured(value = "ROLE_ADMIN", redirectUri = "/")
 class ImportController {
 
-    def importService
+    def importService, bieAuthService
 
     /**
      * Load import index page.
@@ -269,6 +269,20 @@ class ImportController {
         }
         asJson ([success:true] )
 
+    }
+
+    def updateImages() {
+
+        def checkRequest = bieAuthService.checkApiKey(request.getHeader("Authorization"))
+
+        if (checkRequest.valid) {
+            // contain list of guids and images
+            List<Map> preferredImagesList = request.getJSON() //params.guidImageList
+            def updatedTaxa = importService.updateDocsWithPreferredImage(preferredImagesList)
+            asJson([success: true, updatedTaxa: updatedTaxa])
+        } else {
+            asJson([success: false, message: "Unauthorised access. Failed to updated Image in Bie" ])
+        }
     }
 
     def loadImages() {

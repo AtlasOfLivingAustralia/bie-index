@@ -39,6 +39,9 @@ imageMetaDataUrl = "http://images.ala.org.au/ws/image/"
 synonymCheckingEnabled = true
 synonymSourceAttribution = "National Species Lists"
 gazetteerLayerId = "2123"
+if (!security.apikey.serviceUrl) {
+    security.apikey.serviceUrl = 'https://auth.ala.org.au/apikey/ws/check?apikey='
+}
 wordPress {
     sitemapUrl = "http://www.ala.org.au/sitemap.xml"
     baseUrl = "http://www.ala.org.au/?page_id="
