@@ -215,7 +215,7 @@ class SearchService {
         [
             totalRecords: json.response.numFound,
             facetResults: formatFacets(json.facet_counts?.facet_fields ?: [:], requestedFacets),
-            results     : formatDocs(json.response.docs, json.highlighting),
+            results     : formatDocs(json.response.docs, json.highlighting, params),
             queryTitle  : queryTitle
         ]
     }
@@ -938,13 +938,13 @@ class SearchService {
      * @param highlighting
      * @return
      */
-    private List formatDocs(docs, highlighting) {
+    private List formatDocs(docs, highlighting, params) {
 
         def formatted = []
 
         // add occurrence counts
         if(grailsApplication.config.occurrenceCounts.enabled.asBoolean()){
-            docs = populateOccurrenceCounts(docs)
+            docs = populateOccurrenceCounts(docs, params)
         }
 
         docs.each {
@@ -1145,7 +1145,7 @@ class SearchService {
      *
      * @param docs
      */
-    private populateOccurrenceCounts(List docs) {
+    private populateOccurrenceCounts(List docs, requestParams) {
         List guids = []
         docs.each {
             if (it.idxtype == IndexDocType.TAXON.name() && it.guid) {
@@ -1159,6 +1159,12 @@ class SearchService {
                 Map params = [:]
                 params.put("guids", guids.join(","))
                 params.put("separator", ",")
+
+                //check for a biocache query context
+                if (requestParams.bqc){
+                    params.put("fq", requestParams.bqc)
+                }
+
                 Map results = doPostWithParams(url, params) // returns (JsonObject) Map with guid as key and count as value
                 Map guidsCountsMap = results.get("resp")?:[:]
                 docs.each {
