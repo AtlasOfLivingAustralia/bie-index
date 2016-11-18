@@ -17,6 +17,8 @@ class SearchService {
     def grailsApplication
     def conservationListsSource
 
+    def additionalResultFields = null
+
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.
      *
@@ -167,7 +169,7 @@ class SearchService {
         }
 
         String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?q=" + URLEncoder.encode(q, 'UTF-8') + additionalParams
-        log.debug "solrUlr = ${solrUlr}"
+        log.debug "SOLR URL = ${solrUlr}"
         def queryResponse = new URL(solrUlr).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -1000,6 +1002,12 @@ class SearchService {
                     doc.put("largeImageUrl", "${grailsApplication.config.imageLargeUrl}${it.image}")
                 }
 
+                if(getAdditionalResultFields()){
+                    getAdditionalResultFields().each { field ->
+                        doc.put(field, it."${field}")
+                    }
+                }
+
                 //add de-normalised fields
                 def map = extractClassification(it)
 
@@ -1201,5 +1209,18 @@ class SearchService {
         def json = js.parseText(queryResponse)
 
         json
+    }
+
+
+    def getAdditionalResultFields(){
+        if(additionalResultFields == null){
+            //initialise
+            def fields = grailsApplication.config.additionalResultFields.split(",")
+            additionalResultFields = []
+            fields.each {
+                additionalResultFields << it
+            }
+        }
+        additionalResultFields
     }
 }

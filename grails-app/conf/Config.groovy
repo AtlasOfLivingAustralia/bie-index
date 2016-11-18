@@ -58,7 +58,10 @@ vernacularListsUrl = this.class.getResource("/default-vernacular-lists.json").to
 imagesListsUrl = this.class.getResource("/default-image-lists.json").toString()
 
 nationalSpeciesDatasets = "" // "dr2699,dr2700,dr2702,dr2704,dr2703,dr3118"
+
 defaultDownloadFields = "guid,rank,scientificName,establishmentMeans,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
+
+additionalResultFields = ""
 
 //toggle for the population of occurrence counts
 occurrenceCounts.enabled = true

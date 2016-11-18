@@ -58,7 +58,7 @@ class ImportService {
             ALATerm.status, ALATerm.nameID
     ]
 
-    def indexService, searchService, bieAuthService
+    def indexService, searchService
 
     def grailsApplication
     def speciesGroupService
@@ -219,6 +219,9 @@ class ImportService {
     private def importLayer(layer) {
         log("Loading regions from layer " + layer.name)
 
+        JsonSlurper slurper = new JsonSlurper()
+        def keywords = slurper.parse(new URL(grailsApplication.config.localityKeywordsUrl))
+
         def tempFilePath = "/tmp/objects_${layer.id}.csv.gz"
         def url = grailsApplication.config.layersServicesUrl + "/objects/csv/cl" + layer.id
         def file = new File(tempFilePath).newOutputStream()
@@ -261,7 +264,16 @@ class ImportService {
                     }
 
                     doc["centroid"] = currentLine[4]
+
+
                     doc["distribution"] = "N/A"
+
+                    keywords.each {
+                        if(doc["description"].contains(it)){
+                            doc["distribution"] = it
+                        }
+                    }
+
                     batch << doc
 
                     if (batch.size() > 10000) {
@@ -1035,7 +1047,7 @@ class ImportService {
         } catch (Exception ex) {
             log("There was problem with the import: " + ex.getMessage())
             log("See server logs for more details.")
-            log.error(e.getMessage(), ex)
+            log.error(ex.getMessage(), ex)
         }
 
     }
@@ -1152,7 +1164,7 @@ class ImportService {
             if (synonym) {
                 doc["acceptedConceptID"] = acceptedNameUsageID
             } else {
-                // Filled out during denomalisation
+                // Filled out during denormalisation
                 doc['speciesGroup'] = []
                 doc['speciesSubgroup'] = []
             }
@@ -1202,6 +1214,7 @@ class ImportService {
             doc["nameID"] = nameID
             doc["language"] = language ?: defaultLanguage
             doc["source"] = source
+            doc["distribution"] = "N/A"
             def attribution = findAttribution(datasetID, attributionMap, datasetMap)
             if (attribution) {
                 doc["datasetName"] = attribution["datasetName"]
@@ -1616,7 +1629,7 @@ class ImportService {
                 if (!buffer.isEmpty())
                     indexService.indexBatch(buffer, online)
                 if (total > 0) {
-                    def percentage = Math.round(processed * 100 / total)
+                    def percentage = Math.round((processed / total) * 100 )
                     log("Cleared ${processed} taxa (${percentage}%)")
                 }
                 prevCursor = cursor
@@ -1713,6 +1726,7 @@ class ImportService {
                         update["idxtype"] = [set: doc.idxtype] // required field
                         update["guid"] = [set: doc.guid ] // required field
                         update["acceptedConceptName"] = [set: accepted.nameComplete ?: accepted.scientificName ]
+
                         buffer << update
                     }
                     processed++
@@ -1772,7 +1786,9 @@ class ImportService {
         }
         def commonNames = searchService.lookupVernacular(guid, !online)
         if (commonNames && !commonNames.isEmpty()) {
-            commonNames = commonNames.sort { n1, n2 -> n2.priority - n1.priority }
+            commonNames = commonNames.sort { n1, n2 ->
+                n2.priority - n1.priority
+            }
             update["commonName"] = [set: commonNames.collect { it.name }]
             update["commonNameExact"] = [set: commonNames.collect { it.name }]
             update["commonNameSingle"] = [set: commonNames.first().name]
@@ -1856,14 +1872,6 @@ class ImportService {
             idMap.put(entry.status, entry)
         }
         idMap
-    }
-
-    private def indexLists() {
-
-        // http://lists.ala.org.au/ws/speciesList?isAuthoritative=eq:true&max=100
-        //for each list
-        // download http://lists.ala.org.au/speciesListItem/downloadList/{0}
-        // read, and add to map
     }
 
     /**
