@@ -1029,6 +1029,15 @@ class SearchService {
                 if(it.centroid){
                     doc.put("centroid", it.centroid)
                 }
+
+                if(getAdditionalResultFields()){
+                    getAdditionalResultFields().each { field ->
+                        if(it."${field}") {
+                            doc.put(field, it."${field}")
+                        }
+                    }
+                }
+
                 formatted << doc
             }
         }
@@ -1207,10 +1216,8 @@ class SearchService {
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
-
         json
     }
-
 
     def getAdditionalResultFields(){
         if(additionalResultFields == null){
