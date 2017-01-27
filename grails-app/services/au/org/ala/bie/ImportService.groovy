@@ -945,52 +945,52 @@ class ImportService {
         return true
     }
 
-    private void commitVernacularNames(List buffer, Set updateTaxa) {
-        if (!buffer.isEmpty())
-            indexService.indexBatch(buffer)
-        buffer = []
-        updateTaxa.each {
-            def taxonDoc = searchService.lookupTaxon(it, true)
-            if (!taxonDoc)
-                return
-            def commonNames = searchService.lookupVernacular(it, true)
-            if (!commonNames || commonNames.isEmpty())
-                return
-            commonNames = commonNames.sort { n1, n2 -> n2.priority - n1.priority }
-            def doc = [:]
-            doc["id"] = taxonDoc.id // doc key
-            doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
-            doc["guid"] = ["set": taxonDoc.guid] // required field
-            doc["commonName"] = ["set": commonNames.collect { it.name } ]
-            doc["commonNameExact"] = ["set": commonNames.collect { it.name } ]
-            doc["commonNameSingle"] = ["set": commonNames.first().name ]
-            buffer << doc
-        }
-        if (!buffer.isEmpty())
-            indexService.indexBatch(buffer)
-    }
+//    private void commitVernacularNames(List buffer, Set updateTaxa) {
+//        if (!buffer.isEmpty())
+//            indexService.indexBatch(buffer)
+//        buffer = []
+//        updateTaxa.each {
+//            def taxonDoc = searchService.lookupTaxon(it, true)
+//            if (!taxonDoc)
+//                return
+//            def commonNames = searchService.lookupVernacular(it, true)
+//            if (!commonNames || commonNames.isEmpty())
+//                return
+//            commonNames = commonNames.sort { n1, n2 -> n2.priority - n1.priority }
+//            def doc = [:]
+//            doc["id"] = taxonDoc.id // doc key
+//            doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
+//            doc["guid"] = ["set": taxonDoc.guid] // required field
+//            doc["commonName"] = ["set": commonNames.collect { it.name } ]
+//            doc["commonNameExact"] = ["set": commonNames.collect { it.name } ]
+//            doc["commonNameSingle"] = ["set": commonNames.first().name ]
+//            buffer << doc
+//        }
+//        if (!buffer.isEmpty())
+//            indexService.indexBatch(buffer)
+//    }
 
-    private void commitIdentifiers(List buffer, Set updateTaxa) {
-        if (!buffer.isEmpty())
-            indexService.indexBatch(buffer)
-        buffer = []
-        updateTaxa.each {
-            def taxonDoc = searchService.lookupTaxon(it, true)
-            if (!taxonDoc)
-                return
-            def identifiers = searchService.lookupIdentifier(it, true)
-            if (!identifiers || identifiers.isEmpty())
-                return
-            def doc = [:]
-            doc["id"] = taxonDoc.id // doc key
-            doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
-            doc["guid"] = ["set": taxonDoc.guid] // required field
-            doc["additionalIdentifiers"] = ["set": identifiers.collect { it.guid } ]
-            buffer << doc
-        }
-        if (!buffer.isEmpty())
-            indexService.indexBatch(buffer)
-    }
+//    private void commitIdentifiers(List buffer, Set updateTaxa) {
+//        if (!buffer.isEmpty())
+//            indexService.indexBatch(buffer)
+//        buffer = []
+//        updateTaxa.each {
+//            def taxonDoc = searchService.lookupTaxon(it, true)
+//            if (!taxonDoc)
+//                return
+//            def identifiers = searchService.lookupIdentifier(it, true)
+//            if (!identifiers || identifiers.isEmpty())
+//                return
+//            def doc = [:]
+//            doc["id"] = taxonDoc.id // doc key
+//            doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
+//            doc["guid"] = ["set": taxonDoc.guid] // required field
+//            doc["additionalIdentifiers"] = ["set": identifiers.collect { it.guid } ]
+//            buffer << doc
+//        }
+//        if (!buffer.isEmpty())
+//            indexService.indexBatch(buffer)
+//    }
 
     def clearTaxaIndex() {
         log("Deleting existing taxon entries in index...")
@@ -1789,12 +1789,18 @@ class ImportService {
             commonNames = commonNames.sort { n1, n2 ->
                 n2.priority - n1.priority
             }
-            update["commonName"] = [set: commonNames.collect { it.name }]
-            update["commonNameExact"] = [set: commonNames.collect { it.name }]
-            update["commonNameSingle"] = [set: commonNames.first().name]
+
+            //only index english names
+            commonNames = commonNames.findAll { it.language == 'en' }
+
+            if(commonNames) {
+                update["commonName"] = [set: commonNames.collect { it.name }]
+                update["commonNameExact"] = [set: commonNames.collect { it.name }]
+                update["commonNameSingle"] = [set: commonNames.first().name]
+            }
         }
         def identifiers = searchService.lookupIdentifier(guid, !online)
-        if (identifiers && !identifiers.isEmpty()) {
+        if (identifiers) {
             update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
         }
 
@@ -1816,7 +1822,7 @@ class ImportService {
         }
         def additionalDistribtion = distribution.findAll { !currentDistribution.contains(it) }
         if (!additionalDistribtion.isEmpty())
-            buffer['distrubution'] = [add: additionalDistribtion]
+            update['distribution'] = [add: additionalDistribtion]
         buffer << update
 
         if (buffer.size() >= bufferLimit) {
