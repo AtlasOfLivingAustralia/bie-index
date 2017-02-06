@@ -34,6 +34,9 @@ grails.project.dependency.resolution = {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes
         compile 'com.github.davidmoten:rxjava-file:0.4'
         compile 'io.reactivex:rxgroovy:1.0.3'
+        compile ('org.jasig.cas.client:cas-client-core:3.3.3') {
+            excludes([group: 'javax.servlet', name: 'servlet-api'])
+        }
 
         runtime 'net.sf.opencsv:opencsv:2.3'
         runtime "org.apache.solr:solr-solrj:5.4.0"
