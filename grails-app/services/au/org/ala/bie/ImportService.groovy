@@ -16,6 +16,7 @@ package au.org.ala.bie
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.indexing.RankedName
+import au.org.ala.bie.util.Encoder
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
 import grails.converters.JSON
@@ -164,7 +165,7 @@ class ImportService {
         def js = new JsonSlurper()
         def url = grailsApplication.config.layersServicesUrl + "/layers"
         log("Requesting layer list from : " + url)
-        def layers = js.parseText(new URL(url).getText("UTF-8"))
+        def layers = js.parseText(new URL(Encoder.encodeUrl(url)).getText("UTF-8"))
         def batch = []
         indexService.deleteFromIndex(IndexDocType.LAYER)
         layers.each { layer ->
@@ -189,7 +190,7 @@ class ImportService {
             def metadataUrl = grailsApplication.config.layersServicesUrl + "/layer/" + grailsApplication.config.gazetteerLayerId + "?enabledOnly=false"
             log("Getting metadata for layer: ${metadataUrl}")
             def js = new JsonSlurper()
-            def layer = js.parseText(new URL(metadataUrl).getText("UTF-8"))
+            def layer = js.parseText(new URL(Encoder.encodeUrl(metadataUrl)).getText("UTF-8"))
             log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
             importLayer(layer)
             log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
@@ -200,7 +201,7 @@ class ImportService {
 
     def importRegions() {
         def js = new JsonSlurper()
-        def layers = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/layers").getText("UTF-8"))
+        def layers = js.parseText(new URL(Encoder.encodeUrl(grailsApplication.config.layersServicesUrl + "/layers")).getText("UTF-8"))
         indexService.deleteFromIndex(IndexDocType.REGION)
         layers.each { layer ->
             if (layer.type == "Contextual") {
@@ -220,12 +221,12 @@ class ImportService {
         log("Loading regions from layer " + layer.name)
 
         JsonSlurper slurper = new JsonSlurper()
-        def keywords = slurper.parse(new URL(grailsApplication.config.localityKeywordsUrl))
+        def keywords = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.localityKeywordsUrl)))
 
         def tempFilePath = "/tmp/objects_${layer.id}.csv.gz"
         def url = grailsApplication.config.layersServicesUrl + "/objects/csv/cl" + layer.id
         def file = new File(tempFilePath).newOutputStream()
-        file << new URL(url).openStream()
+        file << new URL(Encoder.encodeUrl(url)).openStream()
         file.flush()
         file.close()
 
@@ -338,13 +339,13 @@ class ImportService {
         ].each { entityType, indexDocType ->
             def js = new JsonSlurper()
             def entities = []
-            def drLists = js.parseText(new URL(grailsApplication.config.collectoryServicesUrl + "/${entityType}").getText("UTF-8"))
+            def drLists = js.parseText(new URL(Encoder.encodeUrl(grailsApplication.config.collectoryServicesUrl + "/${entityType}")).getText("UTF-8"))
             log("About to import ${drLists.size()} ${entityType}")
             log("Clearing existing: ${entityType}")
             indexService.deleteFromIndex(indexDocType)
 
             drLists.each {
-                def details = js.parseText(new URL(it.uri).getText("UTF-8"))
+                def details = js.parseText(new URL(Encoder.encodeUrl(it.uri)).getText("UTF-8"))
                 def doc = [:]
                 doc["id"] = it.uri
                 doc["datasetID"] = details.uid
@@ -545,7 +546,7 @@ class ImportService {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
         JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(grailsApplication.config.vernacularListsUrl))
+        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.vernacularListsUrl)))
         def lists = config.lists
         Integer listNum = 0
 
@@ -757,7 +758,7 @@ class ImportService {
                 // log.debug "results = ${json?.resp?.response?.numFound}"
                 def url = grailsApplication.config.biocache.solr.url + "/select?q=${query}&fq=${filterQuery}&" +
                         "wt=json&indent=true&rows=0&facet=true&facet.field=taxon_concept_lsid&facet.mincount=1"
-                def queryResponse = new URL(url).getText("UTF-8")
+                def queryResponse = new URL(Encoder.encodeUrl(url)).getText("UTF-8")
                 JSONObject jsonObj = JSON.parse(queryResponse)
 
                 if (jsonObj.containsKey("facet_counts")) {
@@ -1398,7 +1399,7 @@ class ImportService {
         def prevCursor = ""
         def cursor = "*"
         JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(grailsApplication.config.imageListsUrl))
+        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.imageListsUrl)))
         def imageMap = collectImageLists(config.lists)
         def rankMap = config.ranks.collectEntries { r -> [(r.rank): r] }
         def boosts = config.boosts.collect({"bq=" + it}).join("&")
@@ -1951,7 +1952,7 @@ class ImportService {
      */
     private String getStringForUrl(String url) throws IOException {
         String output = ""
-        def inStm = new URL(url).openStream()
+        def inStm = new URL(Encoder.encodeUrl(url)).openStream()
         try {
             output = IOUtils.toString(inStm)
         } finally {

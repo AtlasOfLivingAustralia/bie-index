@@ -78,6 +78,7 @@ solr {
 }
 skin.layout = "main"
 skin.orgNameLong = "Atlas of Living Australia"
+useLegacyAuto = false
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)
 grails.mime.use.accept.header = true
