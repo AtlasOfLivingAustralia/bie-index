@@ -19,7 +19,7 @@
 				<tr>
 					<td>Taxon details - simple</td>
                     <td>GET JSON</td>
-					<td><bie:createWsLink>${g.createLink(controller: 'search', action: 'shortProfile')}/{GUID}</bie:createWsLink></td>
+					<td><bie:createWsLink>${g.createLink(uri:'/species/shortProfile')}/{GUID}</bie:createWsLink></td>
 				</tr>
 				<tr>
 					<td>Search</td>
@@ -39,7 +39,7 @@
 				<tr>
 					<td>Child concepts</td>
                     <td>GET JSON</td>
-					<td><bie:createWsLink>${g.createLink(controller: 'search', action: 'childConcepts')}/{GUID}</bie:createWsLink></td>
+					<td><bie:createWsLink>${g.createLink(uri: '/childConcepts')}/{GUID}</bie:createWsLink></td>
 				</tr>
 				<tr>
 					<td>Image search</td>
