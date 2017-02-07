@@ -64,11 +64,12 @@ class SearchService {
         def js = new JsonSlurper()
 
         def json = js.parseText(queryResponse)
+        log.debug "imageSearch response json = ${json}"
 
         [
                 totalRecords:json.response.numFound,
                 facetResults: formatFacets(json.facet_counts?.facet_fields?:[:]),
-                results: formatDocs(json.response.docs, null)
+                results: formatDocs(json.response.docs, null, null)
         ]
     }
     /**
@@ -620,6 +621,7 @@ class SearchService {
     }
 
     def getShortProfile(taxonID){
+        log.debug "getShortProfile taxonID = ${taxonID}"
         def taxon = lookupTaxon(taxonID)
         if(!taxon){
             return null
