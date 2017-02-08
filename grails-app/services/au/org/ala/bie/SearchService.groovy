@@ -42,7 +42,7 @@ class SearchService {
             query = "q=(guid:\"${tid}\"+OR+rkid_${taxon.rank.toLowerCase().replaceAll('\\s', '_')}:\"${tid}\")"
         }
 
-        def additionalParams = "&wt=json&fq=rankID:%5B7000%20TO%20*%5D&fq=imageAvailable:true"
+        def additionalParams = "&wt=json&fq=rankID:[7000 TO *]&fq=imageAvailable:true"
 
         if(start){
             additionalParams = additionalParams + "&start=" + start
@@ -130,7 +130,7 @@ class SearchService {
         additionalParams += "&start=${params.start?:0}&rows=${params.rows?:params.pageSize?:10}"
 
         if (params.sort) {
-            additionalParams += "&sort=${params.sort}%20${params.dir?:'asc'}" // sort dir example "&sort=name asc"
+            additionalParams += "&sort=${params.sort} ${params.dir?:'asc'}" // sort dir example "&sort=name asc"
         }
 
         if(fqs){
