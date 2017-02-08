@@ -544,7 +544,7 @@ class SearchService {
      * @return Map with 4 fields
      */
     def getProfileForName(String name){
-        String qf = "" // "qf=scientificName^200+commonName^50+exact_text^100"
+        String qf = "qf=scientificName^200+commonName^50+exact_text^100"
         String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
         String additionalParams = "&defType=edismax&${qf}&${bq}&wt=json".toString()
         def queryString = "q=" + "\"" + name + "\"" + "&fq=idxtype:" + IndexDocType.TAXON.name()
@@ -571,7 +571,7 @@ class SearchService {
     }
 
     Map getLongProfileForName(String name){
-        String qf = "" // "qf=scientificName^200+commonName^50+exact_text^100+doc_name"
+        String qf = "qf=scientificName^200+commonName^50+exact_text^100+doc_name"
         String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
         def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
         def queryString = "&q=" + "\"" + name + "\"" + "&fq=idxtype:" + IndexDocType.TAXON.name()
