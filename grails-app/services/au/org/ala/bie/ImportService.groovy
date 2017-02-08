@@ -219,9 +219,12 @@ class ImportService {
      */
     private def importLayer(layer) {
         log("Loading regions from layer " + layer.name)
+        def keywords = []
 
-        JsonSlurper slurper = new JsonSlurper()
-        def keywords = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.localityKeywordsUrl)))
+        if (grailsApplication.config.localityKeywordsUrl) {
+            JsonSlurper slurper = new JsonSlurper()
+            keywords = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.localityKeywordsUrl)))
+        }
 
         def tempFilePath = "/tmp/objects_${layer.id}.csv.gz"
         def url = grailsApplication.config.layersServicesUrl + "/objects/csv/cl" + layer.id
