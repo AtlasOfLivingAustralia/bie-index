@@ -56,6 +56,8 @@ conservationListsUrl = this.class.getResource("/default-conservation-lists.json"
 vernacularListsUrl = this.class.getResource("/default-vernacular-lists.json").toString()
 // Location of image lists (null for default)
 imagesListsUrl = this.class.getResource("/default-image-lists.json").toString()
+// Location of locality keywords (null for default)
+localityKeywordsUrl = this.class.getResource("/default-locality-keywords.json").toString()
 
 nationalSpeciesDatasets = "" // "dr2699,dr2700,dr2702,dr2704,dr2703,dr3118"
 
