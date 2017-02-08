@@ -16,6 +16,7 @@ package au.org.ala.bie
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.indexing.RankedName
+import au.org.ala.bie.util.Encoder
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
 import grails.converters.JSON
@@ -164,7 +165,7 @@ class ImportService {
         def js = new JsonSlurper()
         def url = grailsApplication.config.layersServicesUrl + "/layers"
         log("Requesting layer list from : " + url)
-        def layers = js.parseText(new URL(url).getText("UTF-8"))
+        def layers = js.parseText(new URL(Encoder.encodeUrl(url)).getText("UTF-8"))
         def batch = []
         indexService.deleteFromIndex(IndexDocType.LAYER)
         layers.each { layer ->
@@ -189,7 +190,7 @@ class ImportService {
             def metadataUrl = grailsApplication.config.layersServicesUrl + "/layer/" + grailsApplication.config.gazetteerLayerId + "?enabledOnly=false"
             log("Getting metadata for layer: ${metadataUrl}")
             def js = new JsonSlurper()
-            def layer = js.parseText(new URL(metadataUrl).getText("UTF-8"))
+            def layer = js.parseText(new URL(Encoder.encodeUrl(metadataUrl)).getText("UTF-8"))
             log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
             importLayer(layer)
             log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
@@ -200,7 +201,7 @@ class ImportService {
 
     def importRegions() {
         def js = new JsonSlurper()
-        def layers = js.parseText(new URL(grailsApplication.config.layersServicesUrl + "/layers").getText("UTF-8"))
+        def layers = js.parseText(new URL(Encoder.encodeUrl(grailsApplication.config.layersServicesUrl + "/layers")).getText("UTF-8"))
         indexService.deleteFromIndex(IndexDocType.REGION)
         layers.each { layer ->
             if (layer.type == "Contextual") {
@@ -220,12 +221,12 @@ class ImportService {
         log("Loading regions from layer " + layer.name)
 
         JsonSlurper slurper = new JsonSlurper()
-        def keywords = slurper.parse(new URL(grailsApplication.config.localityKeywordsUrl))
+        def keywords = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.localityKeywordsUrl)))
 
         def tempFilePath = "/tmp/objects_${layer.id}.csv.gz"
         def url = grailsApplication.config.layersServicesUrl + "/objects/csv/cl" + layer.id
         def file = new File(tempFilePath).newOutputStream()
-        file << new URL(url).openStream()
+        file << new URL(Encoder.encodeUrl(url)).openStream()
         file.flush()
         file.close()
 
@@ -338,13 +339,13 @@ class ImportService {
         ].each { entityType, indexDocType ->
             def js = new JsonSlurper()
             def entities = []
-            def drLists = js.parseText(new URL(grailsApplication.config.collectoryServicesUrl + "/${entityType}").getText("UTF-8"))
+            def drLists = js.parseText(new URL(Encoder.encodeUrl(grailsApplication.config.collectoryServicesUrl + "/${entityType}")).getText("UTF-8"))
             log("About to import ${drLists.size()} ${entityType}")
             log("Clearing existing: ${entityType}")
             indexService.deleteFromIndex(indexDocType)
 
             drLists.each {
-                def details = js.parseText(new URL(it.uri).getText("UTF-8"))
+                def details = js.parseText(new URL(Encoder.encodeUrl(it.uri)).getText("UTF-8"))
                 def doc = [:]
                 doc["id"] = it.uri
                 doc["datasetID"] = details.uid
@@ -545,7 +546,7 @@ class ImportService {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
         JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(grailsApplication.config.vernacularListsUrl))
+        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.vernacularListsUrl)))
         def lists = config.lists
         Integer listNum = 0
 
@@ -757,7 +758,7 @@ class ImportService {
                 // log.debug "results = ${json?.resp?.response?.numFound}"
                 def url = grailsApplication.config.biocache.solr.url + "/select?q=${query}&fq=${filterQuery}&" +
                         "wt=json&indent=true&rows=0&facet=true&facet.field=taxon_concept_lsid&facet.mincount=1"
-                def queryResponse = new URL(url).getText("UTF-8")
+                def queryResponse = new URL(Encoder.encodeUrl(url)).getText("UTF-8")
                 JSONObject jsonObj = JSON.parse(queryResponse)
 
                 if (jsonObj.containsKey("facet_counts")) {
@@ -1335,7 +1336,7 @@ class ImportService {
             while (true) {
                 def startTime = System.currentTimeMillis()
                 def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&start=" + (pageSize * page) + "&rows=" + pageSize
-                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
                 def json = js.parseText(queryResponse)
                 int total = json.response.numFound
                 def docs = json.response.docs
@@ -1347,9 +1348,8 @@ class ImportService {
                     def name = doc.scientificName ?: doc.name
                     try {
                         if (name) {
-                            def encName = URLEncoder.encode(name, "UTF-8")
-                            def nameSearchUrl = baseUrl + "/select?wt=json&q=name:\"" + encName + "\"+OR+scientificName:\"" + encName + "\"&fq=" + typeQuery + "&rows=0"
-                            def nameResponse = nameSearchUrl.toURL().getText("UTF-8")
+                            String nameSearchUrl = baseUrl + "/select?wt=json&q=name:\"" + name + "\"+OR+scientificName:\"" + name + "\"&fq=" + typeQuery + "&rows=0"
+                            def nameResponse = Encoder.encodeUrl(nameSearchUrl).toURL().getText("UTF-8")
                             def nameJson = js.parseText(nameResponse)
                             int found = nameJson.response.numFound
                             if (found == 1) {
@@ -1398,7 +1398,7 @@ class ImportService {
         def prevCursor = ""
         def cursor = "*"
         JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(grailsApplication.config.imageListsUrl))
+        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.imageListsUrl)))
         def imageMap = collectImageLists(config.lists)
         def rankMap = config.ranks.collectEntries { r -> [(r.rank): r] }
         def boosts = config.boosts.collect({"bq=" + it}).join("&")
@@ -1406,7 +1406,7 @@ class ImportService {
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
                 query = query ? query + "+OR+" : ""
-                query = query + "${field}:\"${URLEncoder.encode(value, "UTF-8")}\"^${boost}"
+                query = query + "${field}:\"${value}\"^${boost}"
             }
             query
         }
@@ -1417,7 +1417,7 @@ class ImportService {
             while (prevCursor != cursor) {
                 def startTime = System.currentTimeMillis()
                 def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&cursorMark=" + cursor + "&sort=id+asc&rows=" + pageSize
-                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
                 def json = js.parseText(queryResponse)
                 int total = json.response.numFound
                 def docs = json.response.docs
@@ -1440,7 +1440,7 @@ class ImportService {
                                 query = addImageSearch(query, rank.idField, taxonID, 20)
                                 if (query) {
                                     def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=5&wt=json&fl=${IMAGE_FIELDS}"
-                                    def taxonResponse = taxonSearchUrl.toURL().getText("UTF-8")
+                                    def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonJson = js.parseText(taxonResponse)
                                     if (taxonJson.response.numFound > 0) {
                                         // Case does not necessarily match between bie and biocache
@@ -1604,7 +1604,7 @@ class ImportService {
             startTime = System.currentTimeMillis()
             while (prevCursor != cursor) {
                 def solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
                 def json = js.parseText(queryResponse)
                 int total = json.response.numFound
                 def docs = json.response.docs
@@ -1648,7 +1648,7 @@ class ImportService {
                 startTime = System.currentTimeMillis()
                 def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+-acceptedConceptID:*+AND+-parentGuid:*"
                 def solrServerUrl = baseUrl + "/select?wt=json&q=${typeQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
                 def json = js.parseText(queryResponse)
                 int total = json.response.numFound
                 def docs = json.response.docs
@@ -1680,7 +1680,7 @@ class ImportService {
                 startTime = System.currentTimeMillis()
                 def danglingQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND++-acceptedConceptID:*+AND+-denormalised_s:yes"
                 def solrServerUrl = baseUrl + "/select?wt=json&q=${danglingQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
                 def json = js.parseText(queryResponse)
                 int total = json.response.numFound
                 def docs = json.response.docs
@@ -1712,7 +1712,7 @@ class ImportService {
                 startTime = System.currentTimeMillis()
                 def synonymQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND+acceptedConceptID:*"
                 def solrServerUrl = baseUrl + "/select?wt=json&q=${synonymQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
                 def json = js.parseText(queryResponse)
                 int total = json.response.numFound
                 def docs = json.response.docs
@@ -1807,10 +1807,10 @@ class ImportService {
         def prevCursor = ""
         def cursor = "*"
         while (cursor != prevCursor) {
-            def encGuid = URLEncoder.encode(doc.guid, "UTF-8")
+            def encGuid = doc.guid
             def parentQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND+taxonomicStatus:accepted+AND+parentGuid:\"${encGuid}\""
             def solrServerUrl = baseUrl + "/select?wt=json&q=${parentQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+            def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
             def json = js.parseText(queryResponse)
             int total = json.response.numFound
             def docs = json.response.docs
@@ -1951,7 +1951,7 @@ class ImportService {
      */
     private String getStringForUrl(String url) throws IOException {
         String output = ""
-        def inStm = new URL(url).openStream()
+        def inStm = new URL(Encoder.encodeUrl(url)).openStream()
         try {
             output = IOUtils.toString(inStm)
         } finally {

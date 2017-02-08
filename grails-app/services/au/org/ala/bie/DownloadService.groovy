@@ -13,6 +13,8 @@
 
 package au.org.ala.bie
 
+import au.org.ala.bie.util.Encoder
+
 class DownloadService {
 
     def grailsApplication
@@ -43,7 +45,7 @@ class DownloadService {
             queryUrl  = queryUrl + "&q=*:*"
         }
 
-        def connection = new URL(queryUrl).openConnection()
+        def connection = new URL(Encoder.encodeUrl(queryUrl)).openConnection()
         def input = connection.getInputStream()
         def headers = []
 
