@@ -15,6 +15,13 @@ class IndexService {
     def offlineSolrClient
     def updatingLiveSolrClient
 
+    def deleteFromIndexByQuery(query){
+        log.info("Deleting from index: " + query + "....")
+        offlineSolrClient.deleteByQuery(query)
+        offlineSolrClient.commit()
+        log.info("Deleted from index: " + query)
+    }
+
     /**
      * Delete the supplied index doc type from the index.
      * @param docType

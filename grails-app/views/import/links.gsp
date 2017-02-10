@@ -50,6 +50,9 @@
         <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load Images</button>
     </div>
     <div>
+        <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary">Remove orphaned synonyms</button>
+    </div>
+    <div>
         <input type="checkbox" id="use-online" name="use-online"/> Use online index
     </div>
 
@@ -68,6 +71,19 @@
             $.get("${createLink(controller:'import', action:'denormaliseTaxa')}?online=" + $('#use-online').is(':checked'), function( data ) {
               if(data.success){
                 $('.import-info p').html('Build successfully started....')
+                $('#start-import').prop('disabled', true);
+              } else {
+                $('.import-info p').html('Build failed. Check file path...')
+              }
+              $('.import-info').removeClass('hide');
+              $('.progress').removeClass('hide');
+            });
+        }
+
+        function removeDanglingSynonyms(){
+            $.get("${createLink(controller:'import', action:'deleteDanglingSynonyms')}?online=" + $('#use-online').is(':checked'), function( data ) {
+              if(data.success){
+                $('.import-info p').html('Delete successfully started....')
                 $('#start-import').prop('disabled', true);
               } else {
                 $('.import-info p').html('Build failed. Check file path...')

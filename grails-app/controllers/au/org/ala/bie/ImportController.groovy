@@ -103,6 +103,10 @@ class ImportController {
         }
     }
 
+    def deleteDanglingSynonyms(){
+        importService.clearDanglingSynonyms()
+    }
+
     /**
      * Import information from the collectory into the main index.
      *

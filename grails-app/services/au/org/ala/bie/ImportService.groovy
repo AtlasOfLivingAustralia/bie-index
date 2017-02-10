@@ -404,7 +404,7 @@ class ImportService {
 
         // slurp and build each SOLR doc (add to buffer)
         docUrls.each { pageUrl ->
-            log.debug "indexing url: ${pageUrl}"
+            log "indexing url: ${pageUrl}"
             try {
                 // Crawl and extract text from WP pages
                 Document document = Jsoup.connect(pageUrl + contentOnlyParams).get();
@@ -446,7 +446,7 @@ class ImportService {
 
                 documentCount++;
                 // create SOLR doc
-                log.debug(documentCount + ". Indexing WP page - id: " + id + " | title: " + title + " | text: " + StringUtils.substring(bodyText, 0, 100) + "... ");
+                log(documentCount + ". Indexing WP page - id: " + id + " | title: " + title + " | text: " + StringUtils.substring(bodyText, 0, 100) + "... ");
                 def doc = [:]
                 doc["idxtype"] = IndexDocType.WORDPRESS.name()
 
@@ -749,7 +749,7 @@ class ImportService {
         (0..totalPages).each { index ->
             int start = index * batchSize
             int end = (start + batchSize < guids.size()) ? start + batchSize - 1 : guids.size()
-            log.debug "paging biocache search - ${start} to ${end}"
+            log "paging biocache search - ${start} to ${end}"
             def guidSubset = guids.subList(start,end)
             def guidParamList = guidSubset.collect { String guid -> guid.encodeAsURL() } // URL encode guids
             def query = "taxon_concept_lsid:\"" + guidParamList.join("\"+OR+taxon_concept_lsid:\"") + "\""
@@ -949,52 +949,10 @@ class ImportService {
         return true
     }
 
-//    private void commitVernacularNames(List buffer, Set updateTaxa) {
-//        if (!buffer.isEmpty())
-//            indexService.indexBatch(buffer)
-//        buffer = []
-//        updateTaxa.each {
-//            def taxonDoc = searchService.lookupTaxon(it, true)
-//            if (!taxonDoc)
-//                return
-//            def commonNames = searchService.lookupVernacular(it, true)
-//            if (!commonNames || commonNames.isEmpty())
-//                return
-//            commonNames = commonNames.sort { n1, n2 -> n2.priority - n1.priority }
-//            def doc = [:]
-//            doc["id"] = taxonDoc.id // doc key
-//            doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
-//            doc["guid"] = ["set": taxonDoc.guid] // required field
-//            doc["commonName"] = ["set": commonNames.collect { it.name } ]
-//            doc["commonNameExact"] = ["set": commonNames.collect { it.name } ]
-//            doc["commonNameSingle"] = ["set": commonNames.first().name ]
-//            buffer << doc
-//        }
-//        if (!buffer.isEmpty())
-//            indexService.indexBatch(buffer)
-//    }
-
-//    private void commitIdentifiers(List buffer, Set updateTaxa) {
-//        if (!buffer.isEmpty())
-//            indexService.indexBatch(buffer)
-//        buffer = []
-//        updateTaxa.each {
-//            def taxonDoc = searchService.lookupTaxon(it, true)
-//            if (!taxonDoc)
-//                return
-//            def identifiers = searchService.lookupIdentifier(it, true)
-//            if (!identifiers || identifiers.isEmpty())
-//                return
-//            def doc = [:]
-//            doc["id"] = taxonDoc.id // doc key
-//            doc["idxtype"] = ["set": taxonDoc.idxtype] // required field
-//            doc["guid"] = ["set": taxonDoc.guid] // required field
-//            doc["additionalIdentifiers"] = ["set": identifiers.collect { it.guid } ]
-//            buffer << doc
-//        }
-//        if (!buffer.isEmpty())
-//            indexService.indexBatch(buffer)
-//    }
+    def clearDanglingSynonyms(){
+        log("Import finished.")
+        indexService.deleteFromIndexByQuery("taxonomicStatus:synonym AND -acceptedConceptName:*")
+    }
 
     def clearTaxaIndex() {
         log("Deleting existing taxon entries in index...")
@@ -1191,7 +1149,7 @@ class ImportService {
     def importVernacularDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName) throws Exception {
         if (archiveFile.rowType != GbifTerm.VernacularName)
             throw new IllegalArgumentException("Vernacular import only works for files of type " + GbifTerm.VernacularName + " got " + archiveFile.rowType)
-        log("Importing verncaular names")
+        log("Importing vernacular names")
         def statusMap = vernacularNameStatus()
         def defaultStatus = statusMap.get("common")
         String defaultLanguage = grailsApplication.config.commonNameDefaultLanguage
@@ -1398,10 +1356,11 @@ class ImportService {
         def baseUrl = online ? grailsApplication.config.indexLiveBaseUrl : grailsApplication.config.indexOfflineBaseUrl
         def biocacheSolrUrl = grailsApplication.config.biocache.solr.url
         def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+taxonomicStatus:accepted"
+//        def typeQuery = "guid:NHMSYS0000080188"
         def prevCursor = ""
         def cursor = "*"
         JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.imageListsUrl)))
+        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.imagesListsUrl)))
         def imageMap = collectImageLists(config.lists)
         def rankMap = config.ranks.collectEntries { r -> [(r.rank): r] }
         def boosts = config.boosts.collect({"bq=" + it}).join("&")
@@ -1606,6 +1565,7 @@ class ImportService {
         try {
             startTime = System.currentTimeMillis()
             while (prevCursor != cursor) {
+                //def solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
                 def solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
                 def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
                 def json = js.parseText(queryResponse)
@@ -1778,7 +1738,7 @@ class ImportService {
             def rn = new RankedName(name: scientificName.toLowerCase(), rank: normalisedRank)
             def speciesGroup = speciesGroupMapping[rn]
             if (speciesGroup) {
-                log.debug("Adding group ${speciesGroup.group} and subgroup ${speciesGroup.subGroup} to $scientificName")
+                log("Adding group ${speciesGroup.group} and subgroup ${speciesGroup.subGroup} to $scientificName")
                 speciesGroups = speciesGroups.clone()
                 speciesGroups << speciesGroup.group
                 speciesSubGroups = speciesSubGroups.clone()
