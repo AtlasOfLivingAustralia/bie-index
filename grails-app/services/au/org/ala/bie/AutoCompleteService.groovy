@@ -122,6 +122,10 @@ class AutoCompleteService {
         autoDto.guid = doc.guid
         autoDto.name = doc.scientificName
 
+        if(doc.acceptedConceptID){
+            autoDto.guid = doc.acceptedConceptID
+        }
+
         if(doc.commonName){
             autoDto.commonName =  doc.commonName.first()
         }
