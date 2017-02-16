@@ -33,7 +33,6 @@ class Encoder {
     static String encodeUrl(String inputUrlStr) {
         URL url = new URL(inputUrlStr)
         URI uri = new URI(url.getProtocol(), url.getUserInfo(), url.getHost(), url.getPort(), url.getPath(), url.getQuery(), url.getRef())
-        log.debug "encodeUrl query = ${URLDecoder.decode(url.getQuery(),"UTF-8")} || ${uri.getQuery()}"
         log.debug "encodeUrl uri = ${uri.toASCIIString()}"
         uri.toASCIIString()
     }

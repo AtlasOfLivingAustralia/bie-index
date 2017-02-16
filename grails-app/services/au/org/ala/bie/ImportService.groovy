@@ -1356,14 +1356,15 @@ class ImportService {
         def baseUrl = online ? grailsApplication.config.indexLiveBaseUrl : grailsApplication.config.indexOfflineBaseUrl
         def biocacheSolrUrl = grailsApplication.config.biocache.solr.url
         def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+taxonomicStatus:accepted"
-//        def typeQuery = "guid:NHMSYS0000080188"
         def prevCursor = ""
         def cursor = "*"
         JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.imagesListsUrl)))
-        def imageMap = collectImageLists(config.lists)
-        def rankMap = config.ranks.collectEntries { r -> [(r.rank): r] }
-        def boosts = config.boosts.collect({"bq=" + it}).join("&")
+        def listConfig = slurper.parse(new URL(grailsApplication.config.imagesListsUrl))
+        def imageMap = collectImageLists(listConfig.lists)
+        def rankMap = listConfig.ranks.collectEntries { r -> [(r.rank): r] }
+        def boosts = listConfig.boosts.collect({"bq=" + it}).join("&")
+        def imageFields = listConfig.imageFields?:IMAGE_FIELDS
+        log.debug "listConfig = ${listConfig} || imageFields = ${listConfig.imageFields}"
         def lastImage = [imageId: "none", taxonID: "none", name: "none"]
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
@@ -1401,7 +1402,8 @@ class ImportService {
                                 query = addImageSearch(query, rank.nameField, name, 50)
                                 query = addImageSearch(query, rank.idField, taxonID, 20)
                                 if (query) {
-                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=5&wt=json&fl=${IMAGE_FIELDS}"
+                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=5&wt=json&fl=${imageFields}"
+                                    //def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonJson = js.parseText(taxonResponse)
                                     if (taxonJson.response.numFound > 0) {
