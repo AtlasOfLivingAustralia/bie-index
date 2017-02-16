@@ -12,12 +12,16 @@
  */
 package au.org.ala.bie.util
 
+import groovy.util.logging.Log4j
+import org.springframework.web.util.UriUtils
+
 /**
  * Utility class to encode URLs
  * taken from http://stackoverflow.com/a/10786112/249327
  *
  * @author "Nick dos Remedios <Nick.dosRemedios@csiro.au>"
  */
+@Log4j
 class Encoder {
     /**
      * Encode params so Tomcat security "improvements" don't reject SOLR URL
@@ -29,6 +33,8 @@ class Encoder {
     static String encodeUrl(String inputUrlStr) {
         URL url = new URL(inputUrlStr)
         URI uri = new URI(url.getProtocol(), url.getUserInfo(), url.getHost(), url.getPort(), url.getPath(), url.getQuery(), url.getRef())
+        log.debug "encodeUrl query = ${URLDecoder.decode(url.getQuery(),"UTF-8")} || ${uri.getQuery()}"
+        log.debug "encodeUrl uri = ${uri.toASCIIString()}"
         uri.toASCIIString()
     }
 }
