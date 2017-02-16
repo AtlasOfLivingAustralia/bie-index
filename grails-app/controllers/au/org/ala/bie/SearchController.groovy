@@ -170,7 +170,7 @@ class SearchController {
         response.setHeader("Pragma", "must-revalidate");
         response.setHeader("Content-Disposition", "attachment;filename=${params.file?:'species.csv'}");
         response.setContentType("text/csv");
-        downloadService.download(request.queryString, params, response.outputStream, request.locale)
+        downloadService.download(params, response.outputStream, request.locale)
     }
 
     /**

@@ -23,27 +23,28 @@ class DownloadService {
     /**
      * Generate CSV output for a search query
      *
-     * @param queryString
-     * @param params
+     * @param params - only q and fq are read for this service
      * @param outputStream
      * @param locale
      * @return
      */
-    def download(queryString, params, OutputStream outputStream, Locale locale){
-
+    def download(params, OutputStream outputStream, Locale locale){
+        def q = params.q ?: "*:*"
+        def fq = ""
         def fields = grailsApplication.config.defaultDownloadFields?:"guid,rank,scientificName,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
 
         if (params.fields) {
             fields = params.fields
         }
 
-        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=csv&defType=edismax&fl=" +
-                fields + "&csv.header=false&rows=" + Integer.MAX_VALUE +
-                "&" + queryString
-
-        if(!params.q){
-            queryUrl  = queryUrl + "&q=*:*"
+        if (params.fq) {
+            String fqs = params.list("fq").join("&fq=")
+            fq = "&fq=${fqs}"
         }
+
+        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=csv&defType=edismax&fl=" +
+                fields + "&csv.header=false&rows=" + Integer.MAX_VALUE +
+                "&q=${q}${fq}"
 
         def connection = new URL(Encoder.encodeUrl(queryUrl)).openConnection()
         def input = connection.getInputStream()
