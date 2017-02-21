@@ -1486,6 +1486,12 @@ class ImportService {
         return imageMap
     }
 
+    /**
+     * Updates preferred image ID via input list of (map of) GUIDs and image IDs
+     *
+     * @param preferredImagesList
+     * @return
+     */
     def updateDocsWithPreferredImage(List<Map> preferredImagesList){
 
         List<String> guidList = []
@@ -1538,6 +1544,78 @@ class ImportService {
 
     private String getImageFromParamList (List<Map> preferredImagesList, String guid) {
         return preferredImagesList.grep{it.guid == guid}.image[0]
+    }
+
+    /**
+     * Triggered from admin -> links import page. Runs on separate thread and send async message back to page via log() method
+     *
+     * @param online
+     */
+    def loadPreferredImages(online) {
+        Integer batchSize = 20
+        JsonSlurper slurper = new JsonSlurper()
+        Map listConfig = slurper.parse(new URL(grailsApplication.config.imagesListsUrl)) // config defined JSON file
+        Map imagesMap = collectImageLists(listConfig.lists) // reads preferred images list via WS
+        List guidList = []
+
+        imagesMap.each { k, v ->
+            guidList.add(v.taxonID)
+        }
+
+        int totalDocs = guidList.size()
+        int totalPages = ((totalDocs + batchSize - 1) / batchSize) - 1
+        def totalDocumentsUpdated = 0
+        def buffer = []
+        log "totalDocs = ${totalDocs} || totalPages = ${totalPages}"
+
+        (0..totalPages).each { page ->
+            def startInd = page * batchSize
+            def endInd = (startInd + batchSize - 1) < totalDocs ? (startInd + batchSize - 1) : totalDocs - 1
+            log "GUID batch = ${startInd} to ${endInd}"
+            String guids = guidList[startInd..endInd].join("\",\"")
+            updateProgressBar(totalPages, page)
+            def paramsMap = [
+                    q: "guid:\"" + guids +"\"",
+                    wt: "json"
+            ]
+            MapSolrParams solrParams = new MapSolrParams(paramsMap)
+            def searchResults = searchService.getCursorSearchResults(solrParams, false)
+            def resultsDocs = searchResults?.response?.docs?:[]
+            log "SOLR query returned ${searchResults?.response?.numFound} docs"
+            resultsDocs.each { Map doc ->
+                if (doc.containsKey("id") && doc.containsKey("guid") && doc.containsKey("idxtype")) {
+                    //String imageId = getImageFromParamList(preferredImagesList, doc.guid)
+                    def listEntry = imagesMap[doc.guid]
+                    String imageId = listEntry?.imageId
+                    if (!doc.containsKey("image") || (doc.containsKey("image") && doc.image != imageId)) {
+                        Map updateDoc = [:]
+                        updateDoc["id"] = doc.id // doc key
+                        updateDoc["idxtype"] = ["set": doc.idxtype] // required field
+                        updateDoc["guid"] = ["set": doc.guid] // required field
+                        updateDoc["image"] = ["set": imageId]
+                        updateDoc["imageAvailable"] = ["set": true]
+                        log "Updated doc: ${doc.id} with imageId: ${imageId}"
+                        totalDocumentsUpdated ++
+                        buffer << updateDoc
+                    }
+                } else {
+                    log.warn "Updating doc error: missing keys ${doc}"
+                }
+            }
+        }
+
+        def updatedTaxa = []
+
+        if (buffer.size() > 0) {
+            log("Committing ${totalDocumentsUpdated} docs to SOLR...")
+            indexService.indexBatch(buffer, true)
+            updatedTaxa = searchService.getTaxa(guidList)
+        } else {
+            log "No documents to update"
+        }
+
+        updatedTaxa
+
     }
 
     /**

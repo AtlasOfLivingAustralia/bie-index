@@ -47,7 +47,10 @@
         <button id="build-link-identifiers" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary">Build Link Identifiers</button>
     </div>
     <div>
-        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load Images</button>
+        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load All Images</button>
+    </div>
+    <div>
+        <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary">Load Preferrred Images</button>
     </div>
     <div>
         <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary">Remove orphaned synonyms</button>
@@ -108,6 +111,19 @@
 
         function loadImages(){
             $.get("${createLink(controller:'import', action:'loadImages')}?online=" + $('#use-online').is(':checked'), function( data ) {
+              if(data.success){
+                $('.import-info p').html('Import successfully started....')
+                $('#start-import').prop('disabled', true);
+              } else {
+                $('.import-info p').html('Import failed. Check file path...')
+              }
+              $('.import-info').removeClass('hide');
+              $('.progress').removeClass('hide');
+            });
+        }
+
+        function loadPreferredImages(){
+            $.get("${createLink(controller:'import', action:'loadPreferredImages')}?online=" + $('#use-online').is(':checked'), function( data ) {
               if(data.success){
                 $('.import-info p').html('Import successfully started....')
                 $('#start-import').prop('disabled', true);
