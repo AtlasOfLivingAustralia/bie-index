@@ -1216,8 +1216,8 @@ class SearchService {
         if (useOfflineIndex) {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
         }
-        log.debug "SOLR params = ${params.toQueryString()}"
         def solrServerUrl = indexServerUrlPrefix + "/select" + params.toQueryString() // toQueryString() performs encoding
+        log.debug "SOLR url = ${solrServerUrl}"
         def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)

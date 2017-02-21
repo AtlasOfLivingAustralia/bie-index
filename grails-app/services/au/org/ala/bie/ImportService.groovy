@@ -1482,7 +1482,7 @@ class ImportService {
                 }
             }
         }
-        log("Loaded image lists")
+        log("Loaded image lists (${imageMap.size()} taxa)")
         return imageMap
     }
 
@@ -1576,10 +1576,11 @@ class ImportService {
             updateProgressBar(totalPages, page)
             def paramsMap = [
                     q: "guid:\"" + guids +"\"",
+                    rows: "${batchSize}",
                     wt: "json"
             ]
             MapSolrParams solrParams = new MapSolrParams(paramsMap)
-            def searchResults = searchService.getCursorSearchResults(solrParams, false)
+            def searchResults = searchService.getCursorSearchResults(solrParams, !online)
             def resultsDocs = searchResults?.response?.docs?:[]
             log "SOLR query returned ${searchResults?.response?.numFound} docs"
             resultsDocs.each { Map doc ->
