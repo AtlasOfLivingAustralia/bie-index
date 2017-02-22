@@ -50,7 +50,7 @@
         <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load All Images</button>
     </div>
     <div>
-        <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary">Load Preferrred Images</button>
+        <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary">Load Preferred Images</button>
     </div>
     <div>
         <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary">Remove orphaned synonyms</button>
