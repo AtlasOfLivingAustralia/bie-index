@@ -7,6 +7,7 @@ import groovy.json.JsonSlurper
 import org.apache.solr.common.params.MapSolrParams
 import org.codehaus.groovy.grails.web.servlet.mvc.GrailsParameterMap
 import org.gbif.nameparser.NameParser
+import org.springframework.web.util.UriUtils
 
 /**
  * A set of search services for the BIE.
@@ -445,9 +446,9 @@ class SearchService {
         if (useOfflineIndex) {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
         }
-        def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=guid:\"" + identifier +"\""
+        String solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=guid:%22" + UriUtils.encodeQueryParam(identifier, 'UTF-8') +"%22"
         log.debug "SOLR url = ${solrServerUrl}"
-        def queryResponse = new URL(Encoder.encodeUrl(solrServerUrl)).getText("UTF-8")
+        def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
 
@@ -475,10 +476,10 @@ class SearchService {
      */
     def lookupVernacular(String taxonID, String vernacularName, Boolean useOfflineIndex = false){
         def indexServerUrlPrefix = useOfflineIndex ? grailsApplication.config.indexOfflineBaseUrl : grailsApplication.config.indexLiveBaseUrl
-        def encID = taxonID //URLEncoder.encode(taxonID, 'UTF-8')
-        def encName = vernacularName //URLEncoder.encode(vernacularName, "UTF-8")
-        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:\"${encID}\"&fq=(idxtype:${IndexDocType.COMMON.name()}+AND+name:\"${encName}\")"
-        def queryResponse = new URL(Encoder.encodeUrl(indexServerUrl)).getText("UTF-8")
+        def encID = URLEncoder.encode(taxonID, 'UTF-8')
+        def encName = URLEncoder.encode(vernacularName, "UTF-8")
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:%22${encID}%22&fq=(idxtype:${IndexDocType.COMMON.name()}+AND+name:%22${encName}%22)"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json.response.docs[0]
@@ -494,10 +495,10 @@ class SearchService {
      */
     def lookupIdentifier(String taxonID, String identifier, Boolean useOfflineIndex = false){
         def indexServerUrlPrefix = useOfflineIndex ? grailsApplication.config.indexOfflineBaseUrl : grailsApplication.config.indexLiveBaseUrl
-        def encID = taxonID // URLEncoder.encode(taxonID, 'UTF-8')
-        def encIdentifier = identifier // URLEncoder.encode(identifier, "UTF-8")
-        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:\"${encID}\"&fq=(idxtype:${IndexDocType.IDENTIFIER.name()}+AND+guid:\"${encIdentifier}\")"
-        def queryResponse = new URL(Encoder.encodeUrl(indexServerUrl)).getText("UTF-8")
+        def encID = UriUtils.encodeQueryParam(taxonID, 'UTF-8')
+        def encIdentifier = UriUtils.encodeQueryParam(identifier, 'UTF-8') // URLEncoder.encode(identifier, "UTF-8")
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:%22${encID}%22&fq=(idxtype:${IndexDocType.IDENTIFIER.name()}+AND+guid:\"${encIdentifier}\")"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json.response.docs[0]
@@ -512,9 +513,9 @@ class SearchService {
      */
     def lookupVernacular(String taxonID, Boolean useOfflineIndex = false){
         def indexServerUrlPrefix = useOfflineIndex ? grailsApplication.config.indexOfflineBaseUrl : grailsApplication.config.indexLiveBaseUrl
-        def encID = taxonID // URLEncoder.encode(taxonID, 'UTF-8')
-        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:\"${encID}\"&fq=idxtype:${IndexDocType.COMMON.name()}"
-        def queryResponse = new URL(Encoder.encodeUrl(indexServerUrl)).getText("UTF-8")
+        def encID = UriUtils.encodeQueryParam(taxonID, 'UTF-8')
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:%22${encID}%22&fq=idxtype:${IndexDocType.COMMON.name()}"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json.response.docs
@@ -529,9 +530,9 @@ class SearchService {
      */
     def lookupIdentifier(String taxonID, Boolean useOfflineIndex = false){
         def indexServerUrlPrefix = useOfflineIndex ? grailsApplication.config.indexOfflineBaseUrl : grailsApplication.config.indexLiveBaseUrl
-        def encID = taxonID // URLEncoder.encode(taxonID, 'UTF-8')
-        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:\"${encID}\"&fq=idxtype:${IndexDocType.IDENTIFIER.name()}"
-        def queryResponse = new URL(Encoder.encodeUrl(indexServerUrl)).getText("UTF-8")
+        def encID = UriUtils.encodeQueryParam(taxonID, 'UTF-8') // URLEncoder.encode(taxonID, 'UTF-8')
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:%22${encID}%22&fq=idxtype:${IndexDocType.IDENTIFIER.name()}"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json.response.docs
