@@ -1534,7 +1534,7 @@ class ImportService {
         def updatedTaxa = []
 
         if (buffer.size() > 0) {
-            log("Committing to SOLR...")
+            log.info ("Committing to SOLR...")
             indexService.indexBatch(buffer, true)
             updatedTaxa = searchService.getTaxa(guidList)
         } else {

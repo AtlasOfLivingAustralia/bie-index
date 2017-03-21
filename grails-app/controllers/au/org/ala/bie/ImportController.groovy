@@ -285,12 +285,16 @@ class ImportController {
         def checkRequest = bieAuthService.checkApiKey(request.getHeader("Authorization"))
 
         if (checkRequest.valid) {
-            // contain list of guids and images
-            List<Map> preferredImagesList = request.getJSON() //params.guidImageList
-            def updatedTaxa = importService.updateDocsWithPreferredImage(preferredImagesList)
-            asJson([success: true, updatedTaxa: updatedTaxa])
+            try {
+                // contain list of guids and images
+                List<Map> preferredImagesList = request.getJSON()
+                def updatedTaxa = importService.updateDocsWithPreferredImage(preferredImagesList)
+                asJson([success: true, updatedTaxa: updatedTaxa])
+            } catch (Exception e) {
+                asJson([success: false, message: "Internal error occurred: " + e.getMessage() ])
+            }
         } else {
-            asJson([success: false, message: "Unauthorised access. Failed to updated Image in Bie" ])
+            asJson([success: false, message: "Unauthorised access. Failed to update Image in Bie" ])
         }
     }
 
