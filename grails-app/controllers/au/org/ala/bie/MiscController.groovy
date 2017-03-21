@@ -8,7 +8,7 @@ import static org.codehaus.groovy.grails.web.servlet.HttpHeaders.LAST_MODIFIED
 
 class MiscController {
 
-    def speciesGroupService, indexService
+    def speciesGroupService, indexService, bieAuthService, importService
 
     def speciesGroups() {
         try {
@@ -38,4 +38,23 @@ class MiscController {
         }
 
     }
+
+    def updateImages() {
+
+        def checkRequest = bieAuthService.checkApiKey(request.getHeader("Authorization"))
+
+        if (checkRequest.valid) {
+            try {
+                // contain list of guids and images
+                List<Map> preferredImagesList = request.getJSON()
+                def updatedTaxa = importService.updateDocsWithPreferredImage(preferredImagesList)
+                asJson([success: true, updatedTaxa: updatedTaxa])
+            } catch (Exception e) {
+                asJson([success: false, message: "Internal error occurred: " + e.getMessage() ])
+            }
+        } else {
+            asJson([success: false, message: "Unauthorised access. Failed to update Image in Bie" ])
+        }
+    }
+
 }
