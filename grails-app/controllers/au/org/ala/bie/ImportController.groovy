@@ -276,29 +276,6 @@ class ImportController {
     }
 
     /**
-     * Used by admin function in images-client plugin to set preferred image ID for a taxon
-     *
-     * @return
-     */
-    def updateImages() {
-
-        def checkRequest = bieAuthService.checkApiKey(request.getHeader("Authorization"))
-
-        if (checkRequest.valid) {
-            try {
-                // contain list of guids and images
-                List<Map> preferredImagesList = request.getJSON()
-                def updatedTaxa = importService.updateDocsWithPreferredImage(preferredImagesList)
-                asJson([success: true, updatedTaxa: updatedTaxa])
-            } catch (Exception e) {
-                asJson([success: false, message: "Internal error occurred: " + e.getMessage() ])
-            }
-        } else {
-            asJson([success: false, message: "Unauthorised access. Failed to update Image in Bie" ])
-        }
-    }
-
-    /**
      * Reads preferred images list in list tool and updates imageId if values have changed
      * list DR is defined by config var ${imagesListsUrl} - property {lists}
      *

@@ -57,4 +57,10 @@ class MiscController {
         }
     }
 
+    private def asJson = { model ->
+        response.setContentType("application/json;charset=UTF-8")
+        model
+    }
+
+
 }
