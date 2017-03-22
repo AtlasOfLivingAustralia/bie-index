@@ -1504,6 +1504,8 @@ class ImportService {
 
         String guids = guidList.join(",")
 
+        log.info ("guid List to update: " + guids)
+
         def paramsMap = [
                 q: "guid:\"" + guids +"\"",
                 wt: "json"
@@ -1516,6 +1518,7 @@ class ImportService {
         resultsDocs.each { Map doc ->
             if (doc.containsKey("id") && doc.containsKey("guid") && doc.containsKey("idxtype")) {
                 String imageId = getImageFromParamList(preferredImagesList, doc.guid)
+                log.info ("Updating: guid " + doc.guid + " with imageId " + imageId)
                 if (!doc.containsKey("image") || (doc.containsKey("image") && doc.image != imageId)) {
                     Map updateDoc = [:]
                     updateDoc["id"] = doc.id // doc key
@@ -1534,11 +1537,11 @@ class ImportService {
         def updatedTaxa = []
 
         if (buffer.size() > 0) {
-            log.info ("Committing to SOLR...")
+            log.info ("Committing to SOLR..." + guidList)
             indexService.indexBatch(buffer, true)
             updatedTaxa = searchService.getTaxa(guidList)
         } else {
-            log.info "Nothing to update"
+            log.info "Nothing to update for guidList: " + guidList
         }
 
         updatedTaxa
