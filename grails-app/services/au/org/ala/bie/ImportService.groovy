@@ -1663,11 +1663,15 @@ class ImportService {
         log("Clearing existing denormalisations")
         try {
             startTime = System.currentTimeMillis()
+
+            def solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&rows=1"
+            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
             while (prevCursor != cursor) {
-                def solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
-                def json = js.parseText(queryResponse)
-                int total = json.response.numFound
+                solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
+                queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                json = js.parseText(queryResponse)
                 def docs = json.response.docs
                 def buffer = []
 
@@ -1705,13 +1709,16 @@ class ImportService {
             processed = 0
             prevCursor = ""
             cursor = "*"
+            def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+-acceptedConceptID:*+AND+-parentGuid:*"
+            def solrServerUrl = baseUrl + "/select?wt=json&q=${typeQuery}&rows=1"
+            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
             while (prevCursor != cursor) {
                 //startTime = System.currentTimeMillis()
-                def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+-acceptedConceptID:*+AND+-parentGuid:*"
-                def solrServerUrl = baseUrl + "/select?wt=json&q=${typeQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
-                def json = js.parseText(queryResponse)
-                int total = json.response.numFound
+                solrServerUrl = baseUrl + "/select?wt=json&q=${typeQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
+                queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+                json = js.parseText(queryResponse)
                 def docs = json.response.docs
                 def buffer = []
                 log "1. Paging over ${total} docs - page ${(processed + 1)}"
@@ -1738,13 +1745,16 @@ class ImportService {
             processed++
             prevCursor = ""
             cursor = "*"
+            def danglingQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND++-acceptedConceptID:*+AND+-denormalised_s:yes"
+            def solrServerUrl = baseUrl + "/select?wt=json&q=${danglingQuery}&rows=1"
+            def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
             while (prevCursor != cursor) {
                 //startTime = System.currentTimeMillis()
-                def danglingQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND++-acceptedConceptID:*+AND+-denormalised_s:yes"
-                def solrServerUrl = baseUrl + "/select?wt=json&q=${danglingQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
-                def json = js.parseText(queryResponse)
-                int total = json.response.numFound
+                solrServerUrl = baseUrl + "/select?wt=json&q=${danglingQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
+                queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+                json = js.parseText(queryResponse)
                 def docs = json.response.docs
                 def buffer = []
                 log "2. Paging over ${total} docs - page ${(processed + 1)}"
@@ -1771,13 +1781,16 @@ class ImportService {
             processed = 0
             prevCursor = ""
             cursor = "*"
+            def synonymQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND+acceptedConceptID:*"
+            def solrServerUrl = baseUrl + "/select?wt=json&q=${synonymQuery}&rows=1"
+            def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
             while (prevCursor != cursor) {
                 //startTime = System.currentTimeMillis()
-                def synonymQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND+acceptedConceptID:*"
-                def solrServerUrl = baseUrl + "/select?wt=json&q=${synonymQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
-                def json = js.parseText(queryResponse)
-                int total = json.response.numFound
+                solrServerUrl = baseUrl + "/select?wt=json&q=${synonymQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
+                queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+                json = js.parseText(queryResponse)
                 def docs = json.response.docs
                 def buffer = []
                 log "3. Paging over ${total} docs - page ${(processed + 1)}"
@@ -1878,7 +1891,6 @@ class ImportService {
             def solrServerUrl = baseUrl + "/select?wt=json&q=${parentQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
             def queryResponse = solrServerUrl.toURL().getText("UTF-8")
             def json = js.parseText(queryResponse)
-            int total = json.response.numFound
             def docs = json.response.docs
             docs.each { child ->
                 distribution.addAll(denormaliseEntry(child, trace, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages))

@@ -50,7 +50,9 @@ wordPress {
 }
 speciesList.url = "http://lists.ala.org.au/ws/speciesListItems/"
 speciesList.params = "?includeKVP=true"
-autoComplete.languages='en,en-AU,en-CA,en-GB,en-US'
+// Acceptable vernacular names to appear in autocomplete
+//autoComplete.languages = 'en,en-AU,en-CA,en-GB,en-US'
+autoComplete.languages = ''
 // Location of conservation lists
 conservationListsUrl = this.class.getResource("/default-conservation-lists.json").toString()
 // Location of vernacular name lists (null for default)
