@@ -873,7 +873,7 @@ class SearchService {
         def classification = []
         def taxon = retrieveTaxon(taxonID)
 
-        if (!taxon) return null
+        if (!taxon) return classification // empty list
 
         classification.add(0, [
                 rank : taxon.rank,
