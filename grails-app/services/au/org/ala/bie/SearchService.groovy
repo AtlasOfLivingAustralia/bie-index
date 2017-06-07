@@ -873,6 +873,8 @@ class SearchService {
         def classification = []
         def taxon = retrieveTaxon(taxonID)
 
+        if (!taxon) return null
+
         classification.add(0, [
                 rank : taxon.rank,
                 rankID : taxon.rankID,
@@ -1184,7 +1186,7 @@ class SearchService {
                 params.put("separator", ",")
 
                 //check for a biocache query context
-                if (requestParams.bqc){
+                if (requestParams?.bqc){
                     params.put("fq", requestParams.bqc)
                 }
 

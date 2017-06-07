@@ -24,7 +24,12 @@ class SearchController {
             return null
         }
         def classification = searchService.getClassification(params.id)
-        render (classification as JSON)
+
+        if (!classification) {
+            response.sendError(404, "GUID ${params.id} not found")
+        } else {
+            render (classification as JSON)
+        }
     }
 
     /**
