@@ -1075,13 +1075,27 @@ class SearchService {
 
     private def extractClassification(queryResult) {
         def map = [:]
+        log.debug "queryResult = ${queryResult.getClass().name}"
+        Map thisTaxonFields = [
+                scientificName: "scientificName",
+                taxonConceptID: "guid"
+        ]
         if(queryResult){
             queryResult.keySet().each { key ->
                 if (key.startsWith("rk_")) {
                     map.put(key.substring(3), queryResult.get(key))
                 }
-                if (key.startsWith("rkid_")) {
+                else if (key.startsWith("rkid_")) {
                     map.put(key.substring(5) + "Guid", queryResult.get(key))
+                }
+                else if (thisTaxonFields.containsKey(key)) {
+                    map.put(thisTaxonFields.get(key), queryResult.get(key))
+                }
+                else if (key == "rank") {
+                    map.put(queryResult.get(key), queryResult.get("scientificName")) // current name in classification
+                }
+                else if (key == "rankID") {
+                    map.put(queryResult.get("rank") + "Guid", queryResult.get("taxonConceptID")) // current name in classification
                 }
             }
         }
