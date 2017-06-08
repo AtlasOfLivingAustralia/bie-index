@@ -19,7 +19,7 @@
 				<tr>
 					<td>Taxon details - simple</td>
                     <td>GET JSON</td>
-					<td><bie:createWsLink>${g.createLink(controller: 'search', action: 'shortProfile')}/{GUID}</bie:createWsLink></td>
+					<td><bie:createWsLink>${g.createLink(uri:'/species/shortProfile')}/{GUID}</bie:createWsLink></td>
 				</tr>
 				<tr>
 					<td>Search</td>
@@ -39,7 +39,7 @@
 				<tr>
 					<td>Child concepts</td>
                     <td>GET JSON</td>
-					<td><bie:createWsLink>${g.createLink(controller: 'search', action: 'childConcepts')}/{GUID}</bie:createWsLink></td>
+					<td><bie:createWsLink>${g.createLink(uri: '/childConcepts')}/{GUID}</bie:createWsLink></td>
 				</tr>
 				<tr>
 					<td>Image search</td>
@@ -52,6 +52,11 @@
 					<td><bie:createWsLink>${g.createLink(uri:"/species/image/[thumbnail|large|small]/")}{GUID}</bie:createWsLink></td>
 				</tr>
 				<tr>
+					<td>Update Image</td>
+					<td>POST IMG</td>
+					<td><bie:createWsLink>${g.createLink(uri: '/import/updateImages')} { "guidImageList": [ {"guid": GUID, "image": "63c06642-ab33-48b9-b04b-2f321d24f104"} ] }</bie:createWsLink></td>
+				</tr>
+				<tr>
 					<td>Bulk lookup by GUID</td>
                     <td>POST JSON</td>
 					<td><bie:createWsLink>${g.createLink(controller: 'search', action: 'bulkGuidLookup')} [ "guid", ...]</bie:createWsLink></td>
@@ -59,7 +64,7 @@
 				<tr>
 					<td>Bulk lookup by name</td>
                     <td>POST JSON</td>
-					<td><bie:createWsLink>${g.createLink(controller: 'search', action: 'speciesLookupBulk')}  { names: [ "name", ... ], "vernacular": fase }</bie:createWsLink></td>
+					<td><bie:createWsLink>${g.createLink(controller: 'search', action: 'speciesLookupBulk')}  { names: [ "name", ... ], "vernacular": false }</bie:createWsLink></td>
 				</tr>
 				<tr>
 					<td>Habitat list</td>

@@ -34,6 +34,9 @@ grails.project.dependency.resolution = {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes
         compile 'com.github.davidmoten:rxjava-file:0.4'
         compile 'io.reactivex:rxgroovy:1.0.3'
+        compile ('org.jasig.cas.client:cas-client-core:3.3.3') {
+            excludes([group: 'javax.servlet', name: 'servlet-api'])
+        }
 
         runtime 'net.sf.opencsv:opencsv:2.3'
         runtime "org.apache.solr:solr-solrj:5.4.0"
@@ -57,8 +60,8 @@ grails.project.dependency.resolution = {
         build ":tomcat:7.0.55"
         compile ":cache:1.1.8"
         runtime ":cors:1.1.6"
-        runtime ":ala-bootstrap3:1.4"
-        runtime(":ala-auth:1.3.1") {
+        runtime ":ala-bootstrap3:1.6.2"
+        runtime(":ala-auth:1.3.4") {
             excludes "servlet-api"
         }
         runtime ":ala-admin-plugin:1.2"

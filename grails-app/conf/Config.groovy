@@ -39,6 +39,9 @@ imageMetaDataUrl = "http://images.ala.org.au/ws/image/"
 synonymCheckingEnabled = true
 synonymSourceAttribution = "National Species Lists"
 gazetteerLayerId = "2123"
+if (!security.apikey.serviceUrl) {
+    security.apikey.serviceUrl = 'https://auth.ala.org.au/apikey/ws/check?apikey='
+}
 wordPress {
     sitemapUrl = "http://www.ala.org.au/sitemap.xml"
     baseUrl = "http://www.ala.org.au/?page_id="
@@ -53,8 +56,17 @@ conservationListsUrl = this.class.getResource("/default-conservation-lists.json"
 vernacularListsUrl = this.class.getResource("/default-vernacular-lists.json").toString()
 // Location of image lists (null for default)
 imagesListsUrl = this.class.getResource("/default-image-lists.json").toString()
+// Location of locality keywords (null for default)
+localityKeywordsUrl = this.class.getResource("/default-locality-keywords.json").toString()
 
 nationalSpeciesDatasets = "" // "dr2699,dr2700,dr2702,dr2704,dr2703,dr3118"
+
+defaultDownloadFields = "guid,rank,scientificName,establishmentMeans,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
+
+additionalResultFields = ""
+
+//toggle for the population of occurrence counts
+occurrenceCounts.enabled = true
 
 // SOLR additional params
 solr {
@@ -68,6 +80,7 @@ solr {
 }
 skin.layout = "main"
 skin.orgNameLong = "Atlas of Living Australia"
+useLegacyAuto = false
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)
 grails.mime.use.accept.header = true

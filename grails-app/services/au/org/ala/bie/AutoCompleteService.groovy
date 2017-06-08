@@ -1,6 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.search.AutoCompleteDTO
+import au.org.ala.bie.util.Encoder
 import grails.converters.JSON
 import groovy.json.JsonSlurper
 import org.apache.solr.client.solrj.util.ClientUtils
@@ -16,14 +17,63 @@ class AutoCompleteService {
 
     def serviceMethod() {}
 
+    List auto(String q, String otherParams){
+        Boolean useLegacyAuto = grailsApplication.config.useLegacyAuto.toBoolean()
+        List results
+
+        if (useLegacyAuto) {
+            results = autoLegacy(q, otherParams)
+        } else {
+            results = autoSuggest(q, otherParams)
+        }
+
+        results
+    }
+
     /**
-     * Autocomplete service
+     * Autocomplete service. This relies on the /suggest service which should be configured
+     * in SOLR in the files solrconfig.xml and schema.xml.
      *
      * @param q
      * @param otherParams
      * @return
      */
-    def auto(String q, String otherParams){
+    List autoSuggest(String q, String otherParams){
+        log.debug("auto called with q = " + q)
+
+        def autoCompleteList = []
+
+        String query = ""
+        if (!q || q.trim() == "*") {
+            query = otherParams + "&q=*:*"
+        } else if (q) {
+            // encode query (no fields needed due to qf params
+            query = otherParams + "&q=" + URLEncoder.encode("" + q + "","UTF-8")
+        }
+
+        log.info "queryString = ${otherParams}"
+
+        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/suggest?wt=json&" + query
+        log.debug "queryUrl = |${queryUrl}|"
+        def queryResponse = new URL(Encoder.encodeUrl(queryUrl)).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+
+        json.grouped.scientificName_s.groups.each { group ->
+            autoCompleteList << createAutoCompleteFromIndex(group.doclist.docs[0], q)
+        }
+        log.debug("results: " + autoCompleteList.size())
+        autoCompleteList
+    }
+
+    /**
+     * Legacy Autocomplete service. This uses the normal /select service.
+     *
+     * @param q
+     * @param otherParams
+     * @return
+     */
+    List autoLegacy(String q, String otherParams){
         log.debug("auto called with q = " + q)
 
         def autoCompleteList = []
@@ -42,9 +92,9 @@ class AutoCompleteService {
 
         log.info "queryString = ${otherParams}"
 
-        def queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + query + additionalParams
+        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + query + additionalParams
         log.debug "queryUrl = |${queryUrl}|"
-        def queryResponse = new URL(queryUrl).getText("UTF-8")
+        def queryResponse = new URL(Encoder.encodeUrl(queryUrl)).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
 
@@ -71,6 +121,10 @@ class AutoCompleteService {
         def autoDto = new AutoCompleteDTO();
         autoDto.guid = doc.guid
         autoDto.name = doc.scientificName
+
+        if(doc.acceptedConceptID){
+            autoDto.guid = doc.acceptedConceptID
+        }
 
         if(doc.commonName){
             autoDto.commonName =  doc.commonName.first()

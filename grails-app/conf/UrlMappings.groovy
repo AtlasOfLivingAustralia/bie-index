@@ -45,6 +45,7 @@ class UrlMappings {
         "/ws/subgroups(.json)?"(controller: 'misc', action: 'speciesGroups')
         "/subgroups.json"(controller: 'misc', action: 'speciesGroups')
         "/subgroups"(controller: 'misc', action: 'speciesGroups')
+        "/updateImages" (controller: 'misc', action: 'updateImages')
 
         "/"(view: "/index")
         "500"(view: '/error')

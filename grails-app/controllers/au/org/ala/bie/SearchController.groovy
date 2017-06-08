@@ -24,7 +24,12 @@ class SearchController {
             return null
         }
         def classification = searchService.getClassification(params.id)
-        render (classification as JSON)
+
+        if (!classification) {
+            response.sendError(404, "GUID ${params.id} not found")
+        } else {
+            render (classification as JSON)
+        }
     }
 
     /**
@@ -159,12 +164,18 @@ class SearchController {
         render result as JSON
     }
 
+    /**
+     * Download CSV file for given search query (q & fq)
+     * User provided params: q, fq, file, fields
+     *
+     * @return
+     */
     def download(){
         response.setHeader("Cache-Control", "must-revalidate");
         response.setHeader("Pragma", "must-revalidate");
-        response.setHeader("Content-Disposition", "attachment;filename=species.csv");
+        response.setHeader("Content-Disposition", "attachment;filename=${params.file?:'species.csv'}");
         response.setContentType("text/csv");
-        downloadService.download(request.queryString, params.q, response.outputStream)
+        downloadService.download(params, response.outputStream, request.locale)
     }
 
     /**

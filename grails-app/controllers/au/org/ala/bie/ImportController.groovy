@@ -22,7 +22,7 @@ import au.org.ala.web.AlaSecured
 @AlaSecured(value = "ROLE_ADMIN", redirectUri = "/")
 class ImportController {
 
-    def importService
+    def importService, bieAuthService
 
     /**
      * Load import index page.
@@ -101,6 +101,10 @@ class ImportController {
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
         }
+    }
+
+    def deleteDanglingSynonyms(){
+        importService.clearDanglingSynonyms()
     }
 
     /**
@@ -258,6 +262,33 @@ class ImportController {
         }
         asJson ([success:true] )
 
+    }
+
+    def denormaliseTaxa() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        Thread.start {
+            log.info("Starting taxon denormalisaion....")
+            importService.denormaliseTaxa(online)
+            log.info("Finished taxon denormalisaion.")
+        }
+        asJson ([success:true] )
+
+    }
+
+    /**
+     * Reads preferred images list in list tool and updates imageId if values have changed
+     * list DR is defined by config var ${imagesListsUrl} - property {lists}
+     *
+     * @return
+     */
+    def loadPreferredImages() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        Thread.start {
+            log.info("Starting loading preferred images...")
+            importService.loadPreferredImages(online)
+            log.info("Finished loading preferred images.")
+        }
+        asJson ([success:true] )
     }
 
     def loadImages() {

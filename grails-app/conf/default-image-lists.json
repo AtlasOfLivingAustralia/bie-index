@@ -38,5 +38,6 @@
     }
   ],
   "lists": [
-  ]
+  ],
+  "imageFields":"taxon_concept_lsid,kingdom,phylum,class,order,family,genus,species,taxon_name,image_url,data_resource_uid"
 }

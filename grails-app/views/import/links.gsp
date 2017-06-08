@@ -34,16 +34,26 @@
     <h2 class="heading-medium">Build Links</h2>
 
     <p class="lead">
+        Denormalise accepted taxa in the index, building links to higher-order taxa
         Scan the index for link identifiers; names that are unique and can be treated as an identifier.
         Scan the index for images; suitable images for various species.
         Note SOLR cores (bie / bie-offline) may require swapping before searches will appear.
     </p>
 
     <div>
+        <button id="denormalise-taxa" onclick="javascript:denormaliseTaxa()" class="btn btn-primary">Denormalise Taxa</button>
+    </div>
+    <div>
         <button id="build-link-identifiers" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary">Build Link Identifiers</button>
     </div>
     <div>
-        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load Images</button>
+        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load All Images</button>
+    </div>
+    <div>
+        <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary">Load Preferred Images</button>
+    </div>
+    <div>
+        <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary">Remove orphaned synonyms</button>
     </div>
     <div>
         <input type="checkbox" id="use-online" name="use-online"/> Use online index
@@ -60,6 +70,32 @@
     </div>
 
     <r:script>
+        function denormaliseTaxa(){
+            $.get("${createLink(controller:'import', action:'denormaliseTaxa')}?online=" + $('#use-online').is(':checked'), function( data ) {
+              if(data.success){
+                $('.import-info p').html('Build successfully started....')
+                $('#start-import').prop('disabled', true);
+              } else {
+                $('.import-info p').html('Build failed. Check file path...')
+              }
+              $('.import-info').removeClass('hide');
+              $('.progress').removeClass('hide');
+            });
+        }
+
+        function removeDanglingSynonyms(){
+            $.get("${createLink(controller:'import', action:'deleteDanglingSynonyms')}?online=" + $('#use-online').is(':checked'), function( data ) {
+              if(data.success){
+                $('.import-info p').html('Delete successfully started....')
+                $('#start-import').prop('disabled', true);
+              } else {
+                $('.import-info p').html('Build failed. Check file path...')
+              }
+              $('.import-info').removeClass('hide');
+              $('.progress').removeClass('hide');
+            });
+        }
+
         function buildLinkIdentifiers(){
             $.get("${createLink(controller:'import', action:'buildLinkIdentifiers')}?online=" + $('#use-online').is(':checked'), function( data ) {
               if(data.success){
@@ -75,6 +111,19 @@
 
         function loadImages(){
             $.get("${createLink(controller:'import', action:'loadImages')}?online=" + $('#use-online').is(':checked'), function( data ) {
+              if(data.success){
+                $('.import-info p').html('Import successfully started....')
+                $('#start-import').prop('disabled', true);
+              } else {
+                $('.import-info p').html('Import failed. Check file path...')
+              }
+              $('.import-info').removeClass('hide');
+              $('.progress').removeClass('hide');
+            });
+        }
+
+        function loadPreferredImages(){
+            $.get("${createLink(controller:'import', action:'loadPreferredImages')}?online=" + $('#use-online').is(':checked'), function( data ) {
               if(data.success){
                 $('.import-info p').html('Import successfully started....')
                 $('#start-import').prop('disabled', true);
