@@ -99,6 +99,7 @@ class ImportService {
 
     def importAll() {
         try {
+            // Do this first so that source datasets can be retrieved
             importCollectory()
         } catch (Exception e) {
             log("Problem loading collectory: " + e.getMessage())
@@ -147,6 +148,16 @@ class ImportService {
             buildLinkIdentifiers(false)
         } catch (Exception e) {
             log("Problem building link identifiers: " + e.getMessage())
+        }
+        try {
+            loadImages(false)
+        } catch (Exception e) {
+            log("Problem loading images: " + e.getMessage())
+        }
+        try {
+            importOccurrenceData()
+        } catch (Exception e) {
+            log("Problem importing occurrence data: " + e.getMessage())
         }
     }
 
@@ -1643,6 +1654,7 @@ class ImportService {
         def prevCursor = ""
         def cursor = "*"
         def startTime, endTime
+        Set autoLanguages = grailsApplication.config.autoComplete.languages ? grailsApplication.config.autoComplete.languages.split(',') as Set : null
 
         js.setType(JsonParserType.INDEX_OVERLAY)
         log("Getting species groups")
@@ -1651,11 +1663,15 @@ class ImportService {
         log("Clearing existing denormalisations")
         try {
             startTime = System.currentTimeMillis()
+
+            def solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&rows=1"
+            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
             while (prevCursor != cursor) {
-                def solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
-                def json = js.parseText(queryResponse)
-                int total = json.response.numFound
+                solrServerUrl = baseUrl + "/select?wt=json&q=denormalised_b:true&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
+                queryResponse = solrServerUrl.toURL().getText("UTF-8")
+                json = js.parseText(queryResponse)
                 def docs = json.response.docs
                 def buffer = []
 
@@ -1693,19 +1709,22 @@ class ImportService {
             processed = 0
             prevCursor = ""
             cursor = "*"
+            def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+-acceptedConceptID:*+AND+-parentGuid:*"
+            def solrServerUrl = baseUrl + "/select?wt=json&q=${typeQuery}&rows=1"
+            def queryResponse = solrServerUrl.toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
             while (prevCursor != cursor) {
                 //startTime = System.currentTimeMillis()
-                def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+-acceptedConceptID:*+AND+-parentGuid:*"
-                def solrServerUrl = baseUrl + "/select?wt=json&q=${typeQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
-                def json = js.parseText(queryResponse)
-                int total = json.response.numFound
+                solrServerUrl = baseUrl + "/select?wt=json&q=${typeQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
+                queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+                json = js.parseText(queryResponse)
                 def docs = json.response.docs
                 def buffer = []
                 log "1. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper)
+                    denormaliseEntry(doc, [:], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1726,19 +1745,22 @@ class ImportService {
             processed++
             prevCursor = ""
             cursor = "*"
+            def danglingQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND++-acceptedConceptID:*+AND+-denormalised_s:yes"
+            def solrServerUrl = baseUrl + "/select?wt=json&q=${danglingQuery}&rows=1"
+            def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
             while (prevCursor != cursor) {
                 //startTime = System.currentTimeMillis()
-                def danglingQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND++-acceptedConceptID:*+AND+-denormalised_s:yes"
-                def solrServerUrl = baseUrl + "/select?wt=json&q=${danglingQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
-                def json = js.parseText(queryResponse)
-                int total = json.response.numFound
+                solrServerUrl = baseUrl + "/select?wt=json&q=${danglingQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
+                queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+                json = js.parseText(queryResponse)
                 def docs = json.response.docs
                 def buffer = []
                 log "2. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper)
+                    denormaliseEntry(doc, [:], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1759,13 +1781,16 @@ class ImportService {
             processed = 0
             prevCursor = ""
             cursor = "*"
+            def synonymQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND+acceptedConceptID:*"
+            def solrServerUrl = baseUrl + "/select?wt=json&q=${synonymQuery}&rows=1"
+            def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+            def json = js.parseText(queryResponse)
+            int total = json.response.numFound
             while (prevCursor != cursor) {
                 //startTime = System.currentTimeMillis()
-                def synonymQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND+acceptedConceptID:*"
-                def solrServerUrl = baseUrl + "/select?wt=json&q=${synonymQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
-                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
-                def json = js.parseText(queryResponse)
-                int total = json.response.numFound
+                solrServerUrl = baseUrl + "/select?wt=json&q=${synonymQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
+                queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+                json = js.parseText(queryResponse)
                 def docs = json.response.docs
                 def buffer = []
                 log "3. Paging over ${total} docs - page ${(processed + 1)}"
@@ -1804,7 +1829,7 @@ class ImportService {
         log("Finished taxon denormalisaion. Duration: ${(new SimpleDateFormat("mm:ss:SSS")).format(new Date(endTime - startTime))}")
     }
 
-    private denormaliseEntry(doc, Map trace, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping) {
+    private denormaliseEntry(doc, Map trace, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages) {
         def currentDistribution = (doc['distribution'] ?: []) as Set
         if (doc.denormalised_b)
             return currentDistribution
@@ -1843,8 +1868,9 @@ class ImportService {
                 n2.priority - n1.priority
             }
 
-            //only index english names
-            commonNames = commonNames.findAll { it.language == 'en' }
+            //only index valid languages
+            if (autoLanguages)
+                commonNames = commonNames.findAll { autoLanguages.contains(it.language) }
 
             if(commonNames) {
                 update["commonName"] = [set: commonNames.collect { it.name }]
@@ -1865,10 +1891,9 @@ class ImportService {
             def solrServerUrl = baseUrl + "/select?wt=json&q=${parentQuery}&cursorMark=${cursor}&sort=id+asc&rows=${pageSize}"
             def queryResponse = solrServerUrl.toURL().getText("UTF-8")
             def json = js.parseText(queryResponse)
-            int total = json.response.numFound
             def docs = json.response.docs
             docs.each { child ->
-                distribution.addAll(denormaliseEntry(child, trace, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping))
+                distribution.addAll(denormaliseEntry(child, trace, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages))
             }
             prevCursor = cursor
             cursor = json.nextCursorMark

@@ -50,6 +50,9 @@ wordPress {
 }
 speciesList.url = "http://lists.ala.org.au/ws/speciesListItems/"
 speciesList.params = "?includeKVP=true"
+// Acceptable vernacular names to appear in autocomplete
+//autoComplete.languages = 'en,en-AU,en-CA,en-GB,en-US'
+autoComplete.languages = ''
 // Location of conservation lists
 conservationListsUrl = this.class.getResource("/default-conservation-lists.json").toString()
 // Location of vernacular name lists (null for default)
@@ -194,6 +197,6 @@ log4j = {
             'grails.app.taglib.org.grails.plugin.resource',
             'grails.app.resourceMappers.org.grails.plugin.resource'
 
-    debug   "grails.app",
+    info    "grails.app",
             "au.org.ala"
 }
