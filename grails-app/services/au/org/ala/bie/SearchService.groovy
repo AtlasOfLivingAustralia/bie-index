@@ -205,7 +205,10 @@ class SearchService {
                 def rankName = matcher[0][2]
                 def guid = matcher[0][4]
                 def shortProfile = getShortProfile(guid)
-                queryTitle = rankName + " " + shortProfile.scientificName
+                if (shortProfile)
+                    queryTitle = rankName + " " + shortProfile.scientificName
+                else
+                    queryTitle = rankName + " " + guid
             } catch (Exception e){
                 log.warn("Exception thrown parsing name..", e)
             }

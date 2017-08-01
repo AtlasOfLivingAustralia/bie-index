@@ -3,8 +3,8 @@ grails.project.class.dir = "target/classes"
 grails.project.test.class.dir = "target/test-classes"
 grails.project.test.reports.dir = "target/test-reports"
 grails.project.work.dir = "target/work"
-grails.project.target.level = 1.7
-grails.project.source.level = 1.7
+grails.project.target.level = 1.8
+grails.project.source.level = 1.8
 //grails.project.war.file = "target/${appName}-${appVersion}.war"
 
 grails.project.fork = [
@@ -34,7 +34,7 @@ grails.project.dependency.resolution = {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes
         compile 'com.github.davidmoten:rxjava-file:0.4'
         compile 'io.reactivex:rxgroovy:1.0.3'
-        compile ('org.jasig.cas.client:cas-client-core:3.3.3') {
+        compile ('org.jasig.cas.client:cas-client-core:3.4.1') {
             excludes([group: 'javax.servlet', name: 'servlet-api'])
         }
 
@@ -59,9 +59,9 @@ grails.project.dependency.resolution = {
         }
         build ":tomcat:7.0.55"
         compile ":cache:1.1.8"
-        runtime ":cors:1.1.6"
-        runtime ":ala-bootstrap3:1.6.2"
-        runtime(":ala-auth:1.3.4") {
+        runtime ":cors:1.1.8"
+        runtime ":ala-bootstrap3:2.0.0-SNAPSHOT"
+        runtime(":ala-auth:2.2-SNAPSHOT") {
             excludes "servlet-api"
         }
         runtime ":ala-admin-plugin:1.2"
