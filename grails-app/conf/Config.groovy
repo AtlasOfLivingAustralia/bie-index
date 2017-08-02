@@ -68,6 +68,10 @@ additionalResultFields = ""
 //toggle for the population of occurrence counts
 occurrenceCounts.enabled = true
 
+//Filter query used to get taxa counts - default for Australia was "country:Australia+OR+cl21:*&fq=geospatial_kosher:true"
+// filter on Aust. terristrial and IMCRA marine areas
+occurrenceCounts.filterQuery = "&fq=geospatial_kosher:true"
+
 // SOLR additional params
 solr {
     qf = "exact_text^200+doc_name^100+text"
