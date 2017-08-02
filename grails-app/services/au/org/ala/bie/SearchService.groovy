@@ -1218,7 +1218,7 @@ class SearchService {
         }
         log.debug "SOLR params = ${params.toQueryString()}"
         def solrServerUrl = indexServerUrlPrefix + "/select" + params.toQueryString()
-        def queryResponse = new URL(Encoder.encodeUrl(solrServerUrl)).getText("UTF-8")
+        def queryResponse = new URL(solrServerUrl).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
         json
