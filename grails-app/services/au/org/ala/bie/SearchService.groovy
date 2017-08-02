@@ -1078,28 +1078,28 @@ class SearchService {
 
     private def extractClassification(queryResult) {
         def map = [:]
+        def rankKey = "rank"
         log.debug "queryResult = ${queryResult.getClass().name}"
         Map thisTaxonFields = [
                 scientificName: "scientificName",
-                taxonConceptID: "guid"
+                guid: "guid",
+                taxonConcept: "taxonConceptID"
         ]
         if(queryResult){
             queryResult.keySet().each { key ->
                 if (key.startsWith("rk_")) {
                     map.put(key.substring(3), queryResult.get(key))
-                }
-                else if (key.startsWith("rkid_")) {
+                } else if (key.startsWith("rkid_")) {
                     map.put(key.substring(5) + "Guid", queryResult.get(key))
                 }
-                else if (thisTaxonFields.containsKey(key)) {
-                    map.put(thisTaxonFields.get(key), queryResult.get(key))
-                }
-                else if (key == "rank") {
-                    map.put(queryResult.get(key), queryResult.get("scientificName")) // current name in classification
-                }
-                else if (key == "rankID") {
-                    map.put(queryResult.get("rank") + "Guid", queryResult.get("taxonConceptID")) // current name in classification
-                }
+            }
+            thisTaxonFields.each { key, value ->
+                if (queryResult.containsKey(key))
+                    map.put(value, queryResult.get(key))
+            }
+            if (queryResult.containsKey(rankKey)) {
+                map.put(queryResult.get(rankKey), queryResult.get("scientificName")) // current name in classification
+                map.put(queryResult.get(rankKey) + "Guid", queryResult.get("guid"))
             }
         }
         map
@@ -1247,11 +1247,8 @@ class SearchService {
     def getAdditionalResultFields(){
         if(additionalResultFields == null){
             //initialise
-            def fields = grailsApplication.config.additionalResultFields.split(",")
-            additionalResultFields = []
-            fields.each {
-                additionalResultFields << it
-            }
+            def fields = grailsApplication.config.additionalResultFields.split(",").findAll { !it.isEmpty() }
+            additionalResultFields = fields.collect { it }
         }
         additionalResultFields
     }
