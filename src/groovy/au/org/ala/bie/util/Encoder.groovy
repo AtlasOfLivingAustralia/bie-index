@@ -13,7 +13,6 @@
 package au.org.ala.bie.util
 
 import groovy.util.logging.Log4j
-import org.springframework.web.util.UriUtils
 
 /**
  * Utility class to encode URLs
@@ -25,6 +24,7 @@ import org.springframework.web.util.UriUtils
 class Encoder {
     /**
      * Encode params so Tomcat security "improvements" don't reject SOLR URL
+     * This method emulates a browser in the way it automatically encodes certain param values
      * taken from http://stackoverflow.com/a/10786112/249327
      *
      * @param url
@@ -36,4 +36,6 @@ class Encoder {
         log.debug "encodeUrl uri = ${uri.toASCIIString()}"
         uri.toASCIIString()
     }
+
+
 }

@@ -275,18 +275,20 @@ class ImportController {
 
     }
 
-    def updateImages() {
-
-        def checkRequest = bieAuthService.checkApiKey(request.getHeader("Authorization"))
-
-        if (checkRequest.valid) {
-            // contain list of guids and images
-            List<Map> preferredImagesList = request.getJSON() //params.guidImageList
-            def updatedTaxa = importService.updateDocsWithPreferredImage(preferredImagesList)
-            asJson([success: true, updatedTaxa: updatedTaxa])
-        } else {
-            asJson([success: false, message: "Unauthorised access. Failed to updated Image in Bie" ])
+    /**
+     * Reads preferred images list in list tool and updates imageId if values have changed
+     * list DR is defined by config var ${imagesListsUrl} - property {lists}
+     *
+     * @return
+     */
+    def loadPreferredImages() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        Thread.start {
+            log.info("Starting loading preferred images...")
+            importService.loadPreferredImages(online)
+            log.info("Finished loading preferred images.")
         }
+        asJson ([success:true] )
     }
 
     def loadImages() {
