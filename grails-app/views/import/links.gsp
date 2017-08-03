@@ -14,8 +14,9 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
-  <title>Build Links</title>
+  <title><g:message code="admin.import.links.label"/></title>
   <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
+    <meta name="breadcrumbParent" content="${createLink(controller:'admin', action:'index', absolute:true)},${message(code: 'breadcrumb.admin')}"/>
     <r:require modules="sockets" />
     <style type="text/css">
         .progress {
@@ -25,48 +26,42 @@
 </head>
 <body>
 <div>
-    <!-- Breadcrumb -->
-    <ol class="breadcrumb">
-        <li><a class="font-xxsmall" href="../">Home</a></li>
-        <li class="font-xxsmall active" href="#">Import</li>
-    </ol>
-    <!-- End Breadcrumb -->
-    <h2 class="heading-medium">Build Links</h2>
+    <h2 class="heading-medium"><g:message code="admin.import.layers.label"/></h2>
 
-    <p class="lead">
-        Denormalise accepted taxa in the index, building links to higher-order taxa
-        Scan the index for link identifiers; names that are unique and can be treated as an identifier.
-        Scan the index for images; suitable images for various species.
-        Note SOLR cores (bie / bie-offline) may require swapping before searches will appear.
-    </p>
+    <div class="row">
+        <p class="col-md-8 lead"><g:message code="admin.import.links.lead"/></p>
+        <p class="col-md-4 well"><g:message code="admin.import.swap"/></p>
+    </div>
 
     <div>
-        <button id="denormalise-taxa" onclick="javascript:denormaliseTaxa()" class="btn btn-primary">Denormalise Taxa</button>
+        <button id="denormalise-taxa" onclick="javascript:denormaliseTaxa()" class="btn btn-primary"><g:message code="admin.button.denormalise"/></button>
     </div>
     <div>
-        <button id="build-link-identifiers" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary">Build Link Identifiers</button>
+        <button id="build-link-identifiers" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary"><g:message code="admin.button.buildlinks"/></button>
     </div>
     <div>
-        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load All Images</button>
+        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary"><g:message code="admin.button.loadimagesall"/>Load All Images</button>
     </div>
     <div>
-        <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary">Load Preferred Images</button>
+        <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary"><g:message code="admin.button.loadimagespref"/>Load Preferred Images</button>
     </div>
     <div>
-        <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary">Remove orphaned synonyms</button>
+        <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary"><g:message code="admin.button.removeorphans"/>Remove orphaned synonyms</button>
     </div>
     <div>
-        <input type="checkbox" id="use-online" name="use-online"/> Use online index
+        <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 
-    <div class="well import-info alert-info hide" style="margin-top:20px;">
-        <p></p>
-        <div class="progress hide">
-            <div class="progress-bar" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                <span class="sr-only"><span class="percent">0</span>% Complete</span>
+    <div class="row">
+        <div class="well import-info alert-info hide" style="margin-top:20px;">
+            <p></p>
+            <div class="progress hide">
+                <div class="progress-bar" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <span class="sr-only"><span class="percent">0</span>% Complete</span>
+                </div>
             </div>
+            <div id="import-info-web-socket"></div>
         </div>
-        <div id="import-info-web-socket"></div>
     </div>
 
     <r:script>

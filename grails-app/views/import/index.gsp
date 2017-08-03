@@ -1,80 +1,68 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
-  <title></title>
+  <title><g:message code="admin.import.dwca.label"/></title>
   <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
+  <meta name="breadcrumbParent" content="${createLink(controller:'admin', action:'index', absolute:true)},${message(code: 'breadcrumb.admin')}"/>
   <r:require modules="sockets" />
 </head>
 <body>
 <div>
-    <!-- Breadcrumb -->
-    <ol class="breadcrumb">
-        <li><a class="font-xxsmall" href="../">Home</a></li>
-        <li class="font-xxsmall active" href="#">Import</li>
-    </ol>
     <!-- End Breadcrumb -->
-    <h2 class="heading-medium">DWC-A import</h2>
+    <h2 class="heading-medium"><g:message code="admin.import.dwca.label"/></h2>
 
-    <p class="lead">
-        Place expanded (unzipped) DwC-A files in the import directory /data/bie/import on this machine.
-    </p>
-    <p>
-        If you are importing additional DwC-A files for vernacular names or identifiers, import them after all taxon
-        files have been imported.
-    </p>
-
-    <div>
-        <table class="table">
-            <g:each in="${filePaths}" var="filePath">
-                <tr>
-                    <td>${filePath}</td>
-                    <td><button class="btn btn-primary" onclick="javascript:loadDwCA('${filePath}', false);">Import DwCA</button></td>
-                    <td><button class="btn btn-primary" onclick="javascript:loadDwCA('${filePath}', true);">Clean & Import DwCA</button></td>
-                </tr>
-            </g:each>
-        </table>
-
-        <h2>Or..</h2>
-
-        <div class="form-group">
-            <label for="dwca_dir">Absolute file system path to expanded (unzipped) DwC-A</label>
-            <input type="text" id="dwca_dir" name="dwca_dir" value="/data/bie/import/dwc-a" class="form-control"/>
+    <div class="row">
+        <div class="col-md-8">
+            <p class="lead"><g:message code="admin.import.dwca.lead"/></p>
+            <p><g:message code="admin.import.dwca.detail"/></p>
         </div>
-
-        <div class="form-group">
-            <div class="checkbox">
-                <label>
-                    <input type="checkbox" id="clear_index" name="clear_index"/> Clear existing data taxonomic data
-                </label>
-            </div>
-        </div>
-        <button id="start-import" onclick="javascript:loadDwCAFromDir()" class="btn btn-primary">Import DwC-A</button>
+        <p class="col-md-4 well"><g:message code="admin.import.swap"/></p>
     </div>
 
-    <div class="well import-info alert-info hide" style="margin-top:20px;">
-        <p></p>
-        <p id="import-info-web-socket"></p>
+    <div class="form-horizontal">
+        <div class="form-group">
+            <label class="col-md-offset-4 col-md-4">
+                <input type="checkbox" id="clear_index" name="clear_index"/>
+                <g:message code="admin.label.cleardata"/>
+            </label>
+        </div>
+        <g:each in="${filePaths}" var="filePath" statis="fs">
+            <div class="form-group">
+                <label for="dwca-${fs}" class="col-md-4 control-label">${filePath}</label>
+                <div class="col-md-2">
+                    <button id="dwca-${fs}" class="btn btn-primary" onclick="javascript:loadDwCA('${filePath}');"><g:message code="admin.button.importdwca"/></button>
+                </div>
+            </div>
+        </g:each>
+        <div class="form-group">
+            <label for="dwca_dir" class="sr-only control-label"><g:message code="admin.label.dwcapath"/></label>
+            <div class="col-md-4">
+                <input type="text" class="form-control" id="dwca_dir" name="dwca_dir" value="/data/bie/import/dwc-a" class="form-control"/>
+            </div>
+            <div class="col-md-2">
+                <button id="start-import" onclick="javascript:loadDwCAFromDir();" class="btn btn-primary"><g:message code="admin.button.importdwca"/></button>
+            </div>
+            <span class="help-block"><g:message code="admin.label.dwcapath.help"/></span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 well import-info alert-info hide" style="margin-top:20px;">
+            <p></p>
+            <p id="import-info-web-socket"></p>
+        </div>
     </div>
 
     <r:script>
 
         function loadDwCAFromDir(){
-            $.get("${createLink(controller: 'import', action: 'importDwcA')}?dwca_dir=" + $('#dwca_dir').val() + "&clear_index=" + $('#clear_index').is(':checked') + "&field_delimiter=" + $('#field_delimiter').val(), function( data ) {
-              if(data.success){
-                $('.import-info p').html('Import successfully started....')
-                $('#start-import').prop('disabled', true);
-              } else {
-                $('.import-info p').html('Import failed. Check file path...')
-              }
-              $('.import-info').removeClass('hide');
-            });
+            loadDwCA($('#dwca_dir').val())
         }
 
-        function loadDwCA(filePath, clearIndex) {
-            $.get("${createLink(controller:'import', action:'importDwcA' )}?dwca_dir=" + filePath + "&clear_index=" + clearIndex, function( data ) {
+        function loadDwCA(filePath) {
+            $.get("${createLink(controller:'import', action:'importDwcA' )}?dwca_dir=" + filePath + "&clear_index=" + $('#clear_index').is(':checked'), function( data ) {
               if(data.success){
                 $('.import-info p').html('Import successfully started....')
-                $('#start-import').prop('disabled', true);
               } else {
                 $('.import-info p').html('Import failed. Check file path...')
               }
