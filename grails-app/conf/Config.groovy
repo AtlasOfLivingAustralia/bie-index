@@ -43,7 +43,7 @@ if (!security.apikey.serviceUrl) {
     security.apikey.serviceUrl = 'https://auth.ala.org.au/apikey/ws/check?apikey='
 }
 if (!security.cas.appServerName) {
-    security.cas.appServerName = grails.serverURL
+    security.cas.appServerName = "bie.ala.org.au/ws"
 }
 wordPress {
     sitemapUrl = "http://www.ala.org.au/sitemap.xml"
