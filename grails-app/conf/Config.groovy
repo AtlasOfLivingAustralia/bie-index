@@ -42,6 +42,9 @@ gazetteerLayerId = "2123"
 if (!security.apikey.serviceUrl) {
     security.apikey.serviceUrl = 'https://auth.ala.org.au/apikey/ws/check?apikey='
 }
+if (!security.cas.appServerName) {
+    security.cas.appServerName = grails.serverURL
+}
 wordPress {
     sitemapUrl = "http://www.ala.org.au/sitemap.xml"
     baseUrl = "http://www.ala.org.au/?page_id="

@@ -17,7 +17,7 @@
   <title><g:message code="admin.import.occurrences.label"/></title>
   <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
     <meta name="breadcrumbParent" content="${createLink(controller:'admin', action:'index', absolute:true)},${message(code: 'breadcrumb.admin')}"/>
-    <r:require modules="sockets" />
+    <asset:javascript src="sockets"/>
     <style type="text/css">
         .progress {
             height: 10px !important;
@@ -53,7 +53,7 @@
         </div>
     </div>
 
-    <r:script>
+    <asset:script type="text/javascript">
         function loadOccurrenceInfo(){
             $.get("${createLink(controller:'import', action:'importOccurrences')}", function( data ) {
               if(data.success){
@@ -66,9 +66,9 @@
               $('.progress').removeClass('hide');
             });
         }
-    </r:script>
+    </asset:script>
 
-    <r:script>
+    <asset:script type="text/javascript">
         $(function() {
             var socket = new SockJS("${createLink(uri: '/stomp')}");
             var client = Stomp.over(socket);
@@ -88,7 +88,7 @@
                 });
             });
         });
-    </r:script>
+    </asset:script>
 </div>
 </body>
 </html>

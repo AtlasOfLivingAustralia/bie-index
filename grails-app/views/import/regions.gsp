@@ -4,7 +4,7 @@
   <title><g:message code="admin.import.regions.label"/></title>
   <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
     <meta name="breadcrumbParent" content="${createLink(controller:'admin', action:'index', absolute:true)},${message(code: 'breadcrumb.admin')}"/>
-  <r:require modules="sockets" />
+    <asset:javascript src="sockets"/>
 </head>
 <body>
 <div>
@@ -32,7 +32,7 @@
         </div>
     </div>
 
-    <r:script>
+    <asset:script type="text/javascript">
         function loadInfo(){
             $.get("${createLink(controller:'import', action:'importRegions')}", function( data ) {
               if(data.success){
@@ -44,8 +44,8 @@
               $('.import-info').removeClass('hide');
             });
         }
-    </r:script>
-    <r:script>
+    </asset:script>
+    <asset:script type="text/javascript">
         $(function() {
             var socket = new SockJS("${createLink(uri: '/stomp')}");
             var client = Stomp.over(socket);
@@ -55,7 +55,7 @@
                 });
             });
         });
-    </r:script>
+    </asset:script>
 </div>
 </body>
 </html>

@@ -1,6 +1,5 @@
 package au.org.ala.bie
 
-import au.org.ala.bie.search.SearchResultsDTO
 import grails.converters.JSON
 /**
  * A set of JSON based search web services.
