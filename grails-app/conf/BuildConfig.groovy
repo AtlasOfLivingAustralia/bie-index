@@ -40,8 +40,11 @@ grails.project.dependency.resolution = {
 
         runtime 'net.sf.opencsv:opencsv:2.3'
         runtime "org.apache.solr:solr-solrj:5.4.0"
-        runtime "org.gbif:dwca-io:1.24"
-        runtime("au.org.ala:ala-name-matching:2.4.0"){
+        runtime("org.gbif:dwca-io:1.24") {
+            excludes 'com.google.guava:guava'
+        }
+        runtime "com.google.guava:guava:19.0"
+        runtime("au.org.ala:ala-name-matching:2.4.0") {
             excludes 'org.slf4j:slf4j-log4j12'
         }
         runtime "org.jsoup:jsoup:1.8.3"
