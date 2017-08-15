@@ -1,0 +1,25 @@
+language: groovy
+jdk:
+- oraclejdk8
+sudo: false
+branches:
+  only:
+  - master
+  - hotfix
+before_install:
+- wget -q https://raw.githubusercontent.com/AtlasOfLivingAustralia/travis-build-configuration/master/ala_common.sh
+- chmod +x ala_common.sh
+- source ./ala_common.sh
+
+- ala_travis_grails_setup_env
+
+script:
+- ala_travis_grails_test
+
+after_success:
+- ala_travis_grails_deploy
+
+env:
+  global:
+  - secure: M5RdnCEQHqRvytpOCDWhxSw6oOZLGYODdhHkmCy+5z8zKLWYchwcCSOdGgmEGU9oeEndg1erPKXuvRlpjWHq2VnaFh2EVg8rA82LoB4PkOzqwmCevLdTL6R+ePO/ZHoZo2PoLSbGHV38RkhFI+GTa9s+4/JZjNrm45a2eJx+GaU=
+  - secure: G9qlN6dGDN4RF+137R3lOAXQnTY0uhbt69TyPnaFUFlhUo/ngonaHkULCtDWujcmqkwoWh8QqybmO2XpG78cicFmzcrruQmDVqj2mi7VikDp722rLbSkop44E3xPVNAS1NAb9nyKyZlPMxmxncAA5O6TA//UPtsjIn1HrENJJ/o=

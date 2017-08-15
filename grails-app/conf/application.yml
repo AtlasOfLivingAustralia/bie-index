@@ -173,6 +173,7 @@ additionalResultFields: ""
 #toggle for the population of occurrence counts
 occurrenceCounts:
   enabled: true
+  filterQuery: geospatial_kosher:true
 
 # SOLR additional params
 solr:
