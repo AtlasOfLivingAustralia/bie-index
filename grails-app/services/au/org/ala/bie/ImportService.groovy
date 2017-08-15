@@ -26,8 +26,8 @@ import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
 import org.apache.solr.common.params.MapSolrParams
-import org.codehaus.groovy.grails.web.json.JSONElement
-import org.codehaus.groovy.grails.web.json.JSONObject
+import org.grails.web.json.JSONElement
+import org.grails.web.json.JSONObject
 import org.gbif.dwc.terms.DcTerm
 import org.gbif.dwc.terms.DwcTerm
 import org.gbif.dwc.terms.GbifTerm
@@ -98,6 +98,7 @@ class ImportService {
     }
 
     def importAll() {
+        log "Starting import of all data"
         try {
             // Do this first so that source datasets can be retrieved
             importCollectory()
@@ -159,14 +160,17 @@ class ImportService {
         } catch (Exception e) {
             log("Problem importing occurrence data: " + e.getMessage())
         }
+        log "Finished import of all data"
     }
 
     def importAllDwcA() {
+        log "Starting import of all taxon field"
         clearTaxaIndex()
         def filePaths = retrieveAvailableDwCAPaths()
         filePaths.each {
             importDwcA(it, false)
         }
+        log "Finished import of all taxon field"
     }
 
     /**
@@ -175,9 +179,10 @@ class ImportService {
      * @return
      */
     def importLayers() {
+        log "Starting layer import"
         def js = new JsonSlurper()
         def url = grailsApplication.config.layersServicesUrl + "/layers"
-        log("Requesting layer list from : " + url)
+        log "Requesting layer list from : ${url}"
         def layers = js.parseText(new URL(Encoder.encodeUrl(url)).getText("UTF-8"))
         def batch = []
         indexService.deleteFromIndex(IndexDocType.LAYER)
@@ -189,14 +194,16 @@ class ImportService {
             doc["name"] = layer.displayname
             doc["description"] = layer.description
             doc["distribution"] = "N/A"
-            log("Importing layer: " + layer.displayname)
+            log "Importing layer ${layer.displayname}"
             batch << doc
         }
         indexService.indexBatch(batch)
-        log("Finished indexing ${layers.size()} layers")
+        log"Finished indexing ${layers.size()} layers"
+        log "Finsihed layer import"
     }
 
     def importLocalities() {
+        log "Starting localities import"
         if(grailsApplication.config.gazetteerLayerId) {
             indexService.deleteFromIndex(IndexDocType.LOCALITY)
             log("Starting indexing ${grailsApplication.config.gazetteerLayerId}")
@@ -210,9 +217,11 @@ class ImportService {
         } else {
             log("Skipping localities, no gazetteer layer ID configured")
         }
+        log "Finished localities import"
     }
 
     def importRegions() {
+        log "Starting regions import"
         def js = new JsonSlurper()
         def layers = js.parseText(new URL(Encoder.encodeUrl(grailsApplication.config.layersServicesUrl + "/layers")).getText("UTF-8"))
         indexService.deleteFromIndex(IndexDocType.REGION)
@@ -221,7 +230,9 @@ class ImportService {
                 importLayer(layer)
             }
         }
-        log("Finished indexing ${layers.size()} region layers")
+        log"Finished indexing ${layers.size()} region layers"
+        log "Finished regions import"
+
     }
 
     /**
@@ -235,8 +246,7 @@ class ImportService {
         def keywords = []
 
         if (grailsApplication.config.localityKeywordsUrl) {
-            JsonSlurper slurper = new JsonSlurper()
-            keywords = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.localityKeywordsUrl)))
+            keywords = this.getConfigFile(grailsApplication.config.localityKeywordsUrl)
         }
 
         def tempFilePath = "/tmp/objects_${layer.id}.csv.gz"
@@ -347,6 +357,7 @@ class ImportService {
      * @return
      */
     def importCollectory() {
+        log "Starting collectory import"
         [
                 "dataResource": IndexDocType.DATARESOURCE,
                 "dataProvider": IndexDocType.DATAPROVIDER,
@@ -391,12 +402,14 @@ class ImportService {
             }
             log("Finished indexing ${drLists.size()} ${entityType}")
         }
+        log "Finished collectory import"
     }
 
     /**
      * Index WordPress pages
      */
     def importWordPressPages() throws Exception {
+        log "Starting wordpress import"
         // clear the existing WP index
         indexService.deleteFromIndex(IndexDocType.WORDPRESS)
         if (!grailsApplication.config.wordPress.sitemapUrl) {
@@ -483,8 +496,7 @@ class ImportService {
                 buffer << doc
                 // update progress bar (number output only)
                 if (documentCount > 0) {
-                    Double percentDone = (documentCount / totalDocs) * 100
-                    log("${percentDone.round(1)}") // progress bar output
+                    updateProgressBar(totalDocs, documentCount)
                 }
             } catch (IOException ex) {
                 // catch it so we don't stop indexing other pages
@@ -494,8 +506,8 @@ class ImportService {
         }
         log("Committing to SOLR...")
         indexService.indexBatch(buffer)
-        log("100") // complete progress bar
-        log("Import finished.")
+        updateProgressBar(100, 100) // complete progress bar
+        log "Finished wordpress import"
     }
 
     /**
@@ -539,7 +551,7 @@ class ImportService {
 
         lists.each { resource ->
             listNum++
-            Integer listProgress = (listNum / lists.size()) * 100 // percentage as int
+            this.updateProgressBar(lists.size(), listNum)
             String uid = resource.uid
             String solrField = resource.field ?: "conservationStatus_s"
             String sourceField = resource.sourceField ?: defaultSourceField
@@ -548,7 +560,7 @@ class ImportService {
                 log("Loading list from: " + url)
                 try {
                     JSONElement json = JSON.parse(getStringForUrl(url))
-                    updateDocsWithConservationStatus(json, sourceField, solrField, uid, listProgress)
+                    updateDocsWithConservationStatus(json, sourceField, solrField, uid)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -561,14 +573,13 @@ class ImportService {
     def importVernacularSpeciesLists() throws Exception {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
-        JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.vernacularListsUrl)))
+        def config = this.getConfigFile(grailsApplication.config.vernacularListsUrl)
         def lists = config.lists
         Integer listNum = 0
 
         lists.each { resource ->
             listNum++
-            Integer listProgress = (listNum / lists.size()) * 100 // percentage as int
+            this.updateProgressBar(lists.size(), listNum)
             String uid = resource.uid
             String vernacularNameField = resource.vernacularNameField ?: config.defaultVernacularNameField
             String nameIdField = resource.nameIdField ?: config.defaultNameIdField
@@ -581,7 +592,7 @@ class ImportService {
                 log("Loading list from: " + url)
                 try {
                     JSONElement json = JSON.parse(getStringForUrl(url))
-                    importAdditionalVernacularNames(json, vernacularNameField, nameIdField, statusField, languageField, sourceField, resourceLanguage, uid, listProgress)
+                    importAdditionalVernacularNames(json, vernacularNameField, nameIdField, statusField, languageField, sourceField, resourceLanguage, uid)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -806,7 +817,7 @@ class ImportService {
      * @param SolrFieldName
      * @return
      */
-    private updateDocsWithConservationStatus(JSONElement json, String jsonFieldName, String SolrFieldName, String drUid, Integer listProgress) {
+    private updateDocsWithConservationStatus(JSONElement json, String jsonFieldName, String SolrFieldName, String drUid) {
         if (json.size() > 0) {
             def totalDocs = json.size()
             def buffer = []
@@ -814,7 +825,7 @@ class ImportService {
             def legistatedStatusType = statusMap.get("legislated")
             def unmatchedTaxaCount = 0
 
-            log("${listProgress}||0") // reset progress bar
+            updateProgressBar2(100, 0)
             log("Updating taxa with ${SolrFieldName}")
             json.eachWithIndex { item, i ->
                 log.debug "item = ${item}"
@@ -858,14 +869,13 @@ class ImportService {
                 }
 
                 if (i > 0) {
-                    Double percentDone = (i / totalDocs) * 100
-                    log("${listProgress}||${percentDone.round(1)}") // progress bar output
+                    updateProgressBar2(totalDocs, i)
                 }
             }
 
             log("Committing to SOLR...")
             indexService.indexBatch(buffer)
-            log("${listProgress}||1000") // complete progress bar
+            updateProgressBar2(100, 100)
             log("Number of taxa unmatched: ${unmatchedTaxaCount}")
             log("Import finished.")
         } else {
@@ -873,7 +883,7 @@ class ImportService {
         }
     }
 
-    private void importAdditionalVernacularNames(JSONElement json, String vernacularNameField, String nameIdField, String statusField, String languageField, String sourceField, String resourceLanguage, String uid, Integer listProgress) {
+    private void importAdditionalVernacularNames(JSONElement json, String vernacularNameField, String nameIdField, String statusField, String languageField, String sourceField, String resourceLanguage, String uid) {
         if (json.size() > 0) {
             def totalDocs = json.size()
             def buffer = []
@@ -881,7 +891,7 @@ class ImportService {
             def commonStatus = statusMap.get("common")
             def unmatchedTaxaCount = 0
 
-            log("${listProgress}||0") // reset progress bar
+            updateProgressBar2(100, 0)
             log("Updating vernacular names from ${uid}")
             json.eachWithIndex { item, i ->
                 log.debug "item = ${item}"
@@ -895,8 +905,7 @@ class ImportService {
                     unmatchedTaxaCount++
 
                 if (i > 0) {
-                    Double percentDone = (i / totalDocs) * 100
-                    log("${listProgress}||${percentDone.round(1)}") // progress bar output
+                    updateProgressBar2(totalDocs, i)
                 }
             }
             log("Committing names to SOLR...")
@@ -963,8 +972,9 @@ class ImportService {
     }
 
     def clearDanglingSynonyms(){
-        log("Import finished.")
+        log("Starting clear dangling synonyms")
         indexService.deleteFromIndexByQuery("taxonomicStatus:synonym AND -acceptedConceptName:*")
+        log("Finished clear dangling synonyms")
     }
 
     def clearTaxaIndex() {
@@ -1371,8 +1381,7 @@ class ImportService {
         def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+taxonomicStatus:accepted"
         def prevCursor = ""
         def cursor = "*"
-        JsonSlurper slurper = new JsonSlurper()
-        def listConfig = slurper.parse(new URL(grailsApplication.config.imagesListsUrl))
+        def listConfig = this.getConfigFile(grailsApplication.config.imagesListsUrl)
         def imageMap = collectImageLists(listConfig.lists)
         def rankMap = listConfig.ranks.collectEntries { r -> [(r.rank): r] }
         def boosts = listConfig.boosts.collect({"bq=" + it}).join("&")
@@ -1570,8 +1579,7 @@ class ImportService {
     def loadPreferredImages(online) {
         def updatedTaxa = []
         Integer batchSize = 20
-        JsonSlurper slurper = new JsonSlurper()
-        Map listConfig = slurper.parse(new URL(grailsApplication.config.imagesListsUrl)) // config defined JSON file
+        Map listConfig = this.getConfigFile(grailsApplication.config.imagesListsUrl) // config defined JSON file
         Map imagesMap = collectImageLists(listConfig.lists) // reads preferred images list via WS
         List guidList = []
 
@@ -1656,6 +1664,7 @@ class ImportService {
         def startTime, endTime
         Set autoLanguages = grailsApplication.config.autoComplete.languages ? grailsApplication.config.autoComplete.languages.split(',') as Set : null
 
+        log("Starting dernomalisation")
         js.setType(JsonParserType.INDEX_OVERLAY)
         log("Getting species groups")
         def speciesGroupMapper = speciesGroupService.invertedSpeciesGroups
@@ -2044,8 +2053,13 @@ class ImportService {
     }
 
     private updateProgressBar(int total, int current) {
-        Double percentDone = (current / total) * 100
-        log("${percentDone.round(1)}") // progress bar output (JS code detects numeric input)
+        Double percentDone = total > 0 ? current * 100.0 / total : 100.0
+        brokerMessagingTemplate.convertAndSend "/topic/import-progress", percentDone.round(1).toString()
+    }
+
+    private updateProgressBar2(int total, int current) {
+        Double percentDone = total > 0 ? current * 100.0 / total : 100.0
+        brokerMessagingTemplate.convertAndSend "/topic/import-progress2", percentDone.round(1).toString()
     }
 
     private findAttribution(datasetID, attributionMap, datasetMap) {
@@ -2059,4 +2073,13 @@ class ImportService {
         attributionMap.put(datasetID, attribution)
         return attribution
     }
+
+    private getConfigFile(String url) {
+        //url = URLEncoder.encode(url, "UTF-8")
+        URL source = this.class.getResource(url)
+        if (source == null)
+            source = new URL(url)
+        JsonSlurper slurper = new JsonSlurper()
+        return slurper.parse(source)
+     }
 }

@@ -30,7 +30,7 @@
             <div class="form-group">
                 <label for="dwca-${fs}" class="col-md-4 control-label">${filePath}</label>
                 <div class="col-md-2">
-                    <button id="dwca-${fs}" class="btn btn-primary" onclick="javascript:loadDwCA('${filePath}');"><g:message code="admin.button.importdwca"/></button>
+                    <button id="dwca-${fs}" class="btn btn-primary import-button" onclick="javascript:loadDwCA('${filePath}');"><g:message code="admin.button.importdwca"/></button>
                 </div>
             </div>
         </g:each>
@@ -40,18 +40,13 @@
                 <input type="text" class="form-control" id="dwca_dir" name="dwca_dir" value="/data/bie/import/dwc-a" class="form-control"/>
             </div>
             <div class="col-md-2">
-                <button id="start-import" onclick="javascript:loadDwCAFromDir();" class="btn btn-primary"><g:message code="admin.button.importdwca"/></button>
+                <button id="start-import" onclick="javascript:loadDwCAFromDir();" class="btn btn-primary import-button"><g:message code="admin.button.importdwca"/></button>
             </div>
             <span class="help-block"><g:message code="admin.label.dwcapath.help"/></span>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-12 well import-info alert-info hide" style="margin-top:20px;">
-            <p></p>
-            <p id="import-info-web-socket"></p>
-        </div>
-    </div>
+    <g:render template="status"/>
 
     <asset:script type="text/javascript">
 
@@ -60,27 +55,8 @@
         }
 
         function loadDwCA(filePath) {
-            $.get("${createLink(controller:'import', action:'importDwcA' )}?dwca_dir=" + filePath + "&clear_index=" + $('#clear_index').is(':checked'), function( data ) {
-              if(data.success){
-                $('.import-info p').html('Import successfully started....')
-              } else {
-                $('.import-info p').html('Import failed. Check file path...')
-              }
-              $('.import-info').removeClass('hide');
-            });
+            loadInfo('${createLink(controller:'import', action:'importDwcA' )}?dwca_dir=' + filePath + '&clear_index=' + $('#clear_index').is(':checked'));
         }
-    </asset:script>
-
-    <asset:script type="text/javascript">
-        $(function() {
-            var socket = new SockJS("${createLink(uri: '/stomp')}");
-            var client = Stomp.over(socket);
-            client.connect({}, function() {
-                client.subscribe("/topic/import-feedback", function(message) {
-                    $("#import-info-web-socket").append('<br/>' + message.body);
-                });
-            });
-        });
     </asset:script>
 </div>
 </body>

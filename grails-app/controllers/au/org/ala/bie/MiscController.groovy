@@ -3,8 +3,8 @@ package au.org.ala.bie
 import grails.converters.JSON
 import grails.converters.XML
 
-import static org.codehaus.groovy.grails.web.servlet.HttpHeaders.CONTENT_DISPOSITION
-import static org.codehaus.groovy.grails.web.servlet.HttpHeaders.LAST_MODIFIED
+import static grails.web.http.HttpHeaders.CONTENT_DISPOSITION
+import static grails.web.http.HttpHeaders.LAST_MODIFIED
 
 class MiscController {
 

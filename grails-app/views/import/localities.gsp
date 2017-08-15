@@ -16,40 +16,10 @@
     </div>
 
     <div>
-        <button id="start-import" onclick="javascript:loadInfo()" class="btn btn-primary"><g:message code="admin.button.importlocalities"/></button>
+        <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importLocalities')}')" class="btn btn-primary import-button"><g:message code="admin.button.importlocalities"/></button>
     </div>
 
-    <div class="row">
-        <div class="col-md-12 well import-info alert-info hide" style="margin-top:20px;">
-            <p></p>
-            <p id="import-info-web-socket"></p>
-        </div>
-    </div>
-
-    <asset:script type="text/javascript">
-        function loadInfo(){
-            $.get("${createLink(controller:'import', action:'importLocalities')}", function( data ) {
-              if(data.success){
-                $('.import-info p').html('Import successfully started....')
-                $('#start-import').prop('disabled', true);
-              } else {
-                $('.import-info p').html('Import failed. Check file path...')
-              }
-              $('.import-info').removeClass('hide');
-            });
-        }
-    </asset:script>
-    <asset:script type="text/javascript">
-        $(function() {
-            var socket = new SockJS("${createLink(uri: '/stomp')}");
-            var client = Stomp.over(socket);
-            client.connect({}, function() {
-                client.subscribe("/topic/import-feedback", function(message) {
-                    $("#import-info-web-socket").append('<br/>' + message.body);
-                });
-            });
-        });
-    </asset:script>
+    <g:render template="status"/>
 </div>
 </body>
 </html>

@@ -5,9 +5,6 @@ import grails.converters.JSON
  * A set of JSON based search web services.
  */
 class SearchController {
-
-    def grailsApplication
-
     def searchService, solrSearchService, autoCompleteService, downloadService
 
     static defaultAction = "search"
@@ -37,7 +34,7 @@ class SearchController {
      * @return
      */
     def imageSearch(){
-        asJson ([searchResults:searchService.imageSearch(params.id, params.start, params.rows, params.qc)])
+        render ([searchResults:searchService.imageSearch(params.id, params.start, params.rows, params.qc)] as JSON)
     }
 
     /**
@@ -96,7 +93,7 @@ class SearchController {
             response.sendError(404,"GUID not recognised ${params.id}")
             return null
         } else {
-            asJson model
+            render (model as JSON)
         }
     }
 
@@ -185,24 +182,24 @@ class SearchController {
     def auto(){
         log.debug("auto called with q = " + params.q)
         log.debug("auto called with queryString = " + request.queryString)
-        def fqString = ""
+        def fq = []
         def limit = params.limit
         def idxType = params.idxType
         def geoOnly = params.geoOnly
 
         if (limit) {
-            fqString += "&rows=${limit}"
+            fq << "&rows=${limit}"
         }
 
         if (idxType) {
-            fqString += "&fq=idxtype:${idxType.toUpperCase()}"
+            fq << "&fq=idxtype:${idxType.toUpperCase()}"
         }
 
         if (geoOnly) {
             // TODO needs WS lookup to biocache-service (?)
         }
 
-        def autoCompleteList = autoCompleteService.auto(params.q, fqString)
+        def autoCompleteList = autoCompleteService.auto(params.q, fq)
         def payload = [autoCompleteList:autoCompleteList]
         asJson payload
     }
@@ -221,7 +218,8 @@ class SearchController {
                     it.split(",").each { facet -> facets << facet }
                 }
             }
-            asJson([searchResults: searchService.search(params.q, params, facets)])
+            def results = searchService.search(params.q, params, facets)
+            asJson([searchResults: results])
         } catch (Exception e){
             log.error(e.getMessage(), e)
             render(["error": e.getMessage(), indexServer: grailsApplication.config.indexLiveBaseUrl] as JSON)
@@ -266,6 +264,6 @@ class SearchController {
 
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
-        model
+        render(model as JSON)
     }
 }

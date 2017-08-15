@@ -15,7 +15,7 @@
         <li><g:link controller="import" action="regions"><g:message code="admin.import.regions.label"/></g:link> <g:message code="admin.import.regions.lead"/></li>
         <li><g:link controller="import" action="localities"><g:message code="admin.import.localities.label"/></g:link> <g:message code="admin.import.localities.lead"/></li>
         <li><g:link controller="import" action="specieslist"><g:message code="admin.import.specieslist.label"/></g:link> <g:message code="admin.import.specieslist.lead"/></li>
-        <li><g:link controller="import" action="wordpress"><g:message code="admin.import.wordpress.label"/></g:link> <g:message code="admin.import.wordpress.lead"/>>/li>
+        <li><g:link controller="import" action="wordpress"><g:message code="admin.import.wordpress.label"/></g:link> <g:message code="admin.import.wordpress.lead"/></li>
         <li><g:link controller="import" action="links"><g:message code="admin.import.links.label"/></g:link> <g:message code="admin.import.links.lead"/></li>
         <li><g:link controller="import" action="occurrences"><g:message code="admin.import.occurrences.label"/></g:link> <g:message code="admin.import.occurrences.lead"/></li>
         <br>
