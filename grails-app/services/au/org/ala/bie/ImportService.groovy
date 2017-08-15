@@ -635,7 +635,7 @@ class ImportService {
         log.debug "totalDocs = ${totalDocs} || totalPages = ${totalPages}"
         log("Processing " + String.format("%,d", totalDocs) + " taxa (via ${paramsMap.q})...<br>") // send to browser
 
-        def promiseList = new PromiseList() // for biocaceh queries
+        def promiseList = new PromiseList() // for biocache queries
         Queue commitQueue = new ConcurrentLinkedQueue()  // queue to put docs to be indexes
         ExecutorService executor = Executors.newSingleThreadExecutor() // consumer of queue - single blocking thread
         executor.execute {
@@ -656,7 +656,7 @@ class ImportService {
 
                 // iterate over the result set
                 resultsDocs.each { doc ->
-                    if (nationalSpeciesDatasets.contains(doc.datasetID)) {
+                    if (nationalSpeciesDatasets && nationalSpeciesDatasets.contains(doc.datasetID)) {
                         taxaLocatedInHubCountry.add(doc) // in national list so _assume_ it is located in host/hub county
                     } else {
                         taxaToSearchOccurrences.add(doc) // search occurrence records to determine if it is located in host/hub county
@@ -708,6 +708,9 @@ class ImportService {
                 updateDoc["idxtype"] = ["set": doc.idxtype] // required field
                 updateDoc["guid"] = ["set": doc.guid] // required field
                 updateDoc["locatedInHubCountry"] = ["set": true]
+                if(doc.containsKey("occurrenceCount")){
+                    updateDoc["occurrenceCount"] = ["set": doc["occurrenceCount"]]
+                }
                 commitQueue.offer(updateDoc) // throw it on the queue
                 totalDocumentsUpdated++
             } else {
@@ -777,8 +780,7 @@ class ImportService {
             def guidSubset = guids.subList(start,end)
             def guidParamList = guidSubset.collect { String guid -> guid.encodeAsURL() } // URL encode guids
             def query = "taxon_concept_lsid:\"" + guidParamList.join("\"+OR+taxon_concept_lsid:\"") + "\""
-            def filterQuery = "country:Australia+OR+cl21:*&fq=geospatial_kosher:true" // filter on Aust. terristrial and IMCRA marine areas
-            //  def postBody = [ q: query, rows: 0, facet: true, "facet.field": "taxon_concept_lsid", "facet.mincount": 1, wt: "json" ] // will be url-encoded
+            def filterQuery = grailsApplication.config.occurrenceCounts.filterQuery
 
             try {
                 // def json = searchService.doPostWithParamsExc(grailsApplication.config.biocache.solr.url +  "/select", postBody)
@@ -789,10 +791,16 @@ class ImportService {
                 JSONObject jsonObj = JSON.parse(queryResponse)
 
                 if (jsonObj.containsKey("facet_counts")) {
-                    jsonObj?.facet_counts?.facet_fields?.taxon_concept_lsid?.eachWithIndex { val, idx ->
+
+                    def facetCounts = jsonObj?.facet_counts?.facet_fields?.taxon_concept_lsid
+                    facetCounts.eachWithIndex { val, idx ->
                         // facets results are a list with key, value, key, value, etc
                         if (idx % 2 == 0) {
-                            docsWithRecs.add(docs.find { it.guid == val } )
+                            def docWithRecs = docs.find { it.guid == val }
+                            docWithRecs["occurrenceCount"] = facetCounts[idx + 1] //add the count
+                            if(docWithRecs){
+                                docsWithRecs.add(docWithRecs )
+                            }
                         }
                     }
                 }
