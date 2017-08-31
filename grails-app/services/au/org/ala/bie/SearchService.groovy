@@ -6,7 +6,7 @@ import grails.converters.JSON
 import grails.web.servlet.mvc.GrailsParameterMap
 import groovy.json.JsonSlurper
 import org.apache.solr.common.params.MapSolrParams
-import org.gbif.nameparser.NameParser
+import org.gbif.nameparser.PhraseNameParser
 import org.springframework.web.util.UriUtils
 
 /**
@@ -185,7 +185,7 @@ class SearchService {
             try {
 
                 //attempt to parse the name
-                def nameParser = new NameParser()
+                def nameParser = new PhraseNameParser()
                 def parsedName = nameParser.parse(q)
                 if (parsedName && parsedName.canonicalName()) {
                     def canonical = parsedName.canonicalName()

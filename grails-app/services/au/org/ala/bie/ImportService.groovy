@@ -1741,7 +1741,7 @@ class ImportService {
                 log "1. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1777,7 +1777,7 @@ class ImportService {
                 log "2. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1846,7 +1846,7 @@ class ImportService {
         log("Finished taxon denormalisaion. Duration: ${(new SimpleDateFormat("mm:ss:SSS")).format(new Date(endTime - startTime))}")
     }
 
-    private denormaliseEntry(doc, Map trace, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages) {
+    private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages) {
         def currentDistribution = (doc['distribution'] ?: []) as Set
         if (doc.denormalised_b)
             return currentDistribution
@@ -1855,6 +1855,11 @@ class ImportService {
         def distribution = [] as Set
         def guid = doc.guid
         def scientificName = doc.scientificName
+        if (stack.contains(guid)) {
+            log "Loop in parent-child relationship for ${guid} - ${stack}"
+            return currentDistribution
+        }
+        stack << guid
         update["id"] = doc.id // doc key
         update["idxtype"] = [set: doc.idxtype] // required field
         update["guid"] = [set: guid] // required field
@@ -1910,7 +1915,7 @@ class ImportService {
             def json = js.parseText(queryResponse)
             def docs = json.response.docs
             docs.each { child ->
-                distribution.addAll(denormaliseEntry(child, trace, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages))
+                distribution.addAll(denormaliseEntry(child, trace, stack, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages))
             }
             prevCursor = cursor
             cursor = json.nextCursorMark
@@ -1924,6 +1929,7 @@ class ImportService {
             indexService.indexBatch(buffer, online)
             buffer.clear()
         }
+        stack.pop()
         distribution.addAll(currentDistribution)
         return distribution
     }
