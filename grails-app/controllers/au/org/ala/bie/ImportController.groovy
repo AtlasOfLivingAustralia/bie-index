@@ -23,7 +23,7 @@ import au.org.ala.web.AlaSecured
 class ImportController {
 
     def importService, bieAuthService
-
+    def brokerMessagingTemplate
     /**
      * Load import index page.
      */
@@ -58,7 +58,7 @@ class ImportController {
     def importDwcA() {
 
         if(!params.dwca_dir || !(new File(params.dwca_dir).exists())){
-            render ([success: false, message: 'Supply a DwC-A parameter'] as JSON)
+            asJson([success: false, message: 'Supply a DwC-A parameter'])
             return
         }
 
@@ -66,11 +66,7 @@ class ImportController {
         def dwcDir = params.dwca_dir
 
         if(new File(dwcDir).exists()){
-            Thread.start {
-                log.info("Starting import of ${dwcDir}....")
-                importService.importDwcA(dwcDir, clearIndex)
-                log.info("Finished import of ${dwcDir}.")
-            }
+            execute { importService.importDwcA(dwcDir, clearIndex) }
             asJson ([success:true])
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
@@ -78,11 +74,8 @@ class ImportController {
     }
 
     def importAll(){
-        try {
-            importService.importAll()
-        } catch (Exception e) {
-            log.error("Problem loading taxa: " + e.getMessage(), e)
-        }
+        execute { importService.importAll() }
+        asJson([success: true])
     }
 
     /**
@@ -92,11 +85,7 @@ class ImportController {
      */
     def importAllDwcA() {
         if(new File(grailsApplication.config.importDir).exists()){
-            Thread.start {
-                log.info("Starting import of all archives....")
-                importService.importAllDwcA()
-                log.info("Finished import of all archives.")
-            }
+            execute { importService.importAllDwcA() }
             asJson ([success:true])
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
@@ -104,7 +93,8 @@ class ImportController {
     }
 
     def deleteDanglingSynonyms(){
-        importService.clearDanglingSynonyms()
+        execute { importService.clearDanglingSynonyms() }
+        asJson([success: true])
     }
 
     /**
@@ -114,14 +104,10 @@ class ImportController {
      */
     def importCollectory(){
         if(grailsApplication.config.collectoryServicesUrl){
-            Thread.start {
-                log.info("Starting import of collectory....")
-                importService.importCollectory()
-                log.info("Finished import of collectory.")
-            }
-            asJson ([success:true] )
+            execute { importService.importCollectory() }
+            asJson([success:true])
         } else {
-            asJson ([success: false, message: 'collectoryServicesUrl not configured'] )
+            asJson([success: false, message: 'collectoryServicesUrl not configured'])
         }
     }
 
@@ -132,14 +118,10 @@ class ImportController {
      */
     def importLayers(){
         if(grailsApplication.config.layersServicesUrl){
-            Thread.start {
-                log.info("Starting import of layers....")
-                importService.importLayers()
-                log.info("Finished import of layers.")
-            }
-            asJson ([success:true] )
+            execute { importService.importLayers() }
+            asJson([success:true])
         } else {
-            asJson ([success: false, message: 'layersServicesUrl not configured'] )
+            asJson([success: false, message: 'layersServicesUrl not configured'])
         }
     }
 
@@ -150,14 +132,10 @@ class ImportController {
      */
     def importLocalities(){
         if(grailsApplication.config.layersServicesUrl && grailsApplication.config.gazetteerLayerId){
-            Thread.start {
-                log.info("Starting import of localities from gazetteer....")
-                importService.importLocalities()
-                log.info("Finished import of localities from gazetteer.")
-            }
-            asJson ([success:true] )
+            execute { importService.importLocalities() }
+            asJson([success:true])
         } else {
-            asJson ([success: false, message: 'layersServicesUrl not configured or gazetteerLayerId not configured'] )
+            asJson([success: false, message: 'layersServicesUrl not configured or gazetteerLayerId not configured'])
         }
     }
 
@@ -168,14 +146,10 @@ class ImportController {
      */
     def importRegions(){
         if(grailsApplication.config.layersServicesUrl){
-            Thread.start {
-                log.info("Starting import of regions....")
-                importService.importRegions()
-                log.info("Finished import of regions.")
-            }
-            asJson ([success:true] )
+            execute { importService.importRegions() }
+            asJson([success:true])
         } else {
-            asJson ([success: false, message: 'layersServicesUrl not configured'] )
+            asJson([success: false, message: 'layersServicesUrl not configured'])
         }
     }
 
@@ -185,12 +159,8 @@ class ImportController {
      * @return
      */
     def importHabitats(){
-            Thread.start {
-                log.info("Starting import of habitats....")
-                importService.importHabitats()
-                log.info("Finished import of habitats.")
-            }
-            asJson ([success:true] )
+        execute { importService.importHabitats() }
+        asJson([success:true])
     }
 
     /**
@@ -199,13 +169,8 @@ class ImportController {
      * @return
      */
     def importWordPress(){
-            Thread.start {
-                log.info("Starting import of CMS pages....")
-                importService.importWordPressPages()
-                log.info("Finished import of CMS pages.")
-            }
-            asJson ([success:true] )
-
+        execute { importService.importWordPressPages() }
+        asJson([success:true])
     }
 
     /**
@@ -214,12 +179,8 @@ class ImportController {
      * @return
      */
     def importOccurrences(){
-            Thread.start {
-                log.info("Starting import of occurrences data....")
-                importService.importOccurrenceData()
-                log.info("Finished import of occurrences data.")
-            }
-            asJson ([success:true] )
+        execute { importService.importOccurrenceData() }
+        asJson ([success:true] )
 
     }
 
@@ -229,13 +190,8 @@ class ImportController {
      * @return
      */
     def importConservationSpeciesLists(){
-            Thread.start {
-                log.info("Starting import of Conservation Species Lists....")
-                importService.importConservationSpeciesLists()
-                log.info("Finished import of Conservation Species Lists.")
-            }
-            asJson ([success:true] )
-
+        execute { importService.importConservationSpeciesLists() }
+        asJson ([success:true] )
     }
 
     /**
@@ -244,33 +200,21 @@ class ImportController {
      * @return
      */
     def importVernacularSpeciesLists(){
-        Thread.start {
-            log.info("Starting import of Vernacular Species Lists....")
-            importService.importVernacularSpeciesLists()
-            log.info("Finished import of Vernacular Species Lists.")
-        }
+        execute { importService.importVernacularSpeciesLists() }
         asJson ([success:true] )
 
     }
 
     def buildLinkIdentifiers() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        Thread.start {
-            log.info("Starting build of link identifiers....")
-            importService.buildLinkIdentifiers(online)
-            log.info("Finished build of link identifiers.")
-        }
+        execute { importService.buildLinkIdentifiers(online) }
         asJson ([success:true] )
 
     }
 
     def denormaliseTaxa() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        Thread.start {
-            log.info("Starting taxon denormalisaion....")
-            importService.denormaliseTaxa(online)
-            log.info("Finished taxon denormalisaion.")
-        }
+        execute { importService.denormaliseTaxa(online) }
         asJson ([success:true] )
 
     }
@@ -283,21 +227,13 @@ class ImportController {
      */
     def loadPreferredImages() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        Thread.start {
-            log.info("Starting loading preferred images...")
-            importService.loadPreferredImages(online)
-            log.info("Finished loading preferred images.")
-        }
+        execute { importService.loadPreferredImages(online) }
         asJson ([success:true] )
     }
 
     def loadImages() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        Thread.start {
-            log.info("Starting image load....")
-            importService.loadImages(online)
-            log.info("Finished image load.")
-        }
+        execute { importService.loadImages(online) }
         asJson ([success:true] )
     }
 
@@ -308,6 +244,19 @@ class ImportController {
 
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
-        model
+        render (model as JSON)
+    }
+
+    private def execute = { Closure task ->
+        Thread.start {
+            try {
+                brokerMessagingTemplate.convertAndSend "/topic/import-control", "STARTED"
+                task.call()
+                brokerMessagingTemplate.convertAndSend "/topic/import-control", "FINISHED"
+            } catch (Exception ex) {
+                log.error(ex.message, ex)
+                brokerMessagingTemplate.convertAndSend "/topic/import-control", "ERROR"
+            }
+        }
     }
 }

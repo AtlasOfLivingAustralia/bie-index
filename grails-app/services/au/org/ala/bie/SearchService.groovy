@@ -3,9 +3,9 @@ package au.org.ala.bie
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
 import grails.converters.JSON
+import grails.web.servlet.mvc.GrailsParameterMap
 import groovy.json.JsonSlurper
 import org.apache.solr.common.params.MapSolrParams
-import org.codehaus.groovy.grails.web.servlet.mvc.GrailsParameterMap
 import org.gbif.nameparser.NameParser
 import org.springframework.web.util.UriUtils
 
@@ -112,37 +112,8 @@ class SearchService {
         params.remove("controller") // remove Grails stuff from query
         params.remove("action") // remove Grails stuff from query
         log.debug "params = ${params.toMapString()}"
-        //String queryString = params.toQueryString() //DM - this screws up FQs
         def fqs = params.fq
-
-        String qf = grailsApplication.config.solr.qf // dismax query fields
-        String bq = grailsApplication.config.solr.bq  // dismax boost function
-        String defType = grailsApplication.config.solr.defType // query parser type
-        String qAlt = grailsApplication.config.solr.qAlt // if no query specified use this query
-        String hl = grailsApplication.config.solr.hl // highlighting params (can be multiple)
-        def additionalParams = "&qf=${qf}&${bq}&defType=${defType}&q.alt=${qAlt}&hl=${hl}&wt=json&facet=${!requestedFacets.isEmpty()}&facet.mincount=1"
-        def queryTitle = q
-
-        if (requestedFacets) {
-            additionalParams = additionalParams + "&facet.field=" + requestedFacets.join("&facet.field=")
-        }
-
-        //pagination params
-        additionalParams += "&start=${params.start?:0}&rows=${params.rows?:params.pageSize?:10}"
-
-        if (params.sort) {
-            additionalParams += "&sort=${params.sort} ${params.dir?:'asc'}" // sort dir example "&sort=name asc"
-        }
-
-        if(fqs){
-            if(isCollectionOrArray(fqs)){
-                fqs.each {
-                    additionalParams = additionalParams + "&fq=" + it
-                }
-            } else {
-                additionalParams = additionalParams + "&fq=" + fqs
-            }
-        }
+        def query = []
 
         if (q) {
             if (!q) {
@@ -170,8 +141,40 @@ class SearchService {
         } else {
             q = "*:*"
         }
+        query << "q=${q}"
+        def queryTitle = q
 
-        String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?q=" + q + additionalParams
+        // Add query parameters
+        query << "defType=${grailsApplication.config.solr.defType}" // Query parser type
+        query << "qf=${grailsApplication.config.solr.qf}" // dismax query fields
+        grailsApplication.config.solr.bq.each { query << "bq=${it}" } // dismax boosts
+        query << "q.alt=${grailsApplication.config.solr.qAlt}" // if no query specified use this query
+        grailsApplication.config.solr.hl.each { query << "hl=${it}" } // highlighting parameters
+        query << "wt=json"
+        query << "facet=${!requestedFacets.isEmpty()}"
+        query << "facet.mincount=1"
+
+        if (requestedFacets) {
+            requestedFacets.each { query << "facet.field=${it}" }
+        }
+
+        //pagination params
+        query << "start=${params.start ?: 0}"
+        query << "rows=${params.rows ?: params.pageSize ?: 10}"
+
+        if (params.sort) {
+            query << "sort=${params.sort} ${params.dir ?: 'asc'}" // sort dir example "&sort=name asc"
+        }
+
+        if(fqs){
+            if(isCollectionOrArray(fqs)){
+                fqs.each { query << "&fq=${it}" }
+            } else {
+                query << "&fq=${fqs}"
+            }
+        }
+
+        String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?" + query.join('&')
         log.debug "SOLR URL = ${solrUlr}"
         def queryResponse = new URL(Encoder.encodeUrl(solrUlr)).getText("UTF-8")
         def js = new JsonSlurper()
@@ -205,7 +208,10 @@ class SearchService {
                 def rankName = matcher[0][2]
                 def guid = matcher[0][4]
                 def shortProfile = getShortProfile(guid)
-                queryTitle = rankName + " " + shortProfile.scientificName
+                if (shortProfile)
+                    queryTitle = rankName + " " + shortProfile.scientificName
+                else
+                    queryTitle = rankName + " " + guid
             } catch (Exception e){
                 log.warn("Exception thrown parsing name..", e)
             }
@@ -792,6 +798,8 @@ class SearchService {
                         rankString: taxon.rank,
                         nameAuthority: taxon.datasetName ?: taxonDatasetName ?: grailsApplication.config.defaultNameSourceAttribution,
                         rankID:taxon.rankID,
+                        nameAccordingTo: taxon.nameAccordingTo,
+                        nameAccordingToID: taxon.nameAccordingToID,
                         namePublishedIn: taxon.namePublishedIn,
                         namePublishedInYear: taxon.namePublishedInYear,
                         namePublishedInID: taxon.namePublishedInID,
@@ -810,6 +818,8 @@ class SearchService {
                             nameGuid: synonym.guid,
                             taxonomicStatus: synonym.taxonomicStatus,
                             nomenclaturalStatus: synonym.nomenclaturalStatus,
+                            nameAccordingTo: synonym.nameAccordingTo,
+                            nameAccordingToID: synonym.nameAccordingToID,
                             namePublishedIn: synonym.namePublishedIn,
                             namePublishedInYear: synonym.namePublishedInYear,
                             namePublishedInID: synonym.namePublishedInID,
@@ -1075,28 +1085,28 @@ class SearchService {
 
     private def extractClassification(queryResult) {
         def map = [:]
+        def rankKey = "rank"
         log.debug "queryResult = ${queryResult.getClass().name}"
         Map thisTaxonFields = [
                 scientificName: "scientificName",
-                taxonConceptID: "guid"
+                guid: "guid",
+                taxonConcept: "taxonConceptID"
         ]
         if(queryResult){
             queryResult.keySet().each { key ->
                 if (key.startsWith("rk_")) {
                     map.put(key.substring(3), queryResult.get(key))
-                }
-                else if (key.startsWith("rkid_")) {
+                } else if (key.startsWith("rkid_")) {
                     map.put(key.substring(5) + "Guid", queryResult.get(key))
                 }
-                else if (thisTaxonFields.containsKey(key)) {
-                    map.put(thisTaxonFields.get(key), queryResult.get(key))
-                }
-                else if (key == "rank") {
-                    map.put(queryResult.get(key), queryResult.get("scientificName")) // current name in classification
-                }
-                else if (key == "rankID") {
-                    map.put(queryResult.get("rank") + "Guid", queryResult.get("taxonConceptID")) // current name in classification
-                }
+            }
+            thisTaxonFields.each { key, value ->
+                if (queryResult.containsKey(key))
+                    map.put(value, queryResult.get(key))
+            }
+            if (queryResult.containsKey(rankKey)) {
+                map.put(queryResult.get(rankKey), queryResult.get("scientificName")) // current name in classification
+                map.put(queryResult.get(rankKey) + "Guid", queryResult.get("guid"))
             }
         }
         map
@@ -1244,11 +1254,8 @@ class SearchService {
     def getAdditionalResultFields(){
         if(additionalResultFields == null){
             //initialise
-            def fields = grailsApplication.config.additionalResultFields.split(",")
-            additionalResultFields = []
-            fields.each {
-                additionalResultFields << it
-            }
+            def fields = grailsApplication.config.additionalResultFields.split(",").findAll { !it.isEmpty() }
+            additionalResultFields = fields.collect { it }
         }
         additionalResultFields
     }
