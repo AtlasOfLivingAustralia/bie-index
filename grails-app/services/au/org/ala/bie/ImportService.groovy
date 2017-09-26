@@ -14,8 +14,8 @@
 package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
-import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.indexing.RankedName
+import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
@@ -26,18 +26,14 @@ import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
 import org.apache.solr.common.params.MapSolrParams
-import org.grails.web.json.JSONElement
-import org.grails.web.json.JSONObject
-import org.gbif.dwc.terms.DcTerm
-import org.gbif.dwc.terms.DwcTerm
-import org.gbif.dwc.terms.GbifTerm
-import org.gbif.dwc.terms.Term
-import org.gbif.dwc.terms.TermFactory
+import org.gbif.dwc.terms.*
 import org.gbif.dwca.io.Archive
 import org.gbif.dwca.io.ArchiveFactory
 import org.gbif.dwca.io.ArchiveFile
 import org.gbif.dwca.record.Record
 import org.gbif.dwca.record.StarRecord
+import org.grails.web.json.JSONElement
+import org.grails.web.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -55,12 +51,28 @@ import java.util.zip.GZIPInputStream
  */
 class ImportService {
     static IN_SCHEMA = [
-            DwcTerm.nomenclaturalCode, DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID,
-            DwcTerm.nomenclaturalStatus, DwcTerm.nameAccordingTo, DwcTerm.nameAccordingToID,
+            DwcTerm.taxonID, DwcTerm.nomenclaturalCode, DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus,
+            DwcTerm.taxonConceptID, DwcTerm.scientificNameID, DwcTerm.nomenclaturalStatus, DwcTerm.nameAccordingTo, DwcTerm.nameAccordingToID,
             DwcTerm.scientificNameID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear,
             DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder,
-            ALATerm.status, ALATerm.nameID
+            ALATerm.status, ALATerm.nameID, ALATerm.nameFormatted, ALATerm.nameComplete, ALATerm.priority,
+            ALATerm.verbatimNomenclaturalCode, ALATerm.verbatimNomenclaturalStatus, ALATerm.verbatimTaxonomicStatus,
+            DwcTerm.datasetName
     ]
+    // Terms that have been algorithmically added so needn't be added as extras
+    static TAXON_ALREADY_INDEXED = [
+            DwcTerm.taxonID,
+            DwcTerm.datasetID,
+            DwcTerm.acceptedNameUsageID,
+            DwcTerm.parentNameUsageID,
+            DwcTerm.scientificName,
+            DwcTerm.taxonRank,
+            DwcTerm.scientificNameAuthorship,
+            DwcTerm.taxonomicStatus,
+            ALATerm.nameComplete,
+            ALATerm.nameFormatted,
+    ] as Set
+
 
     def indexService, searchService
 
@@ -991,6 +1003,7 @@ class ImportService {
         indexService.deleteFromIndex(IndexDocType.TAXON)
         indexService.deleteFromIndex(IndexDocType.COMMON)
         indexService.deleteFromIndex(IndexDocType.IDENTIFIER)
+        indexService.deleteFromIndex(IndexDocType.TAXONVARIANT)
         log("Cleared.")
     }
 
@@ -1029,8 +1042,13 @@ class ImportService {
                 importVernacularDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
             else if (rowType == GbifTerm.Identifier)
                 importIdentifierDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
+            else if (rowType == ALATerm.TaxonVariant)
+                importTaxonVariantDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
             else
                 log("Unable to import an archive of type " + rowType)
+            def variantExtension = archive.getExtension(ALATerm.TaxonVariant)
+            if (variantExtension)
+                importTaxonVariantDwcA(variantExtension, attributionMap, datasetMap, defaultDatasetName)
             def vernacularExtension = archive.getExtension(GbifTerm.VernacularName)
             if (vernacularExtension)
                 importVernacularDwcA(vernacularExtension, attributionMap, datasetMap, defaultDatasetName)
@@ -1073,19 +1091,6 @@ class ImportService {
 
         log("Creating entries in index...")
 
-        //read inventory, creating entries in index....
-        def alreadyIndexed = [
-                DwcTerm.taxonID,
-                DwcTerm.datasetID,
-                DwcTerm.acceptedNameUsageID,
-                DwcTerm.parentNameUsageID,
-                DwcTerm.scientificName,
-                DwcTerm.taxonRank,
-                DwcTerm.scientificNameAuthorship,
-                DwcTerm.taxonomicStatus,
-                ALATerm.nameComplete,
-                ALATerm.nameFormatted,
-        ]
 
         def buffer = []
         def counter = 0
@@ -1100,52 +1105,21 @@ class ImportService {
             def taxonID = core.id()
             def acceptedNameUsageID = core.value(DwcTerm.acceptedNameUsageID)
             def synonym = taxonID != acceptedNameUsageID && acceptedNameUsageID != "" && acceptedNameUsageID != null
-
-            def datasetID = (core.value(DwcTerm.datasetID))
-            def taxonRank = (core.value(DwcTerm.taxonRank) ?: "").toLowerCase()
-            def scientificName = core.value(DwcTerm.scientificName)
             def parentNameUsageID = core.value(DwcTerm.parentNameUsageID)
-            def scientificNameAuthorship = core.value(DwcTerm.scientificNameAuthorship)
-            def nameComplete = core.value(ALATerm.nameComplete)
-            def nameFormatted = core.value(ALATerm.nameFormatted)
-            def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
-            def taxonomicStatus = core.value(DwcTerm.taxonomicStatus) ?: (synonym ? "synonym" : "accepted")
+            def defaultTaxonomicStatus = synonym ? "inferredSynonym" : "inferredAaccepted"
 
             def doc = ["idxtype": IndexDocType.TAXON.name()]
             doc["id"] = UUID.randomUUID().toString()
             doc["guid"] = taxonID
-            doc["datasetID"] = datasetID
             doc["parentGuid"] = parentNameUsageID
-            doc["rank"] = taxonRank
-            //only add the ID if we have a recognised rank
-            if(taxonRankID > 0){
-                doc["rankID"] = taxonRankID
+            if (synonym) {
+                doc["acceptedConceptID"] = acceptedNameUsageID
+            } else {
+                // Filled out during denormalisation
+                doc['speciesGroup'] = []
+                doc['speciesSubgroup'] = []
             }
-            doc["scientificName"] = scientificName
-            doc["scientificNameAuthorship"] = scientificNameAuthorship
-            doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
-            doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
-            doc["taxonomicStatus"] = taxonomicStatus
-
-            //index additional fields that are supplied in the core record
-            core.terms().each { term ->
-                if (!alreadyIndexed.contains(term)) {
-                    if (IN_SCHEMA.contains(term)) {
-                        doc[term.simpleName()] = core.value(term)
-                    } else {
-                        //use a dynamic field extension
-                        doc[term.simpleName() + DYNAMIC_FIELD_EXTENSION] = core.value(term)
-                    }
-                }
-            }
-
-            def attribution = findAttribution(datasetID, attributionMap, datasetMap)
-            if (attribution) {
-                doc["datasetName"] = attribution["datasetName"]
-                doc["rightsHolder"] = attribution["rightsHolder"]
-            } else if (defaultDatasetName) {
-                doc["datasetName"] = defaultDatasetName
-            }
+            buildTaxonRecord(core, doc, attributionMap, datasetMap, taxonRanks, defaultTaxonomicStatus, defaultDatasetName)
 
             if (record.hasExtension(GbifTerm.Distribution)) {
                 record.extension(GbifTerm.Distribution).each {
@@ -1155,13 +1129,6 @@ class ImportService {
                 }
             }
 
-            if (synonym) {
-                doc["acceptedConceptID"] = acceptedNameUsageID
-            } else {
-                // Filled out during denormalisation
-                doc['speciesGroup'] = []
-                doc['speciesSubgroup'] = []
-            }
             buffer << doc
             counter++
             if (buffer.size() >= 1000) {
@@ -1280,6 +1247,79 @@ class ImportService {
         if (buffer.size() > 0) {
             indexService.indexBatch(buffer)
             log("Processed ${count} records")
+        }
+    }
+
+    def importTaxonVariantDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName) throws Exception {
+        if (archiveFile.rowType != ALATerm.TaxonVariant)
+            throw new IllegalArgumentException("Taxon variant import only works for files of type " + ALATerm.TaxonVariant + " got " + archiveFile.rowType)
+        log("Importing taxon variants")
+        def taxonRanks = ranks()
+        def buffer = []
+        def count = 0
+        for (Record record: archiveFile) {
+            def doc = [:]
+            doc["id"] = UUID.randomUUID().toString() // doc key
+            doc["idxtype"] = IndexDocType.TAXONVARIANT.name() // required field
+            doc["taxonGuid"] = record.id()
+            doc["guid"] = record.value(DwcTerm.taxonID)
+            buildTaxonRecord(record, doc, attributionMap, datasetMap, taxonRanks, "inferredAccepted", defaultDatasetName)
+            buffer << doc
+            count++
+            if (buffer.size() >= 1000) {
+                indexService.indexBatch(buffer)
+                buffer.clear()
+                log("Processed ${count} records")
+            }
+        }
+        if (buffer.size() > 0) {
+            indexService.indexBatch(buffer)
+            log("Processed ${count} records")
+        }
+    }
+
+    def buildTaxonRecord(Record record, Map doc, Map attributionMap, Map datasetMap, Map taxonRanks, String defaultTaxonomicStatus, String defaultDatasetName) {
+        def datasetID = record.value(DwcTerm.datasetID)
+        def taxonRank = (record.value(DwcTerm.taxonRank) ?: "").toLowerCase()
+        def scientificName = record.value(DwcTerm.scientificName)
+        def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
+        def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
+        def nameComplete = record.value(ALATerm.nameComplete)
+        def nameFormatted = record.value(ALATerm.nameFormatted)
+        def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
+        def taxonomicStatus = record.value(DwcTerm.taxonomicStatus) ?: defaultTaxonomicStatus
+
+        doc["datasetID"] = datasetID
+        doc["parentGuid"] = parentNameUsageID
+        doc["rank"] = taxonRank
+        //only add the ID if we have a recognised rank
+        if(taxonRankID > 0){
+            doc["rankID"] = taxonRankID
+        }
+        doc["scientificName"] = scientificName
+        doc["scientificNameAuthorship"] = scientificNameAuthorship
+        doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
+        doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
+        doc["taxonomicStatus"] = taxonomicStatus
+
+        //index additional fields that are supplied in the record
+        record.terms().each { term ->
+            if (!TAXON_ALREADY_INDEXED.contains(term)) {
+                if (IN_SCHEMA.contains(term)) {
+                    doc[term.simpleName()] = record.value(term)
+                } else {
+                    //use a dynamic field extension
+                    doc[term.simpleName() + DYNAMIC_FIELD_EXTENSION] = record.value(term)
+                }
+            }
+        }
+
+        def attribution = findAttribution(datasetID, attributionMap, datasetMap)
+        if (attribution) {
+            doc["datasetName"] = attribution["datasetName"]
+            doc["rightsHolder"] = attribution["rightsHolder"]
+        } else if (defaultDatasetName) {
+            doc["datasetName"] = defaultDatasetName
         }
     }
 
@@ -1701,6 +1741,7 @@ class ImportService {
                     update["denormalised_b"] = [set: false ]
                     doc.each { k, v -> if (k.startsWith("rk_") || k.startsWith("rkid_")) update[k] = [set: null] }
                     doc.each { k, v -> if (k.startsWith("commonName")) update[k] = [set: null] }
+                    update["nameVariant"] = [set: null]
                     update["commonName"] = [set: null]
                     update["commonNameExact"] = [set: null]
                     update["commonNameSingle"] = [set: null]
@@ -1856,6 +1897,7 @@ class ImportService {
         def distribution = [] as Set
         def guid = doc.guid
         def scientificName = doc.scientificName
+        def nameComplete = doc.nameComplete
         if (stack.contains(guid)) {
             log "Loop in parent-child relationship for ${guid} - ${stack}"
             return currentDistribution
@@ -1904,6 +1946,26 @@ class ImportService {
         def identifiers = searchService.lookupIdentifier(guid, !online)
         if (identifiers) {
             update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
+        }
+        def variants = searchService.lookupVariant(guid, !online)
+        if (variants) {
+            float min = grailsApplication.config.getProperty("priority.min", Float, 0.25)
+            float max = grailsApplication.config.getProperty("priority.max", Float, 5.0)
+            float norm = grailsApplication.config.getProperty("priority.norm", Float, 4000.0)
+            float boost = variants.collect({
+                def priority = it.priority ?: norm
+                Math.min(max, Math.max(min, priority / norm))
+            }).max()
+            def names = (variants.collect { it.scientificName }) as Set
+            names.addAll(variants.collect { it.nameComplete })
+            names.remove(null)
+            names.remove(scientificName)
+            names.remove(nameComplete)
+            if (names)
+                update["nameVariant"] = [boost: boost, set: names]
+            update["scientificName"] = [boost: boost, set: scientificName]
+            if (nameComplete)
+                update["nameComplete"] = [boost: boost, set: nameComplete]
         }
 
         def prevCursor = ""

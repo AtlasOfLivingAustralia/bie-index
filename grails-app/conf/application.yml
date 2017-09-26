@@ -175,6 +175,12 @@ occurrenceCounts:
   enabled: true
   filterQuery: geospatial_kosher:true
 
+# Score normal value (divides integer priority by the norm to give solr boosts)
+priority:
+  norm: 4000
+  min: 0.25
+  max: 5.0
+
 # SOLR additional params
 solr:
     qf: exact_text^200+doc_name^100+text
@@ -183,7 +189,12 @@ solr:
       - rankID:7000^500
       - rankID:6000^100
       - scientificName:(*+-\"*+x+*\")^500
-      - taxonomicStatus:(*+-misapplied+-excluded+-\"miscellaneous+literature\")^1000
+      - taxonomicStatus:(*+-misapplied+-excluded+-miscellaneousLiterature+-inferredSynonym+-inferredAccepted)^1000
+      - idxtype:TAXON^1000
+      - idxtype:COMMON^500
+    fq:
+      - NOT+idxtype:IDENTIFIER
+      - NOT+idxtype:TAXONVARIANT
     defType: edismax
     qAlt: text:*
     hl:

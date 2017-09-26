@@ -166,6 +166,7 @@ class SearchService {
             query << "sort=${params.sort} ${params.dir ?: 'asc'}" // sort dir example "&sort=name asc"
         }
 
+        grailsApplication.config.solr.fq.each { query << "&fq=${it}"}
         if(fqs){
             if(isCollectionOrArray(fqs)){
                 fqs.each { query << "&fq=${it}" }
@@ -543,6 +544,23 @@ class SearchService {
         def json = js.parseText(queryResponse)
         json.response.docs
     }
+    
+    /**
+     * Retrieve details of all name vairants attached to a taxon.
+     *
+     * @param taxonID The taxon identifier
+     * @param useOfflineIndex
+     * @return
+     */
+    def lookupVariant(String taxonID, Boolean useOfflineIndex = false){
+        def indexServerUrlPrefix = useOfflineIndex ? grailsApplication.config.indexOfflineBaseUrl : grailsApplication.config.indexLiveBaseUrl
+        def encID = UriUtils.encodeQueryParam(taxonID, 'UTF-8') // URLEncoder.encode(taxonID, 'UTF-8')
+        def indexServerUrl = indexServerUrlPrefix+ "/select?wt=json&q=taxonGuid:%22${encID}%22&fq=idxtype:${IndexDocType.TAXONVARIANT.name()}"
+        def queryResponse = new URL(indexServerUrl).getText("UTF-8")
+        def js = new JsonSlurper()
+        def json = js.parseText(queryResponse)
+        json.response.docs
+    }
 
     /**
      * Return a simplified profile object for the docs that match the provided name
@@ -682,6 +700,8 @@ class SearchService {
     }
 
     private getTaxaBatch(Collection guidList) {
+        if (!guidList)
+            return []
         def queryList = guidList.collect({'"' + it + '"'}).join(',')
         def postBody = [
                 q: "guid:(" + queryList + ") OR linkIdentifier:("  + queryList + ")",
@@ -755,6 +775,8 @@ class SearchService {
 
         def synonyms = synJson.response.docs
 
+        def classification = extractClassification(taxon)
+
         //retrieve any common names
         def commonQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
                 "taxonGuid:\"" + taxon.guid + "\"" + "&fq=idxtype:" + IndexDocType.COMMON.name()
@@ -769,8 +791,15 @@ class SearchService {
         def identifierQueryResponse = new URL(Encoder.encodeUrl(identifierQueryUrl)).getText("UTF-8")
         def identifierJson = js.parseText(identifierQueryResponse)
         def identifiers = identifierJson.response.docs
-        def classification = extractClassification(taxon)
 
+
+        // retrieve any variants
+        def variantQueryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=json&q=" +
+                "taxonGuid:\"" + taxon.guid + "\"" + "&fq=idxtype:" + IndexDocType.TAXONVARIANT.name()
+        def variantQueryResponse = new URL(Encoder.encodeUrl(variantQueryUrl)).getText("UTF-8")
+        def variantJson = js.parseText(variantQueryResponse)
+        def variants = variantJson.response.docs
+        
         //Dataset index
         def datasetMap = [:]
         def taxonDatasetURL = getDataset(taxon.datasetID, datasetMap)?.guid
@@ -793,6 +822,7 @@ class SearchService {
                         nameComplete: taxon.nameComplete,
                         nameFormatted: taxon.nameFormatted,
                         author: taxon.scientificNameAuthorship,
+                        nomenclaturalCode: taxon.nomenclaturalCode,
                         taxonomicStatus: taxon.taxonomicStatus,
                         nomenclaturalStatus: taxon.nomenclaturalStatus,
                         rankString: taxon.rank,
@@ -807,7 +837,7 @@ class SearchService {
                         datasetURL: taxonDatasetURL
                 ],
                 taxonName:[],
-                classification:classification,
+                classification: classification,
                 synonyms:synonyms.collect { synonym ->
                     def datasetURL = getDataset(synonym.datasetID, datasetMap)?.guid
                     def datasetName = getDataset(synonym.datasetID, datasetMap)?.name
@@ -816,6 +846,7 @@ class SearchService {
                             nameComplete: synonym.nameComplete,
                             nameFormatted: synonym.nameFormatted,
                             nameGuid: synonym.guid,
+                            nomenclaturalCode: synonym.nomenclaturalCode,
                             taxonomicStatus: synonym.taxonomicStatus,
                             nomenclaturalStatus: synonym.nomenclaturalStatus,
                             nameAccordingTo: synonym.nameAccordingTo,
@@ -861,7 +892,31 @@ class SearchService {
                             infoSourceURL: identifier.source ?: datasetURL,
                             datasetURL: datasetURL
                     ]
+                },
+                variants: variants.collect { variant ->
+                    def datasetURL = getDataset(variant.datasetID, datasetMap)?.guid
+                    def datasetName = getDataset(variant.datasetID, datasetMap)?.name
+                    [
+                            nameString: variant.scientificName,
+                            nameComplete: variant.nameComplete,
+                            nameFormatted: variant.nameFormatted,
+                            identifier: variant.guid,
+                            nomenclaturalCode: variant.nomenclaturalCode,
+                            taxonomicStatus: variant.taxonomicStatus,
+                            nomenclaturalStatus: variant.nomenclaturalStatus,
+                            nameAccordingTo: variant.nameAccordingTo,
+                            nameAccordingToID: variant.nameAccordingToID,
+                            namePublishedIn: variant.namePublishedIn,
+                            namePublishedInYear: variant.namePublishedInYear,
+                            namePublishedInID: variant.namePublishedInID,
+                            nameAuthority: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
+                            infoSourceName: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
+                            infoSourceURL: variant.source ?: datasetURL,
+                            datasetURL: datasetURL,
+                            priority: variant.priority
+                    ]
                 }
+
         ]
         if (taxon.taxonConceptID)
             model.taxonConcept["taxonConceptID"] = taxon.taxonConceptID
@@ -968,43 +1023,45 @@ class SearchService {
         }
 
         docs.each {
-            if(it.idxtype == IndexDocType.TAXON.name()){
+            if(it.idxtype == IndexDocType.TAXON.name()) {
 
                 def commonNameSingle = ""
                 def commonNames = ""
                 if (it.commonNameSingle)
                     commonNameSingle = it.commonNameSingle
-                if(it.commonName){
-                     commonNames = it.commonName.join(", ")
+                if (it.commonName) {
+                    commonNames = it.commonName.join(", ")
                     if (commonNameSingle.isEmpty())
                         commonNameSingle = it.commonName.first()
                 }
 
                 Map doc = [
-                        "id" : it.id, // needed for highlighting
-                        "guid" : it.guid,
-                        "linkIdentifier" : it.linkIdentifier,
-                        "idxtype": it.idxtype,
-                        "name" : it.scientificName,
-                        "kingdom" : it.rk_kingdom,
-                        "scientificName" : it.scientificName,
-                        "author" : it.scientificNameAuthorship,
-                        "nameComplete" : it.nameComplete,
-                        "nameFormatted" : it.nameFormatted,
-                        "taxonomicStatus" : it.taxonomicStatus,
-                        "nomenclaturalStatus" : it.nomenclaturalStatus,
-                        "parentGuid" : it.parentGuid,
-                        "rank": it.rank,
-                        "rankID": it.rankID ?: -1,
-                        "commonName" : commonNames,
-                        "commonNameSingle" : commonNameSingle,
-                        "occurrenceCount" : it.occurrenceCount,
-                        "conservationStatus" : it.conservationStatus,
-                        "infoSourceName" : it.datasetName,
-                        "infoSourceURL" : "${grailsApplication.config.collectoryBaseUrl}/public/show/${it.datasetID}"
+                        "id"                      : it.id, // needed for highlighting
+                        "guid"                    : it.guid,
+                        "linkIdentifier"          : it.linkIdentifier,
+                        "idxtype"                 : it.idxtype,
+                        "name"                    : it.scientificName,
+                        "kingdom"                 : it.rk_kingdom,
+                        "nomenclaturalCode"       : it.nomenclaturalCode,
+                        "scientificName"          : it.scientificName,
+                        "scientificNameAuthorship": it.scientificNameAuthorship,
+                        "author"                  : it.scientificNameAuthorship,
+                        "nameComplete"            : it.nameComplete,
+                        "nameFormatted"           : it.nameFormatted,
+                        "taxonomicStatus"         : it.taxonomicStatus,
+                        "nomenclaturalStatus"     : it.nomenclaturalStatus,
+                        "parentGuid"              : it.parentGuid,
+                        "rank"                    : it.rank,
+                        "rankID"                  : it.rankID ?: -1,
+                        "commonName"              : commonNames,
+                        "commonNameSingle"        : commonNameSingle,
+                        "occurrenceCount"         : it.occurrenceCount,
+                        "conservationStatus"      : it.conservationStatus,
+                        "infoSourceName"          : it.datasetName,
+                        "infoSourceURL"           : "${grailsApplication.config.collectoryBaseUrl}/public/show/${it.datasetID}"
                 ]
 
-                if(it.acceptedConceptID){
+                if (it.acceptedConceptID) {
                     doc.put("acceptedConceptID", it.acceptedConceptID)
                     if (it.acceptedConceptName)
                         doc.put("acceptedConceptName", it.acceptedConceptName)
@@ -1012,7 +1069,7 @@ class SearchService {
                     doc.put("linkIdentifier", null)  // Otherwise points to the synonym
                 }
 
-                if(it.image){
+                if (it.image) {
                     doc.put("image", it.image)
                     doc.put("imageUrl", "${grailsApplication.config.imageSmallUrl}${it.image}")
                     doc.put("thumbnailUrl", "${grailsApplication.config.imageThumbnailUrl}${it.image}")
@@ -1020,7 +1077,7 @@ class SearchService {
                     doc.put("largeImageUrl", "${grailsApplication.config.imageLargeUrl}${it.image}")
                 }
 
-                if(getAdditionalResultFields()){
+                if (getAdditionalResultFields()) {
                     getAdditionalResultFields().each { field ->
                         doc.put(field, it."${field}")
                     }
@@ -1031,6 +1088,28 @@ class SearchService {
 
                 doc.putAll(map)
 
+                formatted << doc
+            } else if(it.idxtype == IndexDocType.TAXONVARIANT.name()){
+                Map doc = [
+                        "id" : it.id, // needed for highlighting
+                        "guid" : it.guid,
+                        "taxonGuid" : it.taxonGuid,
+                        "linkIdentifier" : it.linkIdentifier,
+                        "idxtype": it.idxtype,
+                        "name" : it.scientificName,
+                        "nomenclaturalCode" : it.nomenclaturalCode,
+                        "scientificName" : it.scientificName,
+                        "scientificNameAuthorship" : it.scientificNameAuthorship,
+                        "author" : it.scientificNameAuthorship,
+                        "nameComplete" : it.nameComplete,
+                        "nameFormatted" : it.nameFormatted,
+                        "taxonomicStatus" : it.taxonomicStatus,
+                        "nomenclaturalStatus" : it.nomenclaturalStatus,
+                        "rank": it.rank,
+                        "rankID": it.rankID ?: -1,
+                        "infoSourceName" : it.datasetName,
+                        "infoSourceURL" : "${grailsApplication.config.collectoryBaseUrl}/public/show/${it.datasetID}"
+                ]
                 formatted << doc
             } else {
                 Map doc = [
