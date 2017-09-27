@@ -1,17 +1,16 @@
 package au.org.ala.bie
 
-import au.org.ala.bie.search.SearchResultsDTO
 import grails.converters.JSON
 /**
  * A set of JSON based search web services.
  */
 class SearchController {
-
-    def grailsApplication
-
     def searchService, solrSearchService, autoCompleteService, downloadService
 
     static defaultAction = "search"
+
+    // Caused by the grails structure eliminating the // from http://x.y.z type URLs
+    static BROKEN_URLPATTERN = /^[a-z]+:\/[^\/].*/
 
     /**
      * Retrieve a classification for the supplied taxon.
@@ -23,10 +22,11 @@ class SearchController {
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        def classification = searchService.getClassification(params.id)
+        def guid = regularise(params.id)
+        def classification = searchService.getClassification(guid)
 
         if (!classification) {
-            response.sendError(404, "GUID ${params.id} not found")
+            response.sendError(404, "GUID ${guid} not found")
         } else {
             render (classification as JSON)
         }
@@ -38,7 +38,7 @@ class SearchController {
      * @return
      */
     def imageSearch(){
-        asJson ([searchResults:searchService.imageSearch(params.id, params.start, params.rows, params.qc)])
+        render ([searchResults:searchService.imageSearch(regularise(params.id), params.start, params.rows, params.qc)] as JSON)
     }
 
     /**
@@ -46,13 +46,14 @@ class SearchController {
      */
     def imageLinkSearch() {
         def showNoImage = params.containsKey("showNoImage") ? params.boolean("showNoImage") : true
-        def url = searchService.imageLinkSearch(params.id, params.imageType, params.qc)
+        def guid = regularise(params.id)
+        def url = searchService.imageLinkSearch(guid, params.imageType, params.qc)
 
         if (!url && showNoImage) {
             url = resource(dir: "images", file: "noImage85.jpg", absolute: true)
         }
         if (!url) {
-            response.sendError(404, "No image for " + params.id)
+            response.sendError(404, "No image for " + guid)
             return null
         }
         redirect(url: url)
@@ -68,7 +69,7 @@ class SearchController {
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        render (searchService.getChildConcepts(params.id, request.queryString) as JSON)
+        render (searchService.getChildConcepts(regularise(params.id), request.queryString) as JSON)
     }
 
     def guid(){
@@ -87,17 +88,18 @@ class SearchController {
     }
 
     def shortProfile(){
-        if(params.id == 'favicon') return; //not sure why this is happening....
-        if(!params.id){
+        def guid = regularise(params.id)
+        if(guid == 'favicon') return; //not sure why this is happening....
+        if(!guid){
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        def model = searchService.getShortProfile(params.id)
+        def model = searchService.getShortProfile(guid)
         if(!model){
-            response.sendError(404,"GUID not recognised ${params.id}")
+            response.sendError(404,"GUID not recognised ${guid}")
             return null
         } else {
-            asJson model
+            render (model as JSON)
         }
     }
 
@@ -113,7 +115,7 @@ class SearchController {
         def guidList = request.JSON
         def results = searchService.getTaxa(guidList)
         if(!results){
-            response.sendError(404,"GUID not recognised ${params.id}")
+            response.sendError(404,"GUID not recognised ${guidList}")
             return null
         } else {
             def dto = [searchDTOList: results]
@@ -127,7 +129,7 @@ class SearchController {
      * @return
      */
     def taxon(){
-        def guid = params.id
+        def guid = regularise(params.id)
         if(guid == 'favicon') return; //not sure why this is happening....
         if(!guid){
             response.sendError(404, "Please provide a GUID")
@@ -186,24 +188,24 @@ class SearchController {
     def auto(){
         log.debug("auto called with q = " + params.q)
         log.debug("auto called with queryString = " + request.queryString)
-        def fqString = ""
+        def fq = []
         def limit = params.limit
         def idxType = params.idxType
         def geoOnly = params.geoOnly
 
         if (limit) {
-            fqString += "&rows=${limit}"
+            fq << "&rows=${limit}"
         }
 
         if (idxType) {
-            fqString += "&fq=idxtype:${idxType.toUpperCase()}"
+            fq << "&fq=idxtype:${idxType.toUpperCase()}"
         }
 
         if (geoOnly) {
             // TODO needs WS lookup to biocache-service (?)
         }
 
-        def autoCompleteList = autoCompleteService.auto(params.q, fqString)
+        def autoCompleteList = autoCompleteService.auto(params.q, fq)
         def payload = [autoCompleteList:autoCompleteList]
         asJson payload
     }
@@ -222,7 +224,8 @@ class SearchController {
                     it.split(",").each { facet -> facets << facet }
                 }
             }
-            asJson([searchResults: searchService.search(params.q, params, facets)])
+            def results = searchService.search(params.q, params, facets)
+            asJson([searchResults: results])
         } catch (Exception e){
             log.error(e.getMessage(), e)
             render(["error": e.getMessage(), indexServer: grailsApplication.config.indexLiveBaseUrl] as JSON)
@@ -267,6 +270,15 @@ class SearchController {
 
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
-        model
+        render(model as JSON)
+    }
+
+    private regularise(String guid) {
+        if (!guid)
+            return guid
+        if (guid ==~ BROKEN_URLPATTERN) {
+            guid = guid.replaceFirst(":/", "://")
+        }
+        return guid
     }
 }

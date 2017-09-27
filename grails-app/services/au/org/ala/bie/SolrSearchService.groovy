@@ -21,9 +21,9 @@ import org.apache.solr.client.solrj.response.QueryResponse
 import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.SolrDocumentList
 import org.apache.solr.common.params.HighlightParams
-import org.gbif.ecat.model.ParsedName
-import org.gbif.ecat.parser.NameParser
-import org.gbif.ecat.parser.UnparsableException
+import org.gbif.api.exception.UnparsableException
+import org.gbif.api.model.checklistbank.ParsedName
+import org.gbif.nameparser.PhraseNameParser
 
 import static org.apache.solr.client.solrj.util.ClientUtils.escapeQueryChars
 
@@ -104,7 +104,7 @@ class SolrSearchService {
      * @return
      */
     private String retrieveCanonicalForm(String query) {
-        NameParser np = new NameParser()
+        PhraseNameParser np = new PhraseNameParser()
         try {
             ParsedName pn = np.parse(query)
             if (pn != null) {

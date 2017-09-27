@@ -47,12 +47,17 @@ class IndexService {
         docsToIndex.each { map ->
             def solrDoc = new SolrInputDocument()
             map.each{ fieldName, fieldValue ->
+                def boost = 1.0f
+                if (fieldValue && Map.class.isAssignableFrom(fieldValue.getClass()) && fieldValue["boost"]) {
+                    boost = fieldValue.boost
+                    fieldValue.remove("boost")
+                }
                 if(isList(fieldValue)){
                     fieldValue.each {
-                        solrDoc.addField(fieldName, it)
+                        solrDoc.addField(fieldName, it, boost)
                     }
                 } else {
-                    solrDoc.addField(fieldName, fieldValue)
+                    solrDoc.addField(fieldName, fieldValue, boost)
                 }
             }
             buffer << solrDoc
