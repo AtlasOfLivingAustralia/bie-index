@@ -95,25 +95,6 @@ endpoints:
         unique-names: true
 
 ---
-hibernate:
-    cache:
-        queries: false
-        use_second_level_cache: true
-        use_query_cache: false
-        region.factory_class: org.hibernate.cache.ehcache.SingletonEhCacheRegionFactory
-
-dataSource:
-    pooled: true
-    jmxExport: true
-    driverClassName: org.h2.Driver
-    username: sa
-    password:
-
-environments:
-    development:
-    test:
-    production:
----
 #Required so that the gbif-ecat library does not bugger up initialisation from its internal application.properties
 app:
   dataDir: /tmp/gbif-ecat
