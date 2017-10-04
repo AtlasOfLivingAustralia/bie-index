@@ -125,7 +125,9 @@ security:
   apikey:
     serviceUrl: 'https://auth.ala.org.au/apikey/ws/check?apikey='
   cas:
-    appServerName: bie.ala.org.au/ws
+    appServerName: http://bie.ala.org.au/ws
+    uriFilterPattern: "/admin.*,/alaAdmin.*"
+    uriExclusionFilterPattern: "/images.*,/css.*,/js.*,.*json,/help/.*"
 wordPress:
     sitemapUrl: http://www.ala.org.au/sitemap.xml
     baseUrl: http://www.ala.org.au/?page_id=

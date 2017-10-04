@@ -1440,7 +1440,7 @@ class ImportService {
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
                 query = query ? query + "+OR+" : ""
-                query = query + "${field}:\"${value}\"^${boost}"
+                query = query + URLEncoder.encode("${field}:\"${value}\"^${boost}", "UTF-8")
             }
             query
         }
