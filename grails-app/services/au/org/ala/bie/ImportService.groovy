@@ -17,6 +17,7 @@ import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.indexing.RankedName
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.TitleCapitaliser
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
 import grails.converters.JSON
@@ -1711,6 +1712,7 @@ class ImportService {
         def prevCursor = ""
         def cursor = "*"
         def startTime, endTime
+        def capitalisers = [:]
         Set autoLanguages = grailsApplication.config.autoComplete.languages ? grailsApplication.config.autoComplete.languages.split(',') as Set : null
 
         log("Starting dernomalisation")
@@ -1783,7 +1785,7 @@ class ImportService {
                 log "1. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages, capitalisers)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1819,7 +1821,7 @@ class ImportService {
                 log "2. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages, capitalisers)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1888,7 +1890,7 @@ class ImportService {
         log("Finished taxon denormalisaion. Duration: ${(new SimpleDateFormat("mm:ss:SSS")).format(new Date(endTime - startTime))}")
     }
 
-    private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages) {
+    private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages, Map capitalisers) {
         def currentDistribution = (doc['distribution'] ?: []) as Set
         if (doc.denormalised_b)
             return currentDistribution
@@ -1937,10 +1939,20 @@ class ImportService {
             if (autoLanguages)
                 commonNames = commonNames.findAll { autoLanguages.contains(it.language) }
 
+            def names = new LinkedHashSet()
+            commonNames.each {
+                def lang = it.language ?: Locale.default.language
+                TitleCapitaliser cap = capitalisers.get(lang)
+                if (!cap) {
+                    cap = new TitleCapitaliser(lang)
+                    capitalisers.put(lang, cap)
+                }
+                names.add(cap.capitalise(it.name))
+            }
             if(commonNames) {
-                update["commonName"] = [set: commonNames.collect { it.name }]
-                update["commonNameExact"] = [set: commonNames.collect { it.name }]
-                update["commonNameSingle"] = [set: commonNames.first().name]
+                update["commonName"] = [set: names]
+                update["commonNameExact"] = [set: names]
+                update["commonNameSingle"] = [set: names.first() ]
             }
         }
         def identifiers = searchService.lookupIdentifier(guid, !online)
@@ -1978,7 +1990,7 @@ class ImportService {
             def json = js.parseText(queryResponse)
             def docs = json.response.docs
             docs.each { child ->
-                distribution.addAll(denormaliseEntry(child, trace, stack, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages))
+                distribution.addAll(denormaliseEntry(child, trace, stack, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages, capitalisers))
             }
             prevCursor = cursor
             cursor = json.nextCursorMark
@@ -2159,4 +2171,27 @@ class ImportService {
         JsonSlurper slurper = new JsonSlurper()
         return slurper.parse(source)
      }
+
+    private List<String> processCommonNames(List commonNames, String autoLanguages) {
+        def nameMap = [:]
+        if (!commonNames || commonNames.empty)
+            return []
+        commonNames = commonNames.sort { n1, n2 ->
+            n2.priority - n1.priority
+        }
+
+        //only index valid languages
+        if (autoLanguages)
+            commonNames = commonNames.findAll { autoLanguages.contains(it.language) }
+
+        // Prefer upper/lower case names, if available
+
+
+        if(commonNames) {
+            update["commonName"] = [set: commonNames.collect { it.name }]
+            update["commonNameExact"] = [set: commonNames.collect { it.name }]
+            update["commonNameSingle"] = [set: commonNames.first().name]
+        }
+    }
+
 }
