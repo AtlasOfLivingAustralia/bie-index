@@ -14,10 +14,25 @@ import spock.lang.Specification
 class TitleCapitaliserSpec extends Specification {
     TitleCapitaliser capitaliser
     def setup() {
-        capitaliser = new TitleCapitaliser('en')
+        capitaliser = TitleCapitaliser.create("en")
     }
 
     def cleanup() {
+    }
+
+    def 'test create 1'() {
+        when:
+        def c1 = TitleCapitaliser.create('en')
+        def c2 = TitleCapitaliser.create('de')
+        def c3 = TitleCapitaliser.create('en')
+        def c4 = TitleCapitaliser.create('de')
+        then:
+        c1 != c2
+        c1 == c3
+        c1 != c4
+        c2 != c3
+        c2 == c4
+        c3 != c4
     }
 
     def "test simple capitalisation 1"() {

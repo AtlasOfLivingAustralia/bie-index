@@ -19,6 +19,10 @@ package au.org.ala.bie.util
  * The terms used for articles, etc. are language-specific and can be specified in the <code>messages</code>
  * resource bundle.
  * </p>
+ * <p>
+ * Constructing a capitaliser can be a little expensive, so the
+ * {@link #create} factory method can be used to get a capitaliser for a language.
+ * </p>
  *
  * @author Doug Palmer &lt;Doug.Palmer@csiro.au&gt;
  * @copyright Copyright &copy; 2017 Atlas of Living Australia
@@ -40,6 +44,9 @@ class TitleCapitaliser {
     private static ACTION_ASIS = 3
     /** Patterns */
     private static LETTER_APOSTROPHE = /\p{L}'\p{L}.*/
+
+    /** The capitaliser list */
+    private static capitializers = [:]
 
     Locale locale
     Set<String> lowercase
@@ -120,5 +127,21 @@ class TitleCapitaliser {
             }
         }
         return capitalised.toString()
+    }
+
+    /**
+     * Create a capitaliser.
+     *
+     * @param lang The language code
+     *
+     * @return The capitaliser
+     */
+    synchronized static TitleCapitaliser create(String lang) {
+        TitleCapitaliser capitaliser = capitializers.get(lang)
+        if (!capitaliser) {
+            capitaliser = new TitleCapitaliser(lang)
+            capitializers.put(lang, capitaliser)
+        }
+        return capitaliser
     }
 }

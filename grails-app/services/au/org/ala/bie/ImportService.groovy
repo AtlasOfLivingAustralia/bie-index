@@ -873,13 +873,14 @@ class ImportService {
                     buffer << doc
                 } else {
                     // No match so add it as a vernacular name
+                    def capitaliser = TitleCapitaliser.create(grailsApplication.config.commonNameDefaultLanguage)
                     def doc = [:]
                     doc["id"] = UUID.randomUUID().toString() // doc key
                     doc["idxtype"] = IndexDocType.TAXON // required field
                     doc["guid"] = "ALA_${item.name?.replaceAll("[^A-Za-z0-9]+", "_")}" // replace non alpha-numeric chars with '_' - required field
                     doc["datasetID"] = drUid
                     doc["datasetName"] = "Conservation list for ${SolrFieldName}"
-                    doc["name"] = item.name
+                    doc["name"] = capitaliser.capitalise(item.name)
                     doc["status"] = legistatedStatusType?.status ?: "legistated"
                     doc["priority"] = legistatedStatusType?.priority ?: 500
                     // set conservationStatus facet
@@ -952,6 +953,8 @@ class ImportService {
             log.warn("Can't find matching taxon document for ${taxonID} for ${vernacularName}, skipping")
             return false
         }
+        def capitaliser = TitleCapitaliser.create(language ?: grailsApplication.config.commonNameDefaultLanguage)
+        vernacularName = capitaliser.capitalise(vernacularName)
         def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
         if (vernacularDoc) {
             // do a SOLR doc (atomic) update
@@ -1164,6 +1167,8 @@ class ImportService {
             String source = record.value(DcTerm.source)
             String datasetID = record.value(DwcTerm.datasetID)
 
+            def capitaliser = TitleCapitaliser.create(language ?: defaultLanguage)
+            vernacularName = capitaliser.capitalise(vernacularName)
             def doc = [:]
             doc["id"] = UUID.randomUUID().toString() // doc key
             doc["idxtype"] = IndexDocType.COMMON // required field
@@ -1939,16 +1944,7 @@ class ImportService {
             if (autoLanguages)
                 commonNames = commonNames.findAll { autoLanguages.contains(it.language) }
 
-            def names = new LinkedHashSet()
-            commonNames.each {
-                def lang = it.language ?: Locale.default.language
-                TitleCapitaliser cap = capitalisers.get(lang)
-                if (!cap) {
-                    cap = new TitleCapitaliser(lang)
-                    capitalisers.put(lang, cap)
-                }
-                names.add(cap.capitalise(it.name))
-            }
+            def names = new LinkedHashSet(commonNames.collect { it.name })
             if(commonNames) {
                 update["commonName"] = [set: names]
                 update["commonNameExact"] = [set: names]
@@ -2171,27 +2167,4 @@ class ImportService {
         JsonSlurper slurper = new JsonSlurper()
         return slurper.parse(source)
      }
-
-    private List<String> processCommonNames(List commonNames, String autoLanguages) {
-        def nameMap = [:]
-        if (!commonNames || commonNames.empty)
-            return []
-        commonNames = commonNames.sort { n1, n2 ->
-            n2.priority - n1.priority
-        }
-
-        //only index valid languages
-        if (autoLanguages)
-            commonNames = commonNames.findAll { autoLanguages.contains(it.language) }
-
-        // Prefer upper/lower case names, if available
-
-
-        if(commonNames) {
-            update["commonName"] = [set: commonNames.collect { it.name }]
-            update["commonNameExact"] = [set: commonNames.collect { it.name }]
-            update["commonNameSingle"] = [set: commonNames.first().name]
-        }
-    }
-
 }
