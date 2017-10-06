@@ -17,6 +17,7 @@ import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.indexing.RankedName
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.TitleCapitaliser
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
 import grails.converters.JSON
@@ -872,13 +873,14 @@ class ImportService {
                     buffer << doc
                 } else {
                     // No match so add it as a vernacular name
+                    def capitaliser = TitleCapitaliser.create(grailsApplication.config.commonNameDefaultLanguage)
                     def doc = [:]
                     doc["id"] = UUID.randomUUID().toString() // doc key
                     doc["idxtype"] = IndexDocType.TAXON // required field
                     doc["guid"] = "ALA_${item.name?.replaceAll("[^A-Za-z0-9]+", "_")}" // replace non alpha-numeric chars with '_' - required field
                     doc["datasetID"] = drUid
                     doc["datasetName"] = "Conservation list for ${SolrFieldName}"
-                    doc["name"] = item.name
+                    doc["name"] = capitaliser.capitalise(item.name)
                     doc["status"] = legistatedStatusType?.status ?: "legistated"
                     doc["priority"] = legistatedStatusType?.priority ?: 500
                     // set conservationStatus facet
@@ -951,6 +953,8 @@ class ImportService {
             log.warn("Can't find matching taxon document for ${taxonID} for ${vernacularName}, skipping")
             return false
         }
+        def capitaliser = TitleCapitaliser.create(language ?: grailsApplication.config.commonNameDefaultLanguage)
+        vernacularName = capitaliser.capitalise(vernacularName)
         def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
         if (vernacularDoc) {
             // do a SOLR doc (atomic) update
@@ -1163,6 +1167,8 @@ class ImportService {
             String source = record.value(DcTerm.source)
             String datasetID = record.value(DwcTerm.datasetID)
 
+            def capitaliser = TitleCapitaliser.create(language ?: defaultLanguage)
+            vernacularName = capitaliser.capitalise(vernacularName)
             def doc = [:]
             doc["id"] = UUID.randomUUID().toString() // doc key
             doc["idxtype"] = IndexDocType.COMMON // required field
@@ -1440,7 +1446,7 @@ class ImportService {
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
                 query = query ? query + "+OR+" : ""
-                query = query + "${field}:\"${value}\"^${boost}"
+                query = query + URLEncoder.encode("${field}:\"${value}\"^${boost}", "UTF-8")
             }
             query
         }
@@ -1711,6 +1717,7 @@ class ImportService {
         def prevCursor = ""
         def cursor = "*"
         def startTime, endTime
+        def capitalisers = [:]
         Set autoLanguages = grailsApplication.config.autoComplete.languages ? grailsApplication.config.autoComplete.languages.split(',') as Set : null
 
         log("Starting dernomalisation")
@@ -1783,7 +1790,7 @@ class ImportService {
                 log "1. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages, capitalisers)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1819,7 +1826,7 @@ class ImportService {
                 log "2. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages, capitalisers)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1888,7 +1895,7 @@ class ImportService {
         log("Finished taxon denormalisaion. Duration: ${(new SimpleDateFormat("mm:ss:SSS")).format(new Date(endTime - startTime))}")
     }
 
-    private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages) {
+    private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages, Map capitalisers) {
         def currentDistribution = (doc['distribution'] ?: []) as Set
         if (doc.denormalised_b)
             return currentDistribution
@@ -1937,10 +1944,11 @@ class ImportService {
             if (autoLanguages)
                 commonNames = commonNames.findAll { autoLanguages.contains(it.language) }
 
+            def names = new LinkedHashSet(commonNames.collect { it.name })
             if(commonNames) {
-                update["commonName"] = [set: commonNames.collect { it.name }]
-                update["commonNameExact"] = [set: commonNames.collect { it.name }]
-                update["commonNameSingle"] = [set: commonNames.first().name]
+                update["commonName"] = [set: names]
+                update["commonNameExact"] = [set: names]
+                update["commonNameSingle"] = [set: names.first() ]
             }
         }
         def identifiers = searchService.lookupIdentifier(guid, !online)
@@ -1978,7 +1986,7 @@ class ImportService {
             def json = js.parseText(queryResponse)
             def docs = json.response.docs
             docs.each { child ->
-                distribution.addAll(denormaliseEntry(child, trace, stack, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages))
+                distribution.addAll(denormaliseEntry(child, trace, stack, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages, capitalisers))
             }
             prevCursor = cursor
             cursor = json.nextCursorMark
