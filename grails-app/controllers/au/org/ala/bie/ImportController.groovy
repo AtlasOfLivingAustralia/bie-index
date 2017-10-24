@@ -84,7 +84,7 @@ class ImportController {
      * @return
      */
     def importAllDwcA() {
-        if(new File(grailsApplication.config.importDir).exists()){
+        if(new File(grailsApplication.config..getProperty('import.taxonomy.dir')).exists()){
             execute { importService.importAllDwcA() }
             asJson ([success:true])
         } else {

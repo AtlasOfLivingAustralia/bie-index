@@ -99,9 +99,9 @@ class ImportService {
     def retrieveAvailableDwCAPaths() {
 
         def filePaths = []
-        def importDir = new File(grailsApplication.config.importDir)
+        def importDir = new File(grailsApplication.config.getProperty('import.taxonomy.dir'))
         if (importDir.exists()) {
-            File[] expandedDwc = new File(grailsApplication.config.importDir).listFiles()
+            File[] expandedDwc = importDir.listFiles()
             expandedDwc.each {
                 if (it.isDirectory()) {
                     filePaths << it.getAbsolutePath()
@@ -113,68 +113,60 @@ class ImportService {
 
     def importAll() {
         log "Starting import of all data"
-        try {
-            // Do this first so that source datasets can be retrieved
-            importCollectory()
-        } catch (Exception e) {
-            log("Problem loading collectory: " + e.getMessage())
+        String[] sequence = grailsApplication.config.getProperty('import.sequence').split(',')
+        for (String step: sequence) {
+            step = step.trim().toLowerCase()
+            log("Step ${step}")
+            try {
+                switch (step) {
+                    case 'collectory':
+                        importCollectory()
+                        break
+                    case 'conservation-lists':
+                        importConservationSpeciesLists()
+                        break
+                    case 'denormalise':
+                    case 'denormalize':
+                        denormaliseTaxa(false)
+                        break
+                    case 'images':
+                        loadImages(false)
+                        break
+                    case 'layers':
+                        importLayers()
+                        break
+                    case 'link-identifiers':
+                        buildLinkIdentifiers(false)
+                        break
+                    case 'localities':
+                        importLocalities()
+                        break
+                    case 'occurrences':
+                        importOccurrenceData()
+                        break
+                    case 'regions':
+                        importRegions()
+                        break
+                    case 'taxonomy-all':
+                        importAllDwcA()
+                        break
+                    case 'vernacular':
+                        importVernacularSpeciesLists()
+                        break
+                    case 'wordpress':
+                        importWordPressPages()
+                        break
+                    default:
+                        log("Unknown step ${step}")
+                        log.error("Unknown step ${step}")
+                }
+            } catch (Exception ex) {
+                def message = "Problem in step ${step}: ${ex.getMessage()}"
+                log(message)
+                log.error(message, ex)
+            }
         }
-        try {
-            importAllDwcA()
-        } catch (Exception e) {
-            log("Problem loading taxa: " + e.getMessage())
-        }
-        try {
-            importVernacularSpeciesLists()
-        } catch (Exception e) {
-            log("Problem loading vernacular species lists: " + e.getMessage())
-        }
-        try {
-            denormaliseTaxa(false)
-        } catch (Exception e) {
-            log("Problem loading vernacular species lists: " + e.getMessage())
-        }
-        try {
-            importLayers()
-        } catch (Exception e) {
-            log("Problem loading layers: " + e.getMessage())
-        }
-        try {
-            importRegions()
-        } catch (Exception e) {
-            log("Problem loading regions: " + e.getMessage())
-        }
-        try {
-            importLocalities()
-        } catch (Exception e) {
-            log("Problem loading localities: " + e.getMessage())
-        }
-        try {
-            importConservationSpeciesLists()
-        } catch (Exception e) {
-            log("Problem loading conservation species lists: " + e.getMessage())
-        }
-        try {
-            importWordPressPages()
-        } catch (Exception e) {
-            log("Problem loading wordpress pages: " + e.getMessage())
-        }
-        try {
-            buildLinkIdentifiers(false)
-        } catch (Exception e) {
-            log("Problem building link identifiers: " + e.getMessage())
-        }
-        try {
-            loadImages(false)
-        } catch (Exception e) {
-            log("Problem loading images: " + e.getMessage())
-        }
-        try {
-            importOccurrenceData()
-        } catch (Exception e) {
-            log("Problem importing occurrence data: " + e.getMessage())
-        }
-        log "Finished import of all data"
+         log "Finished import of all data"
     }
 
     def importAllDwcA() {

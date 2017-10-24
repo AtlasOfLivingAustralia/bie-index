@@ -110,7 +110,6 @@ commonNameSourceAttribution: National Species Lists
 commonNameDefaultLanguage: en-AU
 identifierSourceAttribution: National Species Lists
 indexImages: true
-importDir: /data/bie/import
 collectoryBaseUrl: http://collections.ala.org.au
 collectoryServicesUrl: http://collections.ala.org.au/ws
 layersServicesUrl: http://spatial.ala.org.au/ws
@@ -190,3 +189,7 @@ skin:
   layout: main
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
+import:
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,link-identifiers,images,occurrences
+  taxonomy:
+    dir: /data/bie/import
