@@ -8,7 +8,7 @@ grails:
                 - file:///data/bie-index/config/bie-index-config.yml
                 - file:///data/bie-index/config/bie-index-config.groovy
     codegen:
-        defaultPackage: bie-index
+        defaultPackage: au.org.ala.bie
     spring:
         transactionManagement:
             proxies: false
@@ -173,7 +173,7 @@ solr:
       - scientificName:(*+-\"*+x+*\")^500
       - taxonomicStatus:(*+-misapplied+-excluded+-miscellaneousLiterature+-inferredSynonym+-inferredAccepted)^1000
       - idxtype:TAXON^1000
-      - idxtype:COMMON^500
+      - idxtype:(*+-COMMON)^2000
     fq:
       - NOT+idxtype:IDENTIFIER
       - NOT+idxtype:TAXONVARIANT
