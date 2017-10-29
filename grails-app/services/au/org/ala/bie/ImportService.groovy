@@ -785,8 +785,8 @@ class ImportService {
             int end = (start + batchSize < guids.size()) ? start + batchSize - 1 : guids.size()
             log "paging biocache search - ${start} to ${end}"
             def guidSubset = guids.subList(start,end)
-            def guidParamList = guidSubset.collect { String guid -> guid.encodeAsURL() } // URL encode guids
-            def query = "taxon_concept_lsid:\"" + guidParamList.join("\"+OR+taxon_concept_lsid:\"") + "\""
+            def guidParamList = guidSubset.collect { String guid -> ClientUtils.escapeQueryChars(guid) } // URL encode guids
+            def query = "taxon_concept_lsid:" + guidParamList.join("+OR+taxon_concept_lsid:")
             def filterQuery = grailsApplication.config.occurrenceCounts.filterQuery
 
             try {
@@ -1380,7 +1380,8 @@ class ImportService {
                     def name = doc.scientificName ?: doc.name
                     try {
                         if (name) {
-                            String nameSearchUrl = baseUrl + "/select?wt=json&q=name:\"" + name + "\"+OR+scientificName:\"" + name + "\"&fq=" + typeQuery + "&rows=0"
+                            String encName = ClientUtils.escapeQueryChars(name)
+                            String nameSearchUrl = baseUrl + "/select?wt=json&q=name:" + encName + "+OR+scientificName:" + encName + "&fq=" + typeQuery + "&rows=0"
                             def nameResponse = Encoder.encodeUrl(nameSearchUrl).toURL().getText("UTF-8")
                             def nameJson = js.parseText(nameResponse)
                             int found = nameJson.response.numFound
