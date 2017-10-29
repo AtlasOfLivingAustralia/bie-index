@@ -26,6 +26,7 @@ import groovy.json.JsonSlurper
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
+import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.common.params.MapSolrParams
 import org.gbif.dwc.terms.*
 import org.gbif.dwca.io.Archive
@@ -1437,8 +1438,9 @@ class ImportService {
         def lastImage = [imageId: "none", taxonID: "none", name: "none"]
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
-                query = query ? query + "+OR+" : ""
-                query = query + URLEncoder.encode("${field}:\"${value}\"^${boost}", "UTF-8")
+                value = ClientUtils.escapeQueryChars(value)
+                query = query ? query + " OR " : ""
+                query = query + "${field}:${value}^${boost}"
             }
             query
         }
@@ -1471,7 +1473,7 @@ class ImportService {
                                 query = addImageSearch(query, rank.nameField, name, 50)
                                 query = addImageSearch(query, rank.idField, taxonID, 20)
                                 if (query) {
-                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=5&wt=json&fl=${imageFields}"
+                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query}) AND multimedia:Image&${boosts}&rows=5&wt=json&fl=${imageFields}"
                                     //def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonJson = js.parseText(taxonResponse)
