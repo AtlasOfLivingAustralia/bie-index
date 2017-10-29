@@ -165,15 +165,14 @@ priority:
 
 # SOLR additional params
 solr:
-    qf: exact_text^200+doc_name^100+text
+    qf: scientificName^1000+commonName^500+exact_text^200+doc_name^100+text
     bq:
       - taxonomicStatus:accepted^2000
       - rankID:7000^500
       - rankID:6000^100
       - scientificName:(*+-\"*+x+*\")^500
       - taxonomicStatus:(*+-misapplied+-excluded+-miscellaneousLiterature+-inferredSynonym+-inferredAccepted)^1000
-      - idxtype:TAXON^1000
-      - idxtype:(*+-COMMON)^2000
+      - idxtype:TAXON^2000
     fq:
       - NOT+idxtype:IDENTIFIER
       - NOT+idxtype:TAXONVARIANT
