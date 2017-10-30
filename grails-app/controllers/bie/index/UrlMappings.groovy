@@ -1,3 +1,5 @@
+package bie.index
+
 class UrlMappings {
 
     static mappings = {

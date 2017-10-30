@@ -114,8 +114,11 @@ class SearchService {
         log.debug "params = ${params.toMapString()}"
         def fqs = params.fq
         def query = []
+        def queryTitle = null
+
 
         if (q) {
+            queryTitle = q
             if (!q) {
                 q = q.replaceFirst("q=", "q=*:*")
             } else if (q.trim() == "*") {
@@ -140,9 +143,9 @@ class SearchService {
             }
         } else {
             q = "*:*"
+            queryTitle = "all records"
         }
         query << "q=${q}"
-        def queryTitle = q
 
         // Add query parameters
         query << "defType=${grailsApplication.config.solr.defType}" // Query parser type

@@ -8,7 +8,7 @@ grails:
                 - file:///data/bie-index/config/bie-index-config.yml
                 - file:///data/bie-index/config/bie-index-config.groovy
     codegen:
-        defaultPackage: bie-index
+        defaultPackage: au.org.ala.bie
     spring:
         transactionManagement:
             proxies: false
@@ -101,7 +101,7 @@ app:
 indexLiveBaseUrl: http://localhost:8080/solr/bie
 indexOfflineBaseUrl: http://localhost:8080/solr/bie-offline
 biocacheService:
-  baseUrl: http://biocache.ala.org.au/ws
+  baseUrl: https://biocache.ala.org.au/ws
 biocache:
   solr:
     url: http://localhost:8080/solr/biocache
@@ -110,14 +110,13 @@ commonNameSourceAttribution: National Species Lists
 commonNameDefaultLanguage: en-AU
 identifierSourceAttribution: National Species Lists
 indexImages: true
-importDir: /data/bie/import
-collectoryBaseUrl: http://collections.ala.org.au
-collectoryServicesUrl: http://collections.ala.org.au/ws
-layersServicesUrl: http://spatial.ala.org.au/ws
-imageThumbnailUrl: http://images.ala.org.au/image/proxyImageThumbnail?imageId=
-imageLargeUrl: http://images.ala.org.au/image/proxyImage?imageId=
-imageSmallUrl: http://images.ala.org.au/image/proxyImageThumbnailLarge?imageId=
-imageMetaDataUrl: http://images.ala.org.au/ws/image/
+collectoryBaseUrl: https://collections.ala.org.au
+collectoryServicesUrl: https://collections.ala.org.au/ws
+layersServicesUrl: https://spatial.ala.org.au/ws
+imageThumbnailUrl: https://images.ala.org.au/image/proxyImageThumbnail?imageId=
+imageLargeUrl: https://images.ala.org.au/image/proxyImage?imageId=
+imageSmallUrl: https://images.ala.org.au/image/proxyImageThumbnailLarge?imageId=
+imageMetaDataUrl: https://images.ala.org.au/ws/image/
 synonymCheckingEnabled: true
 synonymSourceAttribution: National Species Lists
 gazetteerLayerId: 2123
@@ -125,17 +124,17 @@ security:
   apikey:
     serviceUrl: 'https://auth.ala.org.au/apikey/ws/check?apikey='
   cas:
-    appServerName: http://bie.ala.org.au/ws
+    appServerName: https://bie.ala.org.au/ws
     uriFilterPattern: "/admin.*,/alaAdmin.*"
     uriExclusionFilterPattern: "/images.*,/css.*,/js.*,.*json,/help/.*"
 wordPress:
-    sitemapUrl: http://www.ala.org.au/sitemap.xml
-    baseUrl: http://www.ala.org.au/?page_id=
+    sitemapUrl: https://www.ala.org.au/sitemap.xml
+    baseUrl: https://www.ala.org.au/?page_id=
     excludedCategories:
       - button
     contentOnlyParams: ?content-only=1&categories=1
 speciesList:
-  url: http://lists.ala.org.au/ws/speciesListItems/
+  url: https://lists.ala.org.au/ws/speciesListItems/
   params: ?includeKVP=true
 # Acceptable vernacular names to appear in autocomplete
 #autoComplete.languages = 'en,en-AU,en-CA,en-GB,en-US'
@@ -166,15 +165,14 @@ priority:
 
 # SOLR additional params
 solr:
-    qf: exact_text^200+doc_name^100+text
+    qf: scientificName^1000+commonName^500+exact_text^200+doc_name^100+text
     bq:
       - taxonomicStatus:accepted^2000
       - rankID:7000^500
       - rankID:6000^100
       - scientificName:(*+-\"*+x+*\")^500
       - taxonomicStatus:(*+-misapplied+-excluded+-miscellaneousLiterature+-inferredSynonym+-inferredAccepted)^1000
-      - idxtype:TAXON^1000
-      - idxtype:COMMON^500
+      - idxtype:TAXON^2000
     fq:
       - NOT+idxtype:IDENTIFIER
       - NOT+idxtype:TAXONVARIANT
@@ -190,3 +188,7 @@ skin:
   layout: main
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
+import:
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,link-identifiers,images,occurrences
+  taxonomy:
+    dir: /data/bie/import

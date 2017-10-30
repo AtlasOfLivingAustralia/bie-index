@@ -26,6 +26,7 @@ import groovy.json.JsonSlurper
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
+import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.common.params.MapSolrParams
 import org.gbif.dwc.terms.*
 import org.gbif.dwca.io.Archive
@@ -99,9 +100,9 @@ class ImportService {
     def retrieveAvailableDwCAPaths() {
 
         def filePaths = []
-        def importDir = new File(grailsApplication.config.importDir)
+        def importDir = new File(grailsApplication.config.getProperty('import.taxonomy.dir'))
         if (importDir.exists()) {
-            File[] expandedDwc = new File(grailsApplication.config.importDir).listFiles()
+            File[] expandedDwc = importDir.listFiles()
             expandedDwc.each {
                 if (it.isDirectory()) {
                     filePaths << it.getAbsolutePath()
@@ -113,68 +114,60 @@ class ImportService {
 
     def importAll() {
         log "Starting import of all data"
-        try {
-            // Do this first so that source datasets can be retrieved
-            importCollectory()
-        } catch (Exception e) {
-            log("Problem loading collectory: " + e.getMessage())
+        String[] sequence = grailsApplication.config.getProperty('import.sequence').split(',')
+        for (String step: sequence) {
+            step = step.trim().toLowerCase()
+            log("Step ${step}")
+            try {
+                switch (step) {
+                    case 'collectory':
+                        importCollectory()
+                        break
+                    case 'conservation-lists':
+                        importConservationSpeciesLists()
+                        break
+                    case 'denormalise':
+                    case 'denormalize':
+                        denormaliseTaxa(false)
+                        break
+                    case 'images':
+                        loadImages(false)
+                        break
+                    case 'layers':
+                        importLayers()
+                        break
+                    case 'link-identifiers':
+                        buildLinkIdentifiers(false)
+                        break
+                    case 'localities':
+                        importLocalities()
+                        break
+                    case 'occurrences':
+                        importOccurrenceData()
+                        break
+                    case 'regions':
+                        importRegions()
+                        break
+                    case 'taxonomy-all':
+                        importAllDwcA()
+                        break
+                    case 'vernacular':
+                        importVernacularSpeciesLists()
+                        break
+                    case 'wordpress':
+                        importWordPressPages()
+                        break
+                    default:
+                        log("Unknown step ${step}")
+                        log.error("Unknown step ${step}")
+                }
+            } catch (Exception ex) {
+                def message = "Problem in step ${step}: ${ex.getMessage()}"
+                log(message)
+                log.error(message, ex)
+            }
         }
-        try {
-            importAllDwcA()
-        } catch (Exception e) {
-            log("Problem loading taxa: " + e.getMessage())
-        }
-        try {
-            importVernacularSpeciesLists()
-        } catch (Exception e) {
-            log("Problem loading vernacular species lists: " + e.getMessage())
-        }
-        try {
-            denormaliseTaxa(false)
-        } catch (Exception e) {
-            log("Problem loading vernacular species lists: " + e.getMessage())
-        }
-        try {
-            importLayers()
-        } catch (Exception e) {
-            log("Problem loading layers: " + e.getMessage())
-        }
-        try {
-            importRegions()
-        } catch (Exception e) {
-            log("Problem loading regions: " + e.getMessage())
-        }
-        try {
-            importLocalities()
-        } catch (Exception e) {
-            log("Problem loading localities: " + e.getMessage())
-        }
-        try {
-            importConservationSpeciesLists()
-        } catch (Exception e) {
-            log("Problem loading conservation species lists: " + e.getMessage())
-        }
-        try {
-            importWordPressPages()
-        } catch (Exception e) {
-            log("Problem loading wordpress pages: " + e.getMessage())
-        }
-        try {
-            buildLinkIdentifiers(false)
-        } catch (Exception e) {
-            log("Problem building link identifiers: " + e.getMessage())
-        }
-        try {
-            loadImages(false)
-        } catch (Exception e) {
-            log("Problem loading images: " + e.getMessage())
-        }
-        try {
-            importOccurrenceData()
-        } catch (Exception e) {
-            log("Problem importing occurrence data: " + e.getMessage())
-        }
-        log "Finished import of all data"
+         log "Finished import of all data"
     }
 
     def importAllDwcA() {
@@ -792,8 +785,8 @@ class ImportService {
             int end = (start + batchSize < guids.size()) ? start + batchSize - 1 : guids.size()
             log "paging biocache search - ${start} to ${end}"
             def guidSubset = guids.subList(start,end)
-            def guidParamList = guidSubset.collect { String guid -> guid.encodeAsURL() } // URL encode guids
-            def query = "taxon_concept_lsid:\"" + guidParamList.join("\"+OR+taxon_concept_lsid:\"") + "\""
+            def guidParamList = guidSubset.collect { String guid -> ClientUtils.escapeQueryChars(guid) } // URL encode guids
+            def query = "taxon_concept_lsid:" + guidParamList.join("+OR+taxon_concept_lsid:")
             def filterQuery = grailsApplication.config.occurrenceCounts.filterQuery
 
             try {
@@ -1387,7 +1380,8 @@ class ImportService {
                     def name = doc.scientificName ?: doc.name
                     try {
                         if (name) {
-                            String nameSearchUrl = baseUrl + "/select?wt=json&q=name:\"" + name + "\"+OR+scientificName:\"" + name + "\"&fq=" + typeQuery + "&rows=0"
+                            String encName = ClientUtils.escapeQueryChars(name)
+                            String nameSearchUrl = baseUrl + "/select?wt=json&q=name:" + encName + "+OR+scientificName:" + encName + "&fq=" + typeQuery + "&rows=0"
                             def nameResponse = Encoder.encodeUrl(nameSearchUrl).toURL().getText("UTF-8")
                             def nameJson = js.parseText(nameResponse)
                             int found = nameJson.response.numFound
@@ -1445,8 +1439,9 @@ class ImportService {
         def lastImage = [imageId: "none", taxonID: "none", name: "none"]
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
-                query = query ? query + "+OR+" : ""
-                query = query + URLEncoder.encode("${field}:\"${value}\"^${boost}", "UTF-8")
+                value = ClientUtils.escapeQueryChars(value)
+                query = query ? query + " OR " : ""
+                query = query + "${field}:${value}^${boost}"
             }
             query
         }
@@ -1479,7 +1474,7 @@ class ImportService {
                                 query = addImageSearch(query, rank.nameField, name, 50)
                                 query = addImageSearch(query, rank.idField, taxonID, 20)
                                 if (query) {
-                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=5&wt=json&fl=${imageFields}"
+                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query}) AND multimedia:Image&${boosts}&rows=5&wt=json&fl=${imageFields}"
                                     //def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonJson = js.parseText(taxonResponse)
