@@ -81,6 +81,7 @@ class ImportService {
     def grailsApplication
     def speciesGroupService
     def conservationListsSource
+    def jobService
 
     def brokerMessagingTemplate
 
@@ -116,6 +117,10 @@ class ImportService {
         log "Starting import of all data"
         String[] sequence = grailsApplication.config.getProperty('import.sequence').split(',')
         for (String step: sequence) {
+            if (!jobService.current || jobService.current.cancelled) {
+                log "Cancelled"
+                return
+            }
             step = step.trim().toLowerCase()
             log("Step ${step}")
             try {

@@ -52,7 +52,7 @@
         <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 
-    <g:render template="status"/>
+    <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
 
     <asset:script type="text/javascript">
         function denormaliseTaxa(){
