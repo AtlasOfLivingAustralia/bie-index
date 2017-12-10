@@ -111,9 +111,9 @@ if (Environment.isDevelopmentMode()) {
                     'org.springframework',
             ],
             (DEBUG): [
-                    'org.apache.http.headers',
-                    'org.apache.http.wire',
-                    'org.hibernate.SQL',
+                    //'org.apache.http.headers',
+                    //'org.apache.http.wire',
+                    //'org.hibernate.SQL',
                     'au.org.ala.bie'
             ],
             (TRACE): []

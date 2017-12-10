@@ -11,7 +11,7 @@ buildscript {
     }
 }
 
-version "1.4.1-SNAPSHOT"
+version "1.4.1"
 group "au.org.ala"
 
 apply plugin:"eclipse"
@@ -52,6 +52,7 @@ dependencies {
     testRuntime "org.seleniumhq.selenium:selenium-htmlunit-driver:2.47.1"
     testRuntime "net.sourceforge.htmlunit:htmlunit:2.18"
 
+    compile "org.grails.plugins:ala-ws-security-plugin:2.0-SNAPSHOT"
     compile 'com.github.davidmoten:rxjava-file:0.4'
     compile 'io.reactivex:rxgroovy:1.0.3'
     compile ('org.jasig.cas.client:cas-client-core:3.4.1') {
@@ -64,7 +65,7 @@ dependencies {
         exclude group: 'com.google.guava', module: 'guava'
     }
     compile "com.google.guava:guava:19.0"
-    compile("au.org.ala:ala-name-matching:2.4.6-SNAPSHOT") {
+    compile("au.org.ala:ala-name-matching:2.4.6") {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     }
     compile "org.jsoup:jsoup:1.8.3"

@@ -41,7 +41,7 @@
         <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importOccurrences')}')" class="btn btn-primary import-button"><g:message code="admin.button.loadoccurrence"/></button>
     </div>
 
-    <g:render template="status"/>
+    <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
 </div>
 </body>
 </html>

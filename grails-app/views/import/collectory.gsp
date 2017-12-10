@@ -20,7 +20,7 @@
         <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importCollectory')}')" class="btn btn-primary import-button"><g:message code="admin.button.importcollectory"/></button>
     </div>
 
-    <g:render template="status"/>
+    <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
 </div>
 </body>
 </html>

@@ -13,6 +13,7 @@
 
 package au.org.ala.bie
 
+import au.org.ala.bie.util.Job
 import grails.converters.JSON
 import org.apache.commons.lang.BooleanUtils
 import au.org.ala.web.AlaSecured
@@ -24,6 +25,10 @@ class ImportController {
 
     def importService, bieAuthService
     def brokerMessagingTemplate
+    def jobService
+
+    Map<String, Job> jobStatus = [:]
+
     /**
      * Load import index page.
      */
@@ -66,16 +71,21 @@ class ImportController {
         def dwcDir = params.dwca_dir
 
         if(new File(dwcDir).exists()){
-            execute { importService.importDwcA(dwcDir, clearIndex) }
-            asJson ([success:true])
+            def job = execute("importDwca", "admin.button.importdwca", { importService.importDwcA(dwcDir, clearIndex) })
+            asJson (job.status())
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
         }
     }
 
     def importAll(){
-        execute { importService.importAll() }
-        asJson([success: true])
+        def job = execute(
+                "importDwca,importCollectory,deleteDanglingSynonyms,importLayers,importLocalities,importRegions,importHabitats,importHabitats," +
+                    "importWordPressPages,importOccurrences,importConsevationSpeciesLists,buildVernacularSpeciesLists,buildLinkIdentifiers" +
+                    "denormaliseTaxa,loadImages,",
+                "admin.button.importall",
+                { importService.importAll() })
+        asJson(job.status())
     }
 
     /**
@@ -85,16 +95,16 @@ class ImportController {
      */
     def importAllDwcA() {
         if(new File(grailsApplication.config..getProperty('import.taxonomy.dir')).exists()){
-            execute { importService.importAllDwcA() }
-            asJson ([success:true])
+            def job = execute("importDwca", "admin.button.importalldwca", { importService.importAllDwcA() })
+            asJson(job.status())
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
         }
     }
 
     def deleteDanglingSynonyms(){
-        execute { importService.clearDanglingSynonyms() }
-        asJson([success: true])
+        def job = execute("deleteDanglingSynonyms", "admin.button.deletedanglingsynonyms", { importService.clearDanglingSynonyms() })
+        asJson(job.status())
     }
 
     /**
@@ -104,8 +114,8 @@ class ImportController {
      */
     def importCollectory(){
         if(grailsApplication.config.collectoryServicesUrl){
-            execute { importService.importCollectory() }
-            asJson([success:true])
+            def job = execute("importCollectory", "admin.button.importcollectory", { importService.importCollectory() })
+            asJson(job.status())
         } else {
             asJson([success: false, message: 'collectoryServicesUrl not configured'])
         }
@@ -118,8 +128,8 @@ class ImportController {
      */
     def importLayers(){
         if(grailsApplication.config.layersServicesUrl){
-            execute { importService.importLayers() }
-            asJson([success:true])
+            def job = execute("importLayers", "admin.button.importlayer", { importService.importLayers() })
+            asJson(job.status())
         } else {
             asJson([success: false, message: 'layersServicesUrl not configured'])
         }
@@ -132,8 +142,8 @@ class ImportController {
      */
     def importLocalities(){
         if(grailsApplication.config.layersServicesUrl && grailsApplication.config.gazetteerLayerId){
-            execute { importService.importLocalities() }
-            asJson([success:true])
+            def job = execute("importLocalities", "admin.button.importlocalities", { importService.importLocalities() })
+            asJson(job.status())
         } else {
             asJson([success: false, message: 'layersServicesUrl not configured or gazetteerLayerId not configured'])
         }
@@ -146,8 +156,8 @@ class ImportController {
      */
     def importRegions(){
         if(grailsApplication.config.layersServicesUrl){
-            execute { importService.importRegions() }
-            asJson([success:true])
+            def job = execute("importRegions", "admin.button.importregions", { importService.importRegions() })
+            asJson(job.status())
         } else {
             asJson([success: false, message: 'layersServicesUrl not configured'])
         }
@@ -159,8 +169,8 @@ class ImportController {
      * @return
      */
     def importHabitats(){
-        execute { importService.importHabitats() }
-        asJson([success:true])
+        def job = execute("importHabitats", "admin.button.importhabitats", { importService.importHabitats() })
+        asJson(job.status())
     }
 
     /**
@@ -169,8 +179,8 @@ class ImportController {
      * @return
      */
     def importWordPress(){
-        execute { importService.importWordPressPages() }
-        asJson([success:true])
+        def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages() })
+        asJson(job.status())
     }
 
     /**
@@ -179,8 +189,8 @@ class ImportController {
      * @return
      */
     def importOccurrences(){
-        execute { importService.importOccurrenceData() }
-        asJson ([success:true] )
+        def job = execute("importOccurrences", "admin.button.loadoccurrence", { importService.importOccurrenceData() })
+        asJson (job.status())
 
     }
 
@@ -190,8 +200,8 @@ class ImportController {
      * @return
      */
     def importConservationSpeciesLists(){
-        execute { importService.importConservationSpeciesLists() }
-        asJson ([success:true] )
+        def job = execute("importConsevationSpeciesLists", "admin.button.importlistconservatioon", { importService.importConservationSpeciesLists() })
+        asJson(job.status())
     }
 
     /**
@@ -200,22 +210,22 @@ class ImportController {
      * @return
      */
     def importVernacularSpeciesLists(){
-        execute { importService.importVernacularSpeciesLists() }
-        asJson ([success:true] )
+        def job = execute("buildVernacularSpeciesLists", "admin.button.importlistvernacular", { importService.importVernacularSpeciesLists() })
+        asJson (job.status())
 
     }
 
     def buildLinkIdentifiers() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        execute { importService.buildLinkIdentifiers(online) }
-        asJson ([success:true] )
+        def job = execute("buildLinkIdentifiers", "admin.button.buildLinks", { importService.buildLinkIdentifiers(online) })
+        asJson (job.status())
 
     }
 
     def denormaliseTaxa() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        execute { importService.denormaliseTaxa(online) }
-        asJson ([success:true] )
+        def job = execute("denormaliseTaxa", "admin.button.denormalise", { importService.denormaliseTaxa(online) })
+        asJson (job.status())
 
     }
 
@@ -227,14 +237,14 @@ class ImportController {
      */
     def loadPreferredImages() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        execute { importService.loadPreferredImages(online) }
-        asJson ([success:true] )
+        def job = execute("loadImages", "admin.button.loadimagespref", { importService.loadPreferredImages(online) })
+        asJson (job.status())
     }
 
     def loadImages() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        execute { importService.loadImages(online) }
-        asJson ([success:true] )
+        def job = execute("loadImages", "admin.bitton.loadimagesall", { importService.loadImages(online) })
+        asJson (job.status())
     }
 
     def ranks() {
@@ -247,8 +257,14 @@ class ImportController {
         render (model as JSON)
     }
 
-    private def execute = { Closure task ->
-        Thread.start {
+    private def execute(String type, String titleCode, Closure task) {
+        def title = message(code: titleCode)
+        def types = type.split(',') as Set
+        def job = jobService.existing(types)
+        if (job) {
+            return job
+        }
+        job = jobService.create(types, title, {
             try {
                 brokerMessagingTemplate.convertAndSend "/topic/import-control", "STARTED"
                 task.call()
@@ -256,7 +272,8 @@ class ImportController {
             } catch (Exception ex) {
                 log.error(ex.message, ex)
                 brokerMessagingTemplate.convertAndSend "/topic/import-control", "ERROR"
+                throw ex
             }
-        }
+        })
     }
 }
