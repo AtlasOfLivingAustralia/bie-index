@@ -24,6 +24,15 @@ class ImportServicesController {
         asJson(job.status())
     }
 
+    /**
+     * Get a job status
+     */
+    def status() {
+        def id = params.id
+        def status = jobService.get(id)?.status() ?: notFoundStatus(id)
+        asJson(status)
+    }
+
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
         render (model as JSON)
@@ -39,4 +48,7 @@ class ImportServicesController {
         job = jobService.create(types, title, task)
     }
 
+    private def notFoundStatus(id) {
+        return [success: false, active: false, id: id, lifecycle: 'ERROR', lastUpdated: new Date(), message: 'Not found']
+    }
 }

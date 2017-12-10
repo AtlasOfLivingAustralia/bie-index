@@ -59,7 +59,7 @@ class JobController {
         }
     }
 
-    def notFoundStatus(id) {
+    private def notFoundStatus(id) {
         return [success: false, active: false, id: id, lifecycle: 'ERROR', lastUpdated: new Date(), message: 'Not found']
     }
 }
