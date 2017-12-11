@@ -14,9 +14,10 @@
 package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
-import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.indexing.RankedName
+import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.TitleCapitaliser
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
 import grails.converters.JSON
@@ -25,19 +26,16 @@ import groovy.json.JsonSlurper
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
+import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.common.params.MapSolrParams
-import org.codehaus.groovy.grails.web.json.JSONElement
-import org.codehaus.groovy.grails.web.json.JSONObject
-import org.gbif.dwc.terms.DcTerm
-import org.gbif.dwc.terms.DwcTerm
-import org.gbif.dwc.terms.GbifTerm
-import org.gbif.dwc.terms.Term
-import org.gbif.dwc.terms.TermFactory
+import org.gbif.dwc.terms.*
 import org.gbif.dwca.io.Archive
 import org.gbif.dwca.io.ArchiveFactory
 import org.gbif.dwca.io.ArchiveFile
 import org.gbif.dwca.record.Record
 import org.gbif.dwca.record.StarRecord
+import org.grails.web.json.JSONElement
+import org.grails.web.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -55,17 +53,35 @@ import java.util.zip.GZIPInputStream
  */
 class ImportService {
     static IN_SCHEMA = [
-            DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus, DwcTerm.taxonConceptID, DwcTerm.nomenclaturalStatus,
+            DwcTerm.taxonID, DwcTerm.nomenclaturalCode, DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus,
+            DwcTerm.taxonConceptID, DwcTerm.scientificNameID, DwcTerm.nomenclaturalStatus, DwcTerm.nameAccordingTo, DwcTerm.nameAccordingToID,
             DwcTerm.scientificNameID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear,
             DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder,
-            ALATerm.status, ALATerm.nameID
+            ALATerm.status, ALATerm.nameID, ALATerm.nameFormatted, ALATerm.nameComplete, ALATerm.priority,
+            ALATerm.verbatimNomenclaturalCode, ALATerm.verbatimNomenclaturalStatus, ALATerm.verbatimTaxonomicStatus,
+            DwcTerm.datasetName
     ]
+    // Terms that have been algorithmically added so needn't be added as extras
+    static TAXON_ALREADY_INDEXED = [
+            DwcTerm.taxonID,
+            DwcTerm.datasetID,
+            DwcTerm.acceptedNameUsageID,
+            DwcTerm.parentNameUsageID,
+            DwcTerm.scientificName,
+            DwcTerm.taxonRank,
+            DwcTerm.scientificNameAuthorship,
+            DwcTerm.taxonomicStatus,
+            ALATerm.nameComplete,
+            ALATerm.nameFormatted,
+    ] as Set
+
 
     def indexService, searchService
 
     def grailsApplication
     def speciesGroupService
     def conservationListsSource
+    def jobService
 
     def brokerMessagingTemplate
 
@@ -85,9 +101,9 @@ class ImportService {
     def retrieveAvailableDwCAPaths() {
 
         def filePaths = []
-        def importDir = new File(grailsApplication.config.importDir)
+        def importDir = new File(grailsApplication.config.getProperty('import.taxonomy.dir'))
         if (importDir.exists()) {
-            File[] expandedDwc = new File(grailsApplication.config.importDir).listFiles()
+            File[] expandedDwc = importDir.listFiles()
             expandedDwc.each {
                 if (it.isDirectory()) {
                     filePaths << it.getAbsolutePath()
@@ -98,75 +114,75 @@ class ImportService {
     }
 
     def importAll() {
-        try {
-            // Do this first so that source datasets can be retrieved
-            importCollectory()
-        } catch (Exception e) {
-            log("Problem loading collectory: " + e.getMessage())
+        log "Starting import of all data"
+        String[] sequence = grailsApplication.config.getProperty('import.sequence').split(',')
+        for (String step: sequence) {
+            if (!jobService.current || jobService.current.cancelled) {
+                log "Cancelled"
+                return
+            }
+            step = step.trim().toLowerCase()
+            log("Step ${step}")
+            try {
+                switch (step) {
+                    case 'collectory':
+                        importCollectory()
+                        break
+                    case 'conservation-lists':
+                        importConservationSpeciesLists()
+                        break
+                    case 'denormalise':
+                    case 'denormalize':
+                        denormaliseTaxa(false)
+                        break
+                    case 'images':
+                        loadImages(false)
+                        break
+                    case 'layers':
+                        importLayers()
+                        break
+                    case 'link-identifiers':
+                        buildLinkIdentifiers(false)
+                        break
+                    case 'localities':
+                        importLocalities()
+                        break
+                    case 'occurrences':
+                        importOccurrenceData()
+                        break
+                    case 'regions':
+                        importRegions()
+                        break
+                    case 'taxonomy-all':
+                        importAllDwcA()
+                        break
+                    case 'vernacular':
+                        importVernacularSpeciesLists()
+                        break
+                    case 'wordpress':
+                        importWordPressPages()
+                        break
+                    default:
+                        log("Unknown step ${step}")
+                        log.error("Unknown step ${step}")
+                }
+            } catch (Exception ex) {
+                def message = "Problem in step ${step}: ${ex.getMessage()}"
+                log(message)
+                log.error(message, ex)
+            }
         }
-        try {
-            importAllDwcA()
-        } catch (Exception e) {
-            log("Problem loading taxa: " + e.getMessage())
-        }
-        try {
-            importVernacularSpeciesLists()
-        } catch (Exception e) {
-            log("Problem loading vernacular species lists: " + e.getMessage())
-        }
-        try {
-            denormaliseTaxa(false)
-        } catch (Exception e) {
-            log("Problem loading vernacular species lists: " + e.getMessage())
-        }
-        try {
-            importLayers()
-        } catch (Exception e) {
-            log("Problem loading layers: " + e.getMessage())
-        }
-        try {
-            importRegions()
-        } catch (Exception e) {
-            log("Problem loading regions: " + e.getMessage())
-        }
-        try {
-            importLocalities()
-        } catch (Exception e) {
-            log("Problem loading localities: " + e.getMessage())
-        }
-        try {
-            importConservationSpeciesLists()
-        } catch (Exception e) {
-            log("Problem loading conservation species lists: " + e.getMessage())
-        }
-        try {
-            importWordPressPages()
-        } catch (Exception e) {
-            log("Problem loading wordpress pages: " + e.getMessage())
-        }
-        try {
-            buildLinkIdentifiers(false)
-        } catch (Exception e) {
-            log("Problem building link identifiers: " + e.getMessage())
-        }
-        try {
-            loadImages(false)
-        } catch (Exception e) {
-            log("Problem loading images: " + e.getMessage())
-        }
-        try {
-            importOccurrenceData()
-        } catch (Exception e) {
-            log("Problem importing occurrence data: " + e.getMessage())
-        }
+         log "Finished import of all data"
     }
 
     def importAllDwcA() {
+        log "Starting import of all taxon field"
         clearTaxaIndex()
         def filePaths = retrieveAvailableDwCAPaths()
         filePaths.each {
             importDwcA(it, false)
         }
+        log "Finished import of all taxon field"
     }
 
     /**
@@ -175,9 +191,10 @@ class ImportService {
      * @return
      */
     def importLayers() {
+        log "Starting layer import"
         def js = new JsonSlurper()
         def url = grailsApplication.config.layersServicesUrl + "/layers"
-        log("Requesting layer list from : " + url)
+        log "Requesting layer list from : ${url}"
         def layers = js.parseText(new URL(Encoder.encodeUrl(url)).getText("UTF-8"))
         def batch = []
         indexService.deleteFromIndex(IndexDocType.LAYER)
@@ -189,14 +206,16 @@ class ImportService {
             doc["name"] = layer.displayname
             doc["description"] = layer.description
             doc["distribution"] = "N/A"
-            log("Importing layer: " + layer.displayname)
+            log "Importing layer ${layer.displayname}"
             batch << doc
         }
         indexService.indexBatch(batch)
-        log("Finished indexing ${layers.size()} layers")
+        log"Finished indexing ${layers.size()} layers"
+        log "Finsihed layer import"
     }
 
     def importLocalities() {
+        log "Starting localities import"
         if(grailsApplication.config.gazetteerLayerId) {
             indexService.deleteFromIndex(IndexDocType.LOCALITY)
             log("Starting indexing ${grailsApplication.config.gazetteerLayerId}")
@@ -210,9 +229,11 @@ class ImportService {
         } else {
             log("Skipping localities, no gazetteer layer ID configured")
         }
+        log "Finished localities import"
     }
 
     def importRegions() {
+        log "Starting regions import"
         def js = new JsonSlurper()
         def layers = js.parseText(new URL(Encoder.encodeUrl(grailsApplication.config.layersServicesUrl + "/layers")).getText("UTF-8"))
         indexService.deleteFromIndex(IndexDocType.REGION)
@@ -221,7 +242,9 @@ class ImportService {
                 importLayer(layer)
             }
         }
-        log("Finished indexing ${layers.size()} region layers")
+        log"Finished indexing ${layers.size()} region layers"
+        log "Finished regions import"
+
     }
 
     /**
@@ -235,8 +258,7 @@ class ImportService {
         def keywords = []
 
         if (grailsApplication.config.localityKeywordsUrl) {
-            JsonSlurper slurper = new JsonSlurper()
-            keywords = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.localityKeywordsUrl)))
+            keywords = this.getConfigFile(grailsApplication.config.localityKeywordsUrl)
         }
 
         def tempFilePath = "/tmp/objects_${layer.id}.csv.gz"
@@ -347,6 +369,7 @@ class ImportService {
      * @return
      */
     def importCollectory() {
+        log "Starting collectory import"
         [
                 "dataResource": IndexDocType.DATARESOURCE,
                 "dataProvider": IndexDocType.DATAPROVIDER,
@@ -391,12 +414,14 @@ class ImportService {
             }
             log("Finished indexing ${drLists.size()} ${entityType}")
         }
+        log "Finished collectory import"
     }
 
     /**
      * Index WordPress pages
      */
     def importWordPressPages() throws Exception {
+        log "Starting wordpress import"
         // clear the existing WP index
         indexService.deleteFromIndex(IndexDocType.WORDPRESS)
         if (!grailsApplication.config.wordPress.sitemapUrl) {
@@ -483,8 +508,7 @@ class ImportService {
                 buffer << doc
                 // update progress bar (number output only)
                 if (documentCount > 0) {
-                    Double percentDone = (documentCount / totalDocs) * 100
-                    log("${percentDone.round(1)}") // progress bar output
+                    updateProgressBar(totalDocs, documentCount)
                 }
             } catch (IOException ex) {
                 // catch it so we don't stop indexing other pages
@@ -494,8 +518,8 @@ class ImportService {
         }
         log("Committing to SOLR...")
         indexService.indexBatch(buffer)
-        log("100") // complete progress bar
-        log("Import finished.")
+        updateProgressBar(100, 100) // complete progress bar
+        log "Finished wordpress import"
     }
 
     /**
@@ -539,7 +563,7 @@ class ImportService {
 
         lists.each { resource ->
             listNum++
-            Integer listProgress = (listNum / lists.size()) * 100 // percentage as int
+            this.updateProgressBar(lists.size(), listNum)
             String uid = resource.uid
             String solrField = resource.field ?: "conservationStatus_s"
             String sourceField = resource.sourceField ?: defaultSourceField
@@ -548,7 +572,7 @@ class ImportService {
                 log("Loading list from: " + url)
                 try {
                     JSONElement json = JSON.parse(getStringForUrl(url))
-                    updateDocsWithConservationStatus(json, sourceField, solrField, uid, listProgress)
+                    updateDocsWithConservationStatus(json, sourceField, solrField, uid)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -561,14 +585,13 @@ class ImportService {
     def importVernacularSpeciesLists() throws Exception {
         def speciesListUrl = grailsApplication.config.speciesList.url
         def speciesListParams = grailsApplication.config.speciesList.params
-        JsonSlurper slurper = new JsonSlurper()
-        def config = slurper.parse(new URL(Encoder.encodeUrl(grailsApplication.config.vernacularListsUrl)))
+        def config = this.getConfigFile(grailsApplication.config.vernacularListsUrl)
         def lists = config.lists
         Integer listNum = 0
 
         lists.each { resource ->
             listNum++
-            Integer listProgress = (listNum / lists.size()) * 100 // percentage as int
+            this.updateProgressBar(lists.size(), listNum)
             String uid = resource.uid
             String vernacularNameField = resource.vernacularNameField ?: config.defaultVernacularNameField
             String nameIdField = resource.nameIdField ?: config.defaultNameIdField
@@ -581,7 +604,7 @@ class ImportService {
                 log("Loading list from: " + url)
                 try {
                     JSONElement json = JSON.parse(getStringForUrl(url))
-                    importAdditionalVernacularNames(json, vernacularNameField, nameIdField, statusField, languageField, sourceField, resourceLanguage, uid, listProgress)
+                    importAdditionalVernacularNames(json, vernacularNameField, nameIdField, statusField, languageField, sourceField, resourceLanguage, uid)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -767,8 +790,8 @@ class ImportService {
             int end = (start + batchSize < guids.size()) ? start + batchSize - 1 : guids.size()
             log "paging biocache search - ${start} to ${end}"
             def guidSubset = guids.subList(start,end)
-            def guidParamList = guidSubset.collect { String guid -> guid.encodeAsURL() } // URL encode guids
-            def query = "taxon_concept_lsid:\"" + guidParamList.join("\"+OR+taxon_concept_lsid:\"") + "\""
+            def guidParamList = guidSubset.collect { String guid -> ClientUtils.escapeQueryChars(guid) } // URL encode guids
+            def query = "taxon_concept_lsid:" + guidParamList.join("+OR+taxon_concept_lsid:")
             def filterQuery = grailsApplication.config.occurrenceCounts.filterQuery
 
             try {
@@ -814,7 +837,7 @@ class ImportService {
      * @param SolrFieldName
      * @return
      */
-    private updateDocsWithConservationStatus(JSONElement json, String jsonFieldName, String SolrFieldName, String drUid, Integer listProgress) {
+    private updateDocsWithConservationStatus(JSONElement json, String jsonFieldName, String SolrFieldName, String drUid) {
         if (json.size() > 0) {
             def totalDocs = json.size()
             def buffer = []
@@ -822,7 +845,7 @@ class ImportService {
             def legistatedStatusType = statusMap.get("legislated")
             def unmatchedTaxaCount = 0
 
-            log("${listProgress}||0") // reset progress bar
+            updateProgressBar2(100, 0)
             log("Updating taxa with ${SolrFieldName}")
             json.eachWithIndex { item, i ->
                 log.debug "item = ${item}"
@@ -848,13 +871,14 @@ class ImportService {
                     buffer << doc
                 } else {
                     // No match so add it as a vernacular name
+                    def capitaliser = TitleCapitaliser.create(grailsApplication.config.commonNameDefaultLanguage)
                     def doc = [:]
                     doc["id"] = UUID.randomUUID().toString() // doc key
                     doc["idxtype"] = IndexDocType.TAXON // required field
                     doc["guid"] = "ALA_${item.name?.replaceAll("[^A-Za-z0-9]+", "_")}" // replace non alpha-numeric chars with '_' - required field
                     doc["datasetID"] = drUid
                     doc["datasetName"] = "Conservation list for ${SolrFieldName}"
-                    doc["name"] = item.name
+                    doc["name"] = capitaliser.capitalise(item.name)
                     doc["status"] = legistatedStatusType?.status ?: "legistated"
                     doc["priority"] = legistatedStatusType?.priority ?: 500
                     // set conservationStatus facet
@@ -866,14 +890,13 @@ class ImportService {
                 }
 
                 if (i > 0) {
-                    Double percentDone = (i / totalDocs) * 100
-                    log("${listProgress}||${percentDone.round(1)}") // progress bar output
+                    updateProgressBar2(totalDocs, i)
                 }
             }
 
             log("Committing to SOLR...")
             indexService.indexBatch(buffer)
-            log("${listProgress}||1000") // complete progress bar
+            updateProgressBar2(100, 100)
             log("Number of taxa unmatched: ${unmatchedTaxaCount}")
             log("Import finished.")
         } else {
@@ -881,7 +904,7 @@ class ImportService {
         }
     }
 
-    private void importAdditionalVernacularNames(JSONElement json, String vernacularNameField, String nameIdField, String statusField, String languageField, String sourceField, String resourceLanguage, String uid, Integer listProgress) {
+    private void importAdditionalVernacularNames(JSONElement json, String vernacularNameField, String nameIdField, String statusField, String languageField, String sourceField, String resourceLanguage, String uid) {
         if (json.size() > 0) {
             def totalDocs = json.size()
             def buffer = []
@@ -889,7 +912,7 @@ class ImportService {
             def commonStatus = statusMap.get("common")
             def unmatchedTaxaCount = 0
 
-            log("${listProgress}||0") // reset progress bar
+            updateProgressBar2(100, 0)
             log("Updating vernacular names from ${uid}")
             json.eachWithIndex { item, i ->
                 log.debug "item = ${item}"
@@ -903,8 +926,7 @@ class ImportService {
                     unmatchedTaxaCount++
 
                 if (i > 0) {
-                    Double percentDone = (i / totalDocs) * 100
-                    log("${listProgress}||${percentDone.round(1)}") // progress bar output
+                    updateProgressBar2(totalDocs, i)
                 }
             }
             log("Committing names to SOLR...")
@@ -929,6 +951,8 @@ class ImportService {
             log.warn("Can't find matching taxon document for ${taxonID} for ${vernacularName}, skipping")
             return false
         }
+        def capitaliser = TitleCapitaliser.create(language ?: grailsApplication.config.commonNameDefaultLanguage)
+        vernacularName = capitaliser.capitalise(vernacularName)
         def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
         if (vernacularDoc) {
             // do a SOLR doc (atomic) update
@@ -971,8 +995,9 @@ class ImportService {
     }
 
     def clearDanglingSynonyms(){
-        log("Import finished.")
+        log("Starting clear dangling synonyms")
         indexService.deleteFromIndexByQuery("taxonomicStatus:synonym AND -acceptedConceptName:*")
+        log("Finished clear dangling synonyms")
     }
 
     def clearTaxaIndex() {
@@ -980,6 +1005,7 @@ class ImportService {
         indexService.deleteFromIndex(IndexDocType.TAXON)
         indexService.deleteFromIndex(IndexDocType.COMMON)
         indexService.deleteFromIndex(IndexDocType.IDENTIFIER)
+        indexService.deleteFromIndex(IndexDocType.TAXONVARIANT)
         log("Cleared.")
     }
 
@@ -1018,8 +1044,13 @@ class ImportService {
                 importVernacularDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
             else if (rowType == GbifTerm.Identifier)
                 importIdentifierDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
+            else if (rowType == ALATerm.TaxonVariant)
+                importTaxonVariantDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
             else
                 log("Unable to import an archive of type " + rowType)
+            def variantExtension = archive.getExtension(ALATerm.TaxonVariant)
+            if (variantExtension)
+                importTaxonVariantDwcA(variantExtension, attributionMap, datasetMap, defaultDatasetName)
             def vernacularExtension = archive.getExtension(GbifTerm.VernacularName)
             if (vernacularExtension)
                 importVernacularDwcA(vernacularExtension, attributionMap, datasetMap, defaultDatasetName)
@@ -1062,19 +1093,6 @@ class ImportService {
 
         log("Creating entries in index...")
 
-        //read inventory, creating entries in index....
-        def alreadyIndexed = [
-                DwcTerm.taxonID,
-                DwcTerm.datasetID,
-                DwcTerm.acceptedNameUsageID,
-                DwcTerm.parentNameUsageID,
-                DwcTerm.scientificName,
-                DwcTerm.taxonRank,
-                DwcTerm.scientificNameAuthorship,
-                DwcTerm.taxonomicStatus,
-                ALATerm.nameComplete,
-                ALATerm.nameFormatted,
-        ]
 
         def buffer = []
         def counter = 0
@@ -1089,52 +1107,21 @@ class ImportService {
             def taxonID = core.id()
             def acceptedNameUsageID = core.value(DwcTerm.acceptedNameUsageID)
             def synonym = taxonID != acceptedNameUsageID && acceptedNameUsageID != "" && acceptedNameUsageID != null
-
-            def datasetID = (core.value(DwcTerm.datasetID))
-            def taxonRank = (core.value(DwcTerm.taxonRank) ?: "").toLowerCase()
-            def scientificName = core.value(DwcTerm.scientificName)
             def parentNameUsageID = core.value(DwcTerm.parentNameUsageID)
-            def scientificNameAuthorship = core.value(DwcTerm.scientificNameAuthorship)
-            def nameComplete = core.value(ALATerm.nameComplete)
-            def nameFormatted = core.value(ALATerm.nameFormatted)
-            def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
-            def taxonomicStatus = core.value(DwcTerm.taxonomicStatus) ?: (synonym ? "synonym" : "accepted")
+            def defaultTaxonomicStatus = synonym ? "inferredSynonym" : "inferredAaccepted"
 
             def doc = ["idxtype": IndexDocType.TAXON.name()]
             doc["id"] = UUID.randomUUID().toString()
             doc["guid"] = taxonID
-            doc["datasetID"] = datasetID
             doc["parentGuid"] = parentNameUsageID
-            doc["rank"] = taxonRank
-            //only add the ID if we have a recognised rank
-            if(taxonRankID > 0){
-                doc["rankID"] = taxonRankID
+            if (synonym) {
+                doc["acceptedConceptID"] = acceptedNameUsageID
+            } else {
+                // Filled out during denormalisation
+                doc['speciesGroup'] = []
+                doc['speciesSubgroup'] = []
             }
-            doc["scientificName"] = scientificName
-            doc["scientificNameAuthorship"] = scientificNameAuthorship
-            doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
-            doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
-            doc["taxonomicStatus"] = taxonomicStatus
-
-            //index additional fields that are supplied in the core record
-            core.terms().each { term ->
-                if (!alreadyIndexed.contains(term)) {
-                    if (IN_SCHEMA.contains(term)) {
-                        doc[term.simpleName()] = core.value(term)
-                    } else {
-                        //use a dynamic field extension
-                        doc[term.simpleName() + DYNAMIC_FIELD_EXTENSION] = core.value(term)
-                    }
-                }
-            }
-
-            def attribution = findAttribution(datasetID, attributionMap, datasetMap)
-            if (attribution) {
-                doc["datasetName"] = attribution["datasetName"]
-                doc["rightsHolder"] = attribution["rightsHolder"]
-            } else if (defaultDatasetName) {
-                doc["datasetName"] = defaultDatasetName
-            }
+            buildTaxonRecord(core, doc, attributionMap, datasetMap, taxonRanks, defaultTaxonomicStatus, defaultDatasetName)
 
             if (record.hasExtension(GbifTerm.Distribution)) {
                 record.extension(GbifTerm.Distribution).each {
@@ -1144,13 +1131,6 @@ class ImportService {
                 }
             }
 
-            if (synonym) {
-                doc["acceptedConceptID"] = acceptedNameUsageID
-            } else {
-                // Filled out during denormalisation
-                doc['speciesGroup'] = []
-                doc['speciesSubgroup'] = []
-            }
             buffer << doc
             counter++
             if (buffer.size() >= 1000) {
@@ -1185,6 +1165,8 @@ class ImportService {
             String source = record.value(DcTerm.source)
             String datasetID = record.value(DwcTerm.datasetID)
 
+            def capitaliser = TitleCapitaliser.create(language ?: defaultLanguage)
+            vernacularName = capitaliser.capitalise(vernacularName)
             def doc = [:]
             doc["id"] = UUID.randomUUID().toString() // doc key
             doc["idxtype"] = IndexDocType.COMMON // required field
@@ -1272,6 +1254,79 @@ class ImportService {
         }
     }
 
+    def importTaxonVariantDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName) throws Exception {
+        if (archiveFile.rowType != ALATerm.TaxonVariant)
+            throw new IllegalArgumentException("Taxon variant import only works for files of type " + ALATerm.TaxonVariant + " got " + archiveFile.rowType)
+        log("Importing taxon variants")
+        def taxonRanks = ranks()
+        def buffer = []
+        def count = 0
+        for (Record record: archiveFile) {
+            def doc = [:]
+            doc["id"] = UUID.randomUUID().toString() // doc key
+            doc["idxtype"] = IndexDocType.TAXONVARIANT.name() // required field
+            doc["taxonGuid"] = record.id()
+            doc["guid"] = record.value(DwcTerm.taxonID)
+            buildTaxonRecord(record, doc, attributionMap, datasetMap, taxonRanks, "inferredAccepted", defaultDatasetName)
+            buffer << doc
+            count++
+            if (buffer.size() >= 1000) {
+                indexService.indexBatch(buffer)
+                buffer.clear()
+                log("Processed ${count} records")
+            }
+        }
+        if (buffer.size() > 0) {
+            indexService.indexBatch(buffer)
+            log("Processed ${count} records")
+        }
+    }
+
+    def buildTaxonRecord(Record record, Map doc, Map attributionMap, Map datasetMap, Map taxonRanks, String defaultTaxonomicStatus, String defaultDatasetName) {
+        def datasetID = record.value(DwcTerm.datasetID)
+        def taxonRank = (record.value(DwcTerm.taxonRank) ?: "").toLowerCase()
+        def scientificName = record.value(DwcTerm.scientificName)
+        def parentNameUsageID = record.value(DwcTerm.parentNameUsageID)
+        def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
+        def nameComplete = record.value(ALATerm.nameComplete)
+        def nameFormatted = record.value(ALATerm.nameFormatted)
+        def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
+        def taxonomicStatus = record.value(DwcTerm.taxonomicStatus) ?: defaultTaxonomicStatus
+
+        doc["datasetID"] = datasetID
+        doc["parentGuid"] = parentNameUsageID
+        doc["rank"] = taxonRank
+        //only add the ID if we have a recognised rank
+        if(taxonRankID > 0){
+            doc["rankID"] = taxonRankID
+        }
+        doc["scientificName"] = scientificName
+        doc["scientificNameAuthorship"] = scientificNameAuthorship
+        doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
+        doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
+        doc["taxonomicStatus"] = taxonomicStatus
+
+        //index additional fields that are supplied in the record
+        record.terms().each { term ->
+            if (!TAXON_ALREADY_INDEXED.contains(term)) {
+                if (IN_SCHEMA.contains(term)) {
+                    doc[term.simpleName()] = record.value(term)
+                } else {
+                    //use a dynamic field extension
+                    doc[term.simpleName() + DYNAMIC_FIELD_EXTENSION] = record.value(term)
+                }
+            }
+        }
+
+        def attribution = findAttribution(datasetID, attributionMap, datasetMap)
+        if (attribution) {
+            doc["datasetName"] = attribution["datasetName"]
+            doc["rightsHolder"] = attribution["rightsHolder"]
+        } else if (defaultDatasetName) {
+            doc["datasetName"] = defaultDatasetName
+        }
+    }
+
 
     static String normaliseRank(String rank) {
         return rank?.toLowerCase()?.replaceAll("[^a-z]", "_")
@@ -1330,7 +1385,8 @@ class ImportService {
                     def name = doc.scientificName ?: doc.name
                     try {
                         if (name) {
-                            String nameSearchUrl = baseUrl + "/select?wt=json&q=name:\"" + name + "\"+OR+scientificName:\"" + name + "\"&fq=" + typeQuery + "&rows=0"
+                            String encName = ClientUtils.escapeQueryChars(name)
+                            String nameSearchUrl = baseUrl + "/select?wt=json&q=name:" + encName + "+OR+scientificName:" + encName + "&fq=" + typeQuery + "&rows=0"
                             def nameResponse = Encoder.encodeUrl(nameSearchUrl).toURL().getText("UTF-8")
                             def nameJson = js.parseText(nameResponse)
                             int found = nameJson.response.numFound
@@ -1379,8 +1435,7 @@ class ImportService {
         def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+taxonomicStatus:accepted"
         def prevCursor = ""
         def cursor = "*"
-        JsonSlurper slurper = new JsonSlurper()
-        def listConfig = slurper.parse(new URL(grailsApplication.config.imagesListsUrl))
+        def listConfig = this.getConfigFile(grailsApplication.config.imagesListsUrl)
         def imageMap = collectImageLists(listConfig.lists)
         def rankMap = listConfig.ranks.collectEntries { r -> [(r.rank): r] }
         def boosts = listConfig.boosts.collect({"bq=" + it}).join("&")
@@ -1389,8 +1444,9 @@ class ImportService {
         def lastImage = [imageId: "none", taxonID: "none", name: "none"]
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
-                query = query ? query + "+OR+" : ""
-                query = query + "${field}:\"${value}\"^${boost}"
+                value = ClientUtils.escapeQueryChars(value)
+                query = query ? query + " OR " : ""
+                query = query + "${field}:${value}^${boost}"
             }
             query
         }
@@ -1423,7 +1479,7 @@ class ImportService {
                                 query = addImageSearch(query, rank.nameField, name, 50)
                                 query = addImageSearch(query, rank.idField, taxonID, 20)
                                 if (query) {
-                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query})+AND+multimedia:Image&${boosts}&rows=5&wt=json&fl=${imageFields}"
+                                    def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query}) AND multimedia:Image&${boosts}&rows=5&wt=json&fl=${imageFields}"
                                     //def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonResponse = Encoder.encodeUrl(taxonSearchUrl).toURL().getText("UTF-8")
                                     def taxonJson = js.parseText(taxonResponse)
@@ -1578,8 +1634,7 @@ class ImportService {
     def loadPreferredImages(online) {
         def updatedTaxa = []
         Integer batchSize = 20
-        JsonSlurper slurper = new JsonSlurper()
-        Map listConfig = slurper.parse(new URL(grailsApplication.config.imagesListsUrl)) // config defined JSON file
+        Map listConfig = this.getConfigFile(grailsApplication.config.imagesListsUrl) // config defined JSON file
         Map imagesMap = collectImageLists(listConfig.lists) // reads preferred images list via WS
         List guidList = []
 
@@ -1662,8 +1717,10 @@ class ImportService {
         def prevCursor = ""
         def cursor = "*"
         def startTime, endTime
+        def capitalisers = [:]
         Set autoLanguages = grailsApplication.config.autoComplete.languages ? grailsApplication.config.autoComplete.languages.split(',') as Set : null
 
+        log("Starting dernomalisation")
         js.setType(JsonParserType.INDEX_OVERLAY)
         log("Getting species groups")
         def speciesGroupMapper = speciesGroupService.invertedSpeciesGroups
@@ -1691,6 +1748,7 @@ class ImportService {
                     update["denormalised_b"] = [set: false ]
                     doc.each { k, v -> if (k.startsWith("rk_") || k.startsWith("rkid_")) update[k] = [set: null] }
                     doc.each { k, v -> if (k.startsWith("commonName")) update[k] = [set: null] }
+                    update["nameVariant"] = [set: null]
                     update["commonName"] = [set: null]
                     update["commonNameExact"] = [set: null]
                     update["commonNameSingle"] = [set: null]
@@ -1732,7 +1790,7 @@ class ImportService {
                 log "1. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages, capitalisers)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1768,7 +1826,7 @@ class ImportService {
                 log "2. Paging over ${total} docs - page ${(processed + 1)}"
 
                 docs.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages, capitalisers)
                 }
                 processed++
                 if (!buffer.isEmpty())
@@ -1837,7 +1895,7 @@ class ImportService {
         log("Finished taxon denormalisaion. Duration: ${(new SimpleDateFormat("mm:ss:SSS")).format(new Date(endTime - startTime))}")
     }
 
-    private denormaliseEntry(doc, Map trace, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages) {
+    private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages, Map capitalisers) {
         def currentDistribution = (doc['distribution'] ?: []) as Set
         if (doc.denormalised_b)
             return currentDistribution
@@ -1846,6 +1904,12 @@ class ImportService {
         def distribution = [] as Set
         def guid = doc.guid
         def scientificName = doc.scientificName
+        def nameComplete = doc.nameComplete
+        if (stack.contains(guid)) {
+            log "Loop in parent-child relationship for ${guid} - ${stack}"
+            return currentDistribution
+        }
+        stack << guid
         update["id"] = doc.id // doc key
         update["idxtype"] = [set: doc.idxtype] // required field
         update["guid"] = [set: guid] // required field
@@ -1880,15 +1944,36 @@ class ImportService {
             if (autoLanguages)
                 commonNames = commonNames.findAll { autoLanguages.contains(it.language) }
 
+            def names = new LinkedHashSet(commonNames.collect { it.name })
             if(commonNames) {
-                update["commonName"] = [set: commonNames.collect { it.name }]
-                update["commonNameExact"] = [set: commonNames.collect { it.name }]
-                update["commonNameSingle"] = [set: commonNames.first().name]
+                update["commonName"] = [set: names]
+                update["commonNameExact"] = [set: names]
+                update["commonNameSingle"] = [set: names.first() ]
             }
         }
         def identifiers = searchService.lookupIdentifier(guid, !online)
         if (identifiers) {
             update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
+        }
+        def variants = searchService.lookupVariant(guid, !online)
+        if (variants) {
+            float min = grailsApplication.config.getProperty("priority.min", Float, 0.25)
+            float max = grailsApplication.config.getProperty("priority.max", Float, 5.0)
+            float norm = grailsApplication.config.getProperty("priority.norm", Float, 4000.0)
+            float boost = variants.collect({
+                def priority = it.priority ?: norm
+                Math.min(max, Math.max(min, priority / norm))
+            }).max()
+            def names = (variants.collect { it.scientificName }) as Set
+            names.addAll(variants.collect { it.nameComplete })
+            names.remove(null)
+            names.remove(scientificName)
+            names.remove(nameComplete)
+            if (names)
+                update["nameVariant"] = [boost: boost, set: names]
+            update["scientificName"] = [boost: boost, set: scientificName]
+            if (nameComplete)
+                update["nameComplete"] = [boost: boost, set: nameComplete]
         }
 
         def prevCursor = ""
@@ -1901,7 +1986,7 @@ class ImportService {
             def json = js.parseText(queryResponse)
             def docs = json.response.docs
             docs.each { child ->
-                distribution.addAll(denormaliseEntry(child, trace, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages))
+                distribution.addAll(denormaliseEntry(child, trace, stack, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages, capitalisers))
             }
             prevCursor = cursor
             cursor = json.nextCursorMark
@@ -1915,6 +2000,7 @@ class ImportService {
             indexService.indexBatch(buffer, online)
             buffer.clear()
         }
+        stack.pop()
         distribution.addAll(currentDistribution)
         return distribution
     }
@@ -2052,8 +2138,13 @@ class ImportService {
     }
 
     private updateProgressBar(int total, int current) {
-        Double percentDone = (current / total) * 100
-        log("${percentDone.round(1)}") // progress bar output (JS code detects numeric input)
+        Double percentDone = total > 0 ? current * 100.0 / total : 100.0
+        brokerMessagingTemplate.convertAndSend "/topic/import-progress", percentDone.round(1).toString()
+    }
+
+    private updateProgressBar2(int total, int current) {
+        Double percentDone = total > 0 ? current * 100.0 / total : 100.0
+        brokerMessagingTemplate.convertAndSend "/topic/import-progress2", percentDone.round(1).toString()
     }
 
     private findAttribution(datasetID, attributionMap, datasetMap) {
@@ -2067,4 +2158,13 @@ class ImportService {
         attributionMap.put(datasetID, attribution)
         return attribution
     }
+
+    private getConfigFile(String url) {
+        //url = URLEncoder.encode(url, "UTF-8")
+        URL source = this.class.getResource(url)
+        if (source == null)
+            source = new URL(url)
+        JsonSlurper slurper = new JsonSlurper()
+        return slurper.parse(source)
+     }
 }

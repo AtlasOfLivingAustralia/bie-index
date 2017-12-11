@@ -3,8 +3,8 @@ package au.org.ala.bie
 import grails.converters.JSON
 import grails.converters.XML
 
-import static org.codehaus.groovy.grails.web.servlet.HttpHeaders.CONTENT_DISPOSITION
-import static org.codehaus.groovy.grails.web.servlet.HttpHeaders.LAST_MODIFIED
+import static grails.web.http.HttpHeaders.CONTENT_DISPOSITION
+import static grails.web.http.HttpHeaders.LAST_MODIFIED
 
 class MiscController {
 
@@ -56,6 +56,19 @@ class MiscController {
             asJson([success: false, message: "Unauthorised access. Failed to update Image in Bie" ])
         }
     }
+
+
+    /**
+     * Do logouts through this app so we can invalidate the session.
+     *
+     * @param casUrl the url for logging out of cas
+     * @param appUrl the url to redirect back to after the logout
+     */
+    def logout = {
+        session.invalidate()
+        redirect(url:"${params.casUrl}?url=${params.appUrl}")
+    }
+
 
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")

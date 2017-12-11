@@ -17,7 +17,7 @@ class AutoCompleteService {
 
     def serviceMethod() {}
 
-    List auto(String q, String otherParams){
+    List auto(String q, List otherParams){
         Boolean useLegacyAuto = grailsApplication.config.useLegacyAuto.toBoolean()
         List results
 
@@ -38,22 +38,24 @@ class AutoCompleteService {
      * @param otherParams
      * @return
      */
-    List autoSuggest(String q, String otherParams){
+    List autoSuggest(String q, List otherParams){
         log.debug("auto called with q = " + q)
 
         def autoCompleteList = []
 
-        String query = ""
+        List query = []
         if (!q || q.trim() == "*") {
-            query = otherParams + "&q=*:*"
+            query << "q=*:*"
         } else if (q) {
             // encode query (no fields needed due to qf params
-            query = otherParams + "&q=" + URLEncoder.encode("" + q + "","UTF-8")
+            query << "q=" + URLEncoder.encode("" + q + "","UTF-8")
         }
+        query << "wt=json"
+        query.addAll(otherParams)
 
-        log.info "queryString = ${otherParams}"
+        log.debug "autocomplete query = ${query}"
 
-        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/suggest?wt=json&" + query
+        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/suggest?" + query.join('&')
         log.debug "queryUrl = |${queryUrl}|"
         def queryResponse = new URL(Encoder.encodeUrl(queryUrl)).getText("UTF-8")
         def js = new JsonSlurper()
@@ -73,26 +75,34 @@ class AutoCompleteService {
      * @param otherParams
      * @return
      */
-    List autoLegacy(String q, String otherParams){
+    List autoLegacy(String q, List otherParams) {
         log.debug("auto called with q = " + q)
 
         def autoCompleteList = []
+        def query = []
         // TODO store param string in config var
         String qf = "qf=commonNameSingle^100+commonName^100+auto_text^100+text"
         String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
         def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
-        String query = ""
 
         if (!q || q.trim() == "*") {
-            query = otherParams + "&q=*:*"
+            query << "q=*:*"
         } else if (q) {
             // encode query (no fields needed due to qf params
-            query = otherParams + "&q=" + URLEncoder.encode("" + q + "","UTF-8")
+            query << "q=" + URLEncoder.encode("" + q + "", "UTF-8")
         }
+        query << "wt=json"
+        if (grailsApplication.config.solr.qf) {
+            query << "qf=${grailsApplication.config.solr.qf}"
+        }
+        grailsApplication.config.solr.bq.each { query << "bq=${it}" }
+        if (grailsApplication.config.solr.defType) {
+            query << "defType=${grailsApplication.config.solr.defType}"
+        }
+        query.addAll(additionalParams)
+        log.debug "queryString = ${query}"
 
-        log.info "queryString = ${otherParams}"
-
-        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + query + additionalParams
+        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + query.join('&')
         log.debug "queryUrl = |${queryUrl}|"
         def queryResponse = new URL(Encoder.encodeUrl(queryUrl)).getText("UTF-8")
         def js = new JsonSlurper()
