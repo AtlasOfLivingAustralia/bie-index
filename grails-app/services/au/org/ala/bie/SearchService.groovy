@@ -73,6 +73,7 @@ class SearchService {
                 results: formatDocs(json.response.docs, null, null)
         ]
     }
+
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.
      *
@@ -1019,6 +1020,7 @@ class SearchService {
     private List formatDocs(docs, highlighting, params) {
 
         def formatted = []
+        def fields = params?.fields?.split(",")?.collect({ String f -> f.trim() }) as Set
 
         // add occurrence counts
         if(grailsApplication.config.occurrenceCounts.enabled.asBoolean()){
@@ -1026,7 +1028,8 @@ class SearchService {
         }
 
         docs.each {
-            if(it.idxtype == IndexDocType.TAXON.name()) {
+            Map doc = null
+            if (it.idxtype == IndexDocType.TAXON.name()) {
 
                 def commonNameSingle = ""
                 def commonNames = ""
@@ -1038,7 +1041,7 @@ class SearchService {
                         commonNameSingle = it.commonName.first()
                 }
 
-                Map doc = [
+                doc = [
                         "id"                      : it.id, // needed for highlighting
                         "guid"                    : it.guid,
                         "linkIdentifier"          : it.linkIdentifier,
@@ -1090,10 +1093,8 @@ class SearchService {
                 def map = extractClassification(it)
 
                 doc.putAll(map)
-
-                formatted << doc
-            } else if(it.idxtype == IndexDocType.TAXONVARIANT.name()){
-                Map doc = [
+            } else if (it.idxtype == IndexDocType.TAXONVARIANT.name()){
+                doc = [
                         "id" : it.id, // needed for highlighting
                         "guid" : it.guid,
                         "taxonGuid" : it.taxonGuid,
@@ -1113,9 +1114,8 @@ class SearchService {
                         "infoSourceName" : it.datasetName,
                         "infoSourceURL" : "${grailsApplication.config.collectoryBaseUrl}/public/show/${it.datasetID}"
                 ]
-                formatted << doc
             } else {
-                Map doc = [
+                doc = [
                         id : it.id,
                         guid : it.guid,
                         linkIdentifier : it.linkIdentifier,
@@ -1137,7 +1137,10 @@ class SearchService {
                         }
                     }
                 }
-
+            }
+            if (doc) {
+                if (fields)
+                    doc = doc.subMap(fields)
                 formatted << doc
             }
         }
@@ -1146,11 +1149,13 @@ class SearchService {
         highlighting.each { k, v ->
             if (v) {
                 Map found = formatted.find { it.id == k }
-                List snips = []
-                v.each { field, snippetList ->
-                    snips.addAll(snippetList)
+                if (found) {
+                    List snips = []
+                    v.each { field, snippetList ->
+                        snips.addAll(snippetList)
+                    }
+                    found.put("highlight", snips.toSet().join("<br>"))
                 }
-                found.put("highlight", snips.toSet().join("<br>"))
             }
         }
         formatted
