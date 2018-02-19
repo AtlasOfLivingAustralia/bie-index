@@ -35,16 +35,11 @@ Pre-existing species use the pre-existing taxonID and are not included in the fi
 CAAB does not directly supply a parent identifier for a taxon.
 Instead, each taxon contains the names from each rank in the Linnaean hierarchy, along with a few additional
 sub- or super- ranks.
-
-Parents are identified by following a chain of parents, from kingdom down to subspecies.
-If a parent is named and is at a superior rank to the taxon, then that parent name is found in an index of
-names and the appropriate parent identifier added.
-This process continues down the chain, meaning that the lowest rank parent ends up as the parent identifier.
-
+These names are passed through to the resulting file, for use by the taxonomy builder.
 
 ## DwCA Construction
 
-After pre-processing and parent identification, accepted taxa can be directly mapped onto the DwCA form.
+After pre-processing, accepted taxa can be directly mapped onto the DwCA form.
 
 Synonyms and vernacular names are extracted from the lists of synonyms and common names and denormalised.
 separate tables are built for each type of name.
