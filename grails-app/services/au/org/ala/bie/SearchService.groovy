@@ -73,6 +73,7 @@ class SearchService {
                 results: formatDocs(json.response.docs, null, null)
         ]
     }
+
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.
      *
@@ -836,6 +837,7 @@ class SearchService {
                         namePublishedIn: taxon.namePublishedIn,
                         namePublishedInYear: taxon.namePublishedInYear,
                         namePublishedInID: taxon.namePublishedInID,
+                        taxonRemarks: taxon.taxonRemarks,
                         infoSourceURL: taxon.source ?: taxonDatasetURL,
                         datasetURL: taxonDatasetURL
                 ],
@@ -858,6 +860,7 @@ class SearchService {
                             namePublishedInYear: synonym.namePublishedInYear,
                             namePublishedInID: synonym.namePublishedInID,
                             nameAuthority: synonym.datasetName ?: datasetName ?: grailsApplication.config.synonymSourceAttribution,
+                            taxonRemarks: synonym.taxonRemarks,
                             infoSourceURL: synonym.source ?: datasetURL,
                             datasetURL: datasetURL
                     ]
@@ -870,6 +873,16 @@ class SearchService {
                             status: commonName.status,
                             priority: commonName.priority,
                             language: commonName.language ?: grailsApplication.config.commonNameDefaultLanguage,
+                            temporal: commonName.temporal,
+                            locationID: commonName.locationID,
+                            locality: commonName.locality,
+                            countryCode: commonName.countryCode,
+                            sex: commonName.sex,
+                            lifeStage: commonName.lifeStage,
+                            isPlural: commonName.isPlural,
+                            organismPart: commonName.organismPart,
+                            taxonRemarks: commonName.taxonRemarks,
+                            labels: commonName.labels,
                             infoSourceName: commonName.datasetName ?: datasetName ?: grailsApplication.config.commonNameSourceAttribution,
                             infoSourceURL: commonName.source ?: datasetURL,
                             datasetURL: datasetURL
@@ -913,6 +926,7 @@ class SearchService {
                             namePublishedInYear: variant.namePublishedInYear,
                             namePublishedInID: variant.namePublishedInID,
                             nameAuthority: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
+                            taxonRemarks: variant.taxonRemarks,
                             infoSourceName: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
                             infoSourceURL: variant.source ?: datasetURL,
                             datasetURL: datasetURL,
@@ -1019,6 +1033,7 @@ class SearchService {
     private List formatDocs(docs, highlighting, params) {
 
         def formatted = []
+        def fields = params?.fields?.split(",")?.collect({ String f -> f.trim() }) as Set
 
         // add occurrence counts
         if(grailsApplication.config.occurrenceCounts.enabled.asBoolean()){
@@ -1026,7 +1041,8 @@ class SearchService {
         }
 
         docs.each {
-            if(it.idxtype == IndexDocType.TAXON.name()) {
+            Map doc = null
+            if (it.idxtype == IndexDocType.TAXON.name()) {
 
                 def commonNameSingle = ""
                 def commonNames = ""
@@ -1038,7 +1054,7 @@ class SearchService {
                         commonNameSingle = it.commonName.first()
                 }
 
-                Map doc = [
+                doc = [
                         "id"                      : it.id, // needed for highlighting
                         "guid"                    : it.guid,
                         "linkIdentifier"          : it.linkIdentifier,
@@ -1090,10 +1106,8 @@ class SearchService {
                 def map = extractClassification(it)
 
                 doc.putAll(map)
-
-                formatted << doc
-            } else if(it.idxtype == IndexDocType.TAXONVARIANT.name()){
-                Map doc = [
+            } else if (it.idxtype == IndexDocType.TAXONVARIANT.name()){
+                doc = [
                         "id" : it.id, // needed for highlighting
                         "guid" : it.guid,
                         "taxonGuid" : it.taxonGuid,
@@ -1113,9 +1127,8 @@ class SearchService {
                         "infoSourceName" : it.datasetName,
                         "infoSourceURL" : "${grailsApplication.config.collectoryBaseUrl}/public/show/${it.datasetID}"
                 ]
-                formatted << doc
             } else {
-                Map doc = [
+                doc = [
                         id : it.id,
                         guid : it.guid,
                         linkIdentifier : it.linkIdentifier,
@@ -1137,7 +1150,10 @@ class SearchService {
                         }
                     }
                 }
-
+            }
+            if (doc) {
+                if (fields)
+                    doc = doc.subMap(fields)
                 formatted << doc
             }
         }
@@ -1146,11 +1162,13 @@ class SearchService {
         highlighting.each { k, v ->
             if (v) {
                 Map found = formatted.find { it.id == k }
-                List snips = []
-                v.each { field, snippetList ->
-                    snips.addAll(snippetList)
+                if (found) {
+                    List snips = []
+                    v.each { field, snippetList ->
+                        snips.addAll(snippetList)
+                    }
+                    found.put("highlight", snips.toSet().join("<br>"))
                 }
-                found.put("highlight", snips.toSet().join("<br>"))
             }
         }
         formatted

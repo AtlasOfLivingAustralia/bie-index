@@ -20,6 +20,11 @@
     "priority": 200
   },
   {
+    "status": "traditionalKnowledge",
+    "description": "A name derived from traditional sources of knowledge",
+    "priority": 200
+  },
+  {
     "status": "local",
     "description": "A locally used common name",
     "priority": 100

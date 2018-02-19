@@ -56,10 +56,12 @@ class ImportService {
             DwcTerm.taxonID, DwcTerm.nomenclaturalCode, DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus,
             DwcTerm.taxonConceptID, DwcTerm.scientificNameID, DwcTerm.nomenclaturalStatus, DwcTerm.nameAccordingTo, DwcTerm.nameAccordingToID,
             DwcTerm.scientificNameID, DwcTerm.namePublishedIn, DwcTerm.namePublishedInID, DwcTerm.namePublishedInYear,
-            DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder,
+            DwcTerm.taxonRemarks, DwcTerm.lifeStage, DwcTerm.sex, DwcTerm.locationID, DwcTerm.locality, DwcTerm.countryCode,
+            DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder, DcTerm.temporal,
             ALATerm.status, ALATerm.nameID, ALATerm.nameFormatted, ALATerm.nameComplete, ALATerm.priority,
             ALATerm.verbatimNomenclaturalCode, ALATerm.verbatimNomenclaturalStatus, ALATerm.verbatimTaxonomicStatus,
-            DwcTerm.datasetName
+            DwcTerm.datasetName,
+            GbifTerm.isPlural, GbifTerm.isPreferredName, GbifTerm.organismPart, ALATerm.labels
     ]
     // Terms that have been algorithmically added so needn't be added as extras
     static TAXON_ALREADY_INDEXED = [
@@ -922,7 +924,7 @@ class ImportService {
                 def language = item.kvpValues.find { it.key == languageField }?.get("value") ?: resourceLanguage
                 def source = item.kvpValues.find { it.key == sourceField }?.get("value")
 
-                if (!addVernacularName(item.lsid, item.name, vernacularName, nameId, status, language, source, uid, buffer, commonStatus))
+                if (!addVernacularName(item.lsid, item.name, vernacularName, nameId, status, language, source, uid, null, [:], buffer, commonStatus))
                     unmatchedTaxaCount++
 
                 if (i > 0) {
@@ -940,7 +942,7 @@ class ImportService {
     }
 
 
-    private boolean addVernacularName(String taxonID, String name, String vernacularName, String nameId, Object status, String language, String source, String datasetID, List buffer, Object defaultStatus) {
+    private boolean addVernacularName(String taxonID, String name, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, Map additional, List buffer, Object defaultStatus) {
         def taxonDoc = null
 
         if (taxonID)
@@ -972,6 +974,9 @@ class ImportService {
             }
             if (source)
                 doc["source"] = ["set": source]
+            if (taxonRemarks)
+                doc["taxonRemarks"] = ["set": taxonRemarks]
+            additional.each { k, v -> doc[k] = ["set": v] }
             log.debug "adding to doc = ${doc}"
             buffer << doc
         } else {
@@ -987,7 +992,11 @@ class ImportService {
             doc["priority"] = status?.priority ?: defaultStatus.priority
             doc["nameID"] = nameId
             doc["language"] = language
-            doc["source"] = source
+            if (source)
+                doc["source"] = source
+            if (taxonRemarks)
+                doc["taxonRemarks"] = taxonRemarks
+            additional.each { k, v -> doc[k] = v }
             log.debug "new name doc = ${doc} for ${vernacularName}"
             buffer << doc
         }
@@ -1153,6 +1162,7 @@ class ImportService {
         log("Importing vernacular names")
         def statusMap = vernacularNameStatus()
         def defaultStatus = statusMap.get("common")
+        def preferredStatus = statusMap.get('preferred')
         String defaultLanguage = grailsApplication.config.commonNameDefaultLanguage
         def buffer = []
         def count = 0
@@ -1164,7 +1174,19 @@ class ImportService {
             String language = record.value(DcTerm.language) ?: defaultLanguage
             String source = record.value(DcTerm.source)
             String datasetID = record.value(DwcTerm.datasetID)
-
+            String temporal = record.value(DcTerm.temporal)
+            String locationID = record.value(DwcTerm.locationID)
+            String locality = record.value(DwcTerm.locality)
+            String countryCode = record.value(DwcTerm.countryCode)
+            String sex = record.value(DwcTerm.sex)
+            String lifeStage = record.value(DwcTerm.lifeStage)
+            String isPlural = record.value(GbifTerm.isPlural)
+            String isPreferred = record.value(GbifTerm.isPreferredName)
+            if (!status && isPreferred && isPreferred.toBoolean())
+                status = preferredStatus
+            String organismPart = record.value(GbifTerm.organismPart)
+            String taxonRemarks = record.value(DwcTerm.taxonRemarks)
+            String labels = record.value(ALATerm.labels)
             def capitaliser = TitleCapitaliser.create(language ?: defaultLanguage)
             vernacularName = capitaliser.capitalise(vernacularName)
             def doc = [:]
@@ -1179,6 +1201,16 @@ class ImportService {
             doc["nameID"] = nameID
             doc["language"] = language ?: defaultLanguage
             doc["source"] = source
+            doc["temporal"] = temporal
+            doc["locationID"] = locationID
+            doc["locality"] = locality
+            doc["countryCode"] = countryCode
+            doc["sex"] = sex
+            doc["lifeStage"] = lifeStage
+            doc["isPlural"] = isPlural
+            doc["organismPart"] = organismPart
+            doc["taxonRemarks"] = taxonRemarks
+            doc["labels"] = labels
             doc["distribution"] = "N/A"
             def attribution = findAttribution(datasetID, attributionMap, datasetMap)
             if (attribution) {
