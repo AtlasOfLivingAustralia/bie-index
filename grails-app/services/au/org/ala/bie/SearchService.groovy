@@ -837,6 +837,7 @@ class SearchService {
                         namePublishedIn: taxon.namePublishedIn,
                         namePublishedInYear: taxon.namePublishedInYear,
                         namePublishedInID: taxon.namePublishedInID,
+                        taxonRemarks: taxon.taxonRemarks,
                         infoSourceURL: taxon.source ?: taxonDatasetURL,
                         datasetURL: taxonDatasetURL
                 ],
@@ -859,6 +860,7 @@ class SearchService {
                             namePublishedInYear: synonym.namePublishedInYear,
                             namePublishedInID: synonym.namePublishedInID,
                             nameAuthority: synonym.datasetName ?: datasetName ?: grailsApplication.config.synonymSourceAttribution,
+                            taxonRemarks: synonym.taxonRemarks,
                             infoSourceURL: synonym.source ?: datasetURL,
                             datasetURL: datasetURL
                     ]
@@ -871,6 +873,16 @@ class SearchService {
                             status: commonName.status,
                             priority: commonName.priority,
                             language: commonName.language ?: grailsApplication.config.commonNameDefaultLanguage,
+                            temporal: commonName.temporal,
+                            locationID: commonName.locationID,
+                            locality: commonName.locality,
+                            countryCode: commonName.countryCode,
+                            sex: commonName.sex,
+                            lifeStage: commonName.lifeStage,
+                            isPlural: commonName.isPlural,
+                            organismPart: commonName.organismPart,
+                            taxonRemarks: commonName.taxonRemarks,
+                            labels: commonName.labels,
                             infoSourceName: commonName.datasetName ?: datasetName ?: grailsApplication.config.commonNameSourceAttribution,
                             infoSourceURL: commonName.source ?: datasetURL,
                             datasetURL: datasetURL
@@ -914,6 +926,7 @@ class SearchService {
                             namePublishedInYear: variant.namePublishedInYear,
                             namePublishedInID: variant.namePublishedInID,
                             nameAuthority: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
+                            taxonRemarks: variant.taxonRemarks,
                             infoSourceName: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
                             infoSourceURL: variant.source ?: datasetURL,
                             datasetURL: datasetURL,
