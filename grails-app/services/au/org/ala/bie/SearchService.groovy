@@ -943,6 +943,18 @@ class SearchService {
             model.taxonConcept["acceptedConceptID"] = taxon.acceptedConceptID
         if (taxon.acceptedConceptName)
             model.taxonConcept["acceptedConceptName"] = taxon.acceptedConceptName
+        
+        if(getAdditionalResultFields()) {
+            def doc = [:]
+            getAdditionalResultFields().each { field ->
+                if (taxon."${field}") {
+                    doc.put(field, taxon."${field}")
+                }
+            }
+
+            model << doc
+        }
+        
         model
     }
 
