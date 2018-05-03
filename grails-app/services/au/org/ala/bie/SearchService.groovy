@@ -151,9 +151,9 @@ class SearchService {
         // Add query parameters
         query << "defType=${grailsApplication.config.solr.defType}" // Query parser type
         query << "qf=${grailsApplication.config.solr.qf}" // dismax query fields
-        grailsApplication.config.solr.bq.each { query << "bq=${it}" } // dismax boosts
+        query << "${grailsApplication.config.solr.bq}" // dismax boosts
         query << "q.alt=${grailsApplication.config.solr.qAlt}" // if no query specified use this query
-        grailsApplication.config.solr.hl.each { query << "hl=${it}" } // highlighting parameters
+        query << "hl=${grailsApplication.config.solr.hl}" // highlighting parameters
         query << "wt=json"
         query << "facet=${!requestedFacets.isEmpty()}"
         query << "facet.mincount=1"
