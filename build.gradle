@@ -34,7 +34,7 @@ dependencies {
     compile "org.springframework.boot:spring-boot-autoconfigure"
     compile "org.grails:grails-core"
     compile "org.springframework.boot:spring-boot-starter-actuator"
-    compile "org.springframework.boot:spring-boot-starter-tomcat"
+    provided "org.springframework.boot:spring-boot-starter-tomcat" //RR was compile, but then breaks pre-setup tomcat on server
     compile "org.grails:grails-dependencies"
     compile "org.grails:grails-web-boot"
     compile "org.grails.plugins:cache"
@@ -52,7 +52,7 @@ dependencies {
     testRuntime "org.seleniumhq.selenium:selenium-htmlunit-driver:2.47.1"
     testRuntime "net.sourceforge.htmlunit:htmlunit:2.18"
 
-    compile "org.grails.plugins:ala-ws-security-plugin:2.0-SNAPSHOT"
+    compile "org.grails.plugins:ala-ws-security-plugin:2.0" // RR was -SNAPSHOT
     compile 'com.github.davidmoten:rxjava-file:0.4'
     compile 'io.reactivex:rxgroovy:1.0.3'
     compile ('org.jasig.cas.client:cas-client-core:3.4.1') {
@@ -72,11 +72,11 @@ dependencies {
     compile "org.jsoup:jsoup:1.8.3"
     compile 'org.grails.plugins:external-config:1.1.1'
 
-    compile group: 'org.grails.plugins', name: 'ala-bootstrap3', version: '3.0.0-SNAPSHOT', changing: true
+    compile group: 'org.grails.plugins', name: 'ala-bootstrap3', version: '3.0.0', changing: true // RR was -SNAPSHOT
     compile(group: 'org.grails.plugins', name: 'ala-auth', version:'3.1.0-SNAPSHOT', changing: true) {
         exclude group: 'javax.servlet', module: 'servlet-api'
     }
-    compile group: 'org.grails.plugins', name: 'ala-admin-plugin', version: '2.0-SNAPSHOT', changing: true
+    compile group: 'org.grails.plugins', name: 'ala-admin-plugin', version: '2.0', changing: true // RR was -SNAPSHOT
     compile "org.grails.plugins:grails-spring-websocket:2.3.0"
     //compile "org.grails.plugins:rxjava2:2.0.0"
 }

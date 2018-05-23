@@ -111,7 +111,9 @@ class SearchService {
     def search(String q, GrailsParameterMap params, List requestedFacets) {
         params.remove("controller") // remove Grails stuff from query
         params.remove("action") // remove Grails stuff from query
-        log.debug "params = ${params.toMapString()}"
+        log.info "params = ${params.toMapString()}"
+        log.info "q = ${q}"
+        log.info "requestedFacets = ${requestedFacets}"
         def fqs = params.fq
         def query = []
         def queryTitle = null
@@ -150,9 +152,17 @@ class SearchService {
         // Add query parameters
         query << "defType=${grailsApplication.config.solr.defType}" // Query parser type
         query << "qf=${grailsApplication.config.solr.qf}" // dismax query fields
-        grailsApplication.config.solr.bq.each { query << "bq=${it}" } // dismax boosts
+        if ([Collection, Object[]].any { it.isAssignableFrom(grailsApplication.config.solr.bq.getClass())}) { //array, as per default config
+            grailsApplication.config.solr.bq.each { query << "bq=${it}" } // dismax boosts
+        } else {
+            query << "${grailsApplication.config.solr.bq}" //string, as per current ansible scripts
+        }
         query << "q.alt=${grailsApplication.config.solr.qAlt}" // if no query specified use this query
-        grailsApplication.config.solr.hl.each { query << "hl=${it}" } // highlighting parameters
+        if ([Collection, Object[]].any { it.isAssignableFrom(grailsApplication.config.solr.hl.getClass())}) { //array, as per default config
+            grailsApplication.config.solr.hl.each { query << "hl=${it}" } // highlighting parameters
+        } else {
+            query << "hl=${grailsApplication.config.solr.hl}" //string, as per current ansible scripts
+        }
         query << "wt=json"
         query << "facet=${!requestedFacets.isEmpty()}"
         query << "facet.mincount=1"
@@ -179,11 +189,11 @@ class SearchService {
         }
 
         String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?" + query.join('&')
-        log.debug "SOLR URL = ${solrUlr}"
+        log.info "SOLR URL = ${solrUlr}"
+        //log.info(sorlUrl)
         def queryResponse = new URL(Encoder.encodeUrl(solrUlr)).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
-
         if (json.response.numFound as Integer == 0) {
 
             try {
@@ -929,6 +939,18 @@ class SearchService {
             model.taxonConcept["acceptedConceptID"] = taxon.acceptedConceptID
         if (taxon.acceptedConceptName)
             model.taxonConcept["acceptedConceptName"] = taxon.acceptedConceptName
+
+        if(getAdditionalResultFields()) {
+            def doc = [:]
+            getAdditionalResultFields().each { field ->
+                if (taxon."${field}") {
+                    doc.put(field, taxon."${field}")
+                }
+            }
+
+            model << doc
+        }
+
         model
     }
 

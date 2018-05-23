@@ -3,6 +3,7 @@
 <head>
     <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
     <title>BIE Web services | ${grailsApplication.config.skin.orgNameLong}</title>
+    <style>#breadcrumb .container {display: none}</style>
 </head>
 <body>
 <div id="page-body" role="main">
