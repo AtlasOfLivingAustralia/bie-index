@@ -60,7 +60,7 @@ class ImportService {
             DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder, DcTerm.temporal,
             ALATerm.status, ALATerm.nameID, ALATerm.nameFormatted, ALATerm.nameComplete, ALATerm.priority,
             ALATerm.verbatimNomenclaturalCode, ALATerm.verbatimNomenclaturalStatus, ALATerm.verbatimTaxonomicStatus,
-            DwcTerm.datasetName,
+            DwcTerm.datasetName, DcTerm.provenance,
             GbifTerm.isPlural, GbifTerm.isPreferredName, GbifTerm.organismPart, ALATerm.labels
     ]
     // Terms that have been algorithmically added so needn't be added as extras
@@ -75,6 +75,8 @@ class ImportService {
             DwcTerm.taxonomicStatus,
             ALATerm.nameComplete,
             ALATerm.nameFormatted,
+            DwcTerm.taxonRemarks,
+            DcTerm.provenance
     ] as Set
 
 
@@ -924,7 +926,7 @@ class ImportService {
                 def language = item.kvpValues.find { it.key == languageField }?.get("value") ?: resourceLanguage
                 def source = item.kvpValues.find { it.key == sourceField }?.get("value")
 
-                if (!addVernacularName(item.lsid, item.name, vernacularName, nameId, status, language, source, uid, null, [:], buffer, commonStatus))
+                if (!addVernacularName(item.lsid, item.name, vernacularName, nameId, status, language, source, uid, null, null, [:], buffer, commonStatus))
                     unmatchedTaxaCount++
 
                 if (i > 0) {
@@ -942,7 +944,7 @@ class ImportService {
     }
 
 
-    private boolean addVernacularName(String taxonID, String name, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, Map additional, List buffer, Object defaultStatus) {
+    private boolean addVernacularName(String taxonID, String name, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, String provenance, Map additional, List buffer, Object defaultStatus) {
         def taxonDoc = null
 
         if (taxonID)
@@ -955,6 +957,8 @@ class ImportService {
         }
         def capitaliser = TitleCapitaliser.create(language ?: grailsApplication.config.commonNameDefaultLanguage)
         vernacularName = capitaliser.capitalise(vernacularName)
+        def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
+        def provenanceList = provenance?.split("\\|").collect({ it.trim()})
         def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
         if (vernacularDoc) {
             // do a SOLR doc (atomic) update
@@ -974,8 +978,10 @@ class ImportService {
             }
             if (source)
                 doc["source"] = ["set": source]
-            if (taxonRemarks)
-                doc["taxonRemarks"] = ["set": taxonRemarks]
+            if (remarksList)
+                doc["taxonRemarks"] = ["set": remarksList]
+            if (provenanceList)
+                doc["provenance"] = ["set": provenanceList]
             additional.each { k, v -> doc[k] = ["set": v] }
             log.debug "adding to doc = ${doc}"
             buffer << doc
@@ -994,8 +1000,10 @@ class ImportService {
             doc["language"] = language
             if (source)
                 doc["source"] = source
-            if (taxonRemarks)
-                doc["taxonRemarks"] = taxonRemarks
+            if (remarksList)
+                doc["taxonRemarks"] = remarksList
+            if (provenanceList)
+                doc["provenance"] = provenanceList
             additional.each { k, v -> doc[k] = v }
             log.debug "new name doc = ${doc} for ${vernacularName}"
             buffer << doc
@@ -1186,6 +1194,9 @@ class ImportService {
                 status = preferredStatus
             String organismPart = record.value(GbifTerm.organismPart)
             String taxonRemarks = record.value(DwcTerm.taxonRemarks)
+            def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
+            String provenance = record.value(DcTerm.provenance)
+            def provenanceList = provenance?.split("\\|").collect({ it.trim() })
             String labels = record.value(ALATerm.labels)
             def capitaliser = TitleCapitaliser.create(language ?: defaultLanguage)
             vernacularName = capitaliser.capitalise(vernacularName)
@@ -1209,7 +1220,8 @@ class ImportService {
             doc["lifeStage"] = lifeStage
             doc["isPlural"] = isPlural
             doc["organismPart"] = organismPart
-            doc["taxonRemarks"] = taxonRemarks
+            doc["taxonRemarks"] = remarksList
+            doc["provenance"] = provenanceList
             doc["labels"] = labels
             doc["distribution"] = "N/A"
             def attribution = findAttribution(datasetID, attributionMap, datasetMap)
@@ -1252,6 +1264,8 @@ class ImportService {
             def datasetID = record.value(DwcTerm.datasetID)
             def idStatus = record.value(ALATerm.status)
             def status = idStatus ? statusMap.get(idStatus.toLowerCase()) : null
+            String provenance = record.value(DcTerm.provenance)
+            def provenanceList = provenance?.split("\\|").collect({ it.trim() })
 
             def doc = [:]
             doc["id"] = UUID.randomUUID().toString() // doc key
@@ -1265,6 +1279,7 @@ class ImportService {
             doc["subject"] = subject
             doc["format"] = format
             doc["source"] = source
+            doc["provenance"] = provenanceList
             def attribution = findAttribution(datasetID, attributionMap, datasetMap)
             if (attribution) {
                 doc["datasetName"] = attribution["datasetName"]
@@ -1324,6 +1339,10 @@ class ImportService {
         def nameFormatted = record.value(ALATerm.nameFormatted)
         def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
         def taxonomicStatus = record.value(DwcTerm.taxonomicStatus) ?: defaultTaxonomicStatus
+        String taxonRemarks = record.value(DwcTerm.taxonRemarks)
+        String provenance = record.value(DcTerm.provenance)
+        def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
+        def provenanceList = provenance?.split("\\|").collect({ it.trim() })
 
         doc["datasetID"] = datasetID
         doc["parentGuid"] = parentNameUsageID
@@ -1337,6 +1356,8 @@ class ImportService {
         doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
         doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
         doc["taxonomicStatus"] = taxonomicStatus
+        doc["taxonRemarks"] = taxonRemarks
+        doc["provenance"] = provenanceList
 
         //index additional fields that are supplied in the record
         record.terms().each { term ->
