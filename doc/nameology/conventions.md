@@ -230,6 +230,7 @@ It can contain the following columns
 | [verbatimNomenclaturalCode](http://ala.org.au/terms/1.0/verbatimNomenclaturalCode) | no | no | The supplied nomenclaural code |
 | [verbatimTaxonomicStatus](http://ala.org.au/terms/1.0/verbatimTaxonomicStatus) | no | no | The supplied taxonomic status |
 | [verbatimNomenclaturalStatus](http://ala.org.au/terms/1.0/verbatimNomenclaturalStatus) | no | no | The supplied nomenclaural status |
+| [provenance](http://purl.org/dc/terms/provenance) | no | no | Information about how a taxon has been processed or modified. Multiple provenance statements are separated by vertical bars  |
 
 
 senior- or self-synonyms are not included in taxon.csv.
@@ -266,7 +267,8 @@ It contains the following columns
 | [isPreferredName](http://rs.gbif.org/terms/1.0/isPreferredName) | input only | Mapped onto the status vocabulary |
 | [organismPart](http://rs.gbif.org/terms/1.0/organismPart) | no | The part of the organism this name applies to (eg tail) |
 | [labels](http://ala.org.au/terms/1.0/labels) | no | Context labels, separated by a vertical bar. See http://localcontexts.org/  |
-| [taxonRemarks](http://rs.tdwg.org/dwc/terms/taxonRemarks) | no | Any additional remarks  |
+| [taxonRemarks](http://rs.tdwg.org/dwc/terms/taxonRemarks) | no | Any additional remarks. Multiple remarks are separated by vertical bars  |
+| [provenance](http://purl.org/dc/terms/provenance) | no | Information about how a name has been processed or modified. Multiple provenance statements are separated by vertical bars  |
 
 Note that a vernacular name, eg. "Blue Gum", can be linked to any number of scientific names.
 
@@ -300,6 +302,7 @@ It contains the following columns
 | [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | The source collectory dataset for this identifier |
 | [source](http://purl.org/dc/terms/source) | no | The linked-data source of the identifier  |
 | [status](http://ala.org.au/terms/1.0/status) | no | The status of the identifier |
+| [provenance](http://purl.org/dc/terms/provenance) | no | Information about how an identifier has been processed or modified. Multiple provenance statements are separated by vertical bars  |
 
 Identifier status gives a hint as to how additional identifiers should be interpreted.
 They use the following vocabulary:

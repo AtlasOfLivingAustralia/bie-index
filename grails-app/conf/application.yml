@@ -166,24 +166,13 @@ priority:
 # SOLR additional params
 solr:
     qf: scientificName^1000+commonName^500+exact_text^200+doc_name^100+text
-    bq:
-      - taxonomicStatus:accepted^2000
-      - rankID:7000^500
-      - rankID:6000^100
-      - scientificName:(*+-\"*+x+*\")^500
-      - taxonomicStatus:(*+-misapplied+-excluded+-miscellaneousLiterature+-inferredSynonym+-inferredAccepted)^1000
-      - idxtype:TAXON^2000
+    bq: bq=taxonomicStatus:accepted^2000&bq=rankID:7000^500&bq=rankID:6000^100&bq=scientificName:(*+-\"*+x+*\")^500&bq=taxonomicStatus:(*+-misapplied+-excluded+-miscellaneousLiterature+-inferredSynonym+-inferredAccepted)^1000&bq=idxtype:TAXON^2000
     fq:
       - NOT+idxtype:IDENTIFIER
       - NOT+idxtype:TAXONVARIANT
     defType: edismax
     qAlt: text:*
-    hl:
-      - true
-      - hl=true
-      - hl.fl=*
-      - hl.simple.pre=<b>
-      - hl.simple.post=</b>
+    hl: hl=true&hl.fl=*&hl.simple.pre=<b>&hl.simple.post=</b>
 skin:
   layout: main
   orgNameLong: Atlas of Living Australia

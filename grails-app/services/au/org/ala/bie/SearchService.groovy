@@ -153,7 +153,7 @@ class SearchService {
         query << "qf=${grailsApplication.config.solr.qf}" // dismax query fields
         query << "${grailsApplication.config.solr.bq}" // dismax boosts
         query << "q.alt=${grailsApplication.config.solr.qAlt}" // if no query specified use this query
-        query << "hl=${grailsApplication.config.solr.hl}" // highlighting parameters
+        query << "${grailsApplication.config.solr.hl}" // highlighting parameters
         query << "wt=json"
         query << "facet=${!requestedFacets.isEmpty()}"
         query << "facet.mincount=1"
@@ -838,6 +838,7 @@ class SearchService {
                         namePublishedInYear: taxon.namePublishedInYear,
                         namePublishedInID: taxon.namePublishedInID,
                         taxonRemarks: taxon.taxonRemarks,
+                        provenance: taxon.provenance,
                         infoSourceURL: taxon.source ?: taxonDatasetURL,
                         datasetURL: taxonDatasetURL
                 ],
@@ -861,6 +862,7 @@ class SearchService {
                             namePublishedInID: synonym.namePublishedInID,
                             nameAuthority: synonym.datasetName ?: datasetName ?: grailsApplication.config.synonymSourceAttribution,
                             taxonRemarks: synonym.taxonRemarks,
+                            provenance: synonym.provenance,
                             infoSourceURL: synonym.source ?: datasetURL,
                             datasetURL: datasetURL
                     ]
@@ -882,6 +884,7 @@ class SearchService {
                             isPlural: commonName.isPlural,
                             organismPart: commonName.organismPart,
                             taxonRemarks: commonName.taxonRemarks,
+                            provenance: commonName.provenance,
                             labels: commonName.labels,
                             infoSourceName: commonName.datasetName ?: datasetName ?: grailsApplication.config.commonNameSourceAttribution,
                             infoSourceURL: commonName.source ?: datasetURL,
@@ -904,6 +907,7 @@ class SearchService {
                             status: identifier.status,
                             subject: identifier.subject,
                             format: identifier.format,
+                            provenance: identifier.provenance,
                             infoSourceName: identifier.datasetName ?: datasetName ?: grailsApplication.config.identifierSourceAttribution,
                             infoSourceURL: identifier.source ?: datasetURL,
                             datasetURL: datasetURL
@@ -927,6 +931,7 @@ class SearchService {
                             namePublishedInID: variant.namePublishedInID,
                             nameAuthority: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
                             taxonRemarks: variant.taxonRemarks,
+                            provenance: variant.provenance,
                             infoSourceName: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
                             infoSourceURL: variant.source ?: datasetURL,
                             datasetURL: datasetURL,
