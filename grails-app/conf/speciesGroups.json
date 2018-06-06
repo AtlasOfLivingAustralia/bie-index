@@ -382,12 +382,36 @@
         "taxonRank": "class",
         "taxa": [
             {
-                "name": "PYCNOGONIDA",
+                "name": "Pantopoda",
                 "common": "Sea spiders"
             },
             {
-                "name": "ARACHNIDA",
-                "common": "Spiders, mites and scorpions"
+                "name": "Araneae",
+                "common": "Spiders"
+            },
+            {
+                "name": "Ixodida",
+                "common": "Ticks"
+            },
+            {
+                "name": "Opiliones",
+                "common": "Harvestmen"
+            },
+            {
+                "name": "Oribatida",
+                "common": "Oribatid mites"
+            },
+            {
+                "name": "Prostigmata",
+                "common": "Mites"
+            },
+            {
+                "name": "Pseudoscorpiones",
+                "common": "False scorpions"
+            },
+            {
+                "name": "Scorpiones",
+                "common": "Scorpions"
             }
         ]
     },
