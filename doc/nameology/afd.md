@@ -99,6 +99,6 @@ Files are generated for accepted taxa, synonyms, vernacular names and previous t
 Accepted taxa and synonyms are checked against parents for rank inversions.
 
 Zoological practise is to include the accepted name for a taxon as a senior synonym.
-Since all this does is gum the index up, 
+This is ignored, since all this does is gum the index up, 
 
 

@@ -112,8 +112,6 @@ class SearchService {
         params.remove("controller") // remove Grails stuff from query
         params.remove("action") // remove Grails stuff from query
         log.info "params = ${params.toMapString()}"
-        log.info "q = ${q}"
-        log.info "requestedFacets = ${requestedFacets}"
         def fqs = params.fq
         def query = []
         def queryTitle = null
@@ -190,7 +188,6 @@ class SearchService {
 
         String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?" + query.join('&')
         log.info "SOLR URL = ${solrUlr}"
-        //log.info(sorlUrl)
         def queryResponse = new URL(Encoder.encodeUrl(solrUlr)).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -820,10 +817,12 @@ class SearchService {
 
         // Conservation status map
         def clists = conservationListsSource.lists ?: []
-        def conservationStatus = clists.inject([:], { ac, cl ->
+        def clists_fieldVal = clists.findAll{ it.sourceField != '*' } /* exclude simple list-membership entries */
+
+        def conservationStatus = clists_fieldVal.inject([:], { ac, cl ->
             final cs = taxon[cl.field]
             if (cs)
-                ac.put(cl.label, [ dr: cl.uid, status: cs ])
+                ac.put(cl.label, [dr: cl.uid, status: cs])
             ac
         })
 

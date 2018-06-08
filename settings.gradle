@@ -1,3 +1,9 @@
 rootProject.name='bie-index'
 rootProject.name = 'bie-index'
 
+//boolean inplace = true
+
+//if (inplace) {
+//    include ':ala-bootstrap3'
+//    project(':ala-bootstrap3').projectDir = new File(settingsDir,'../ala-bootstrap3')
+//}

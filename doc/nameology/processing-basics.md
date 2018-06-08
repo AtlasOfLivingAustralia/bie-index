@@ -66,21 +66,6 @@ to carry the final identifier.
 This process is useful in ensuring that additional identifiers and names can be passed through for taxa
 that have a higher-priority predecessor but carry additional information.
 
-#### <a name="name-matching"/> Name Matching
-
-When matching names and authors from other sources, slight variations in spelling and punctuation
-mean that two names that are a match may not syntactically match.
-To ease matching, a *match name* and *match author* are often built.
-These are canonicalisations of the name and author with the following characteristics:
-
-* If the name has a subgenus element (eg. *Coniopteryx (Xeroconiopteryx) occidentalis*) then the subgenus element is removed.
-For example, the above name would become *Coniopteryx occidentalis*
-* Any " and " part of the author is replaced by an ampersand.
-* Any year following the author is removed.
-* The name or author is made upper case.
-* Any punctuation is removed
-* Multiple spaces are normalised to a single space
-
 
 ### Annotation
 
@@ -97,8 +82,7 @@ By the time the data has passed though pre-processing, things may look a bit pat
 
 Ideally, the supplied data should explicitly provide the parent taxon by a linking identifier.
 If it doesn't, then it probably provides the names of higher taxa.
-If that is the case, then it becomes necessary to work down through the list of higher taxa, providing
-the lowest rank parent taxon as the parent.
+These are proceessed during [merging](#combining-sources).
 
 
 ### <a name="correcting-parents"/> Correcting Parents
@@ -159,6 +143,20 @@ pre-built `meta.xml` and `eml.xml` files.
 Once packaged, the resulting DwCA can be delivered to the BIE index.
 .
 * TODO (Potentially, it may not be worth it) Dynamically build the meta.xml file.
+
+## <a name="combining-sources"/> Combining Sources
+
+Once constructed, the resulting data is fed into the taxonomy builder,
+implemented in [ala-name-matching](https://github.com/AtlasOfLivingAustralia/ala-name-matching).
+Also known as the Large Taxon Collider.
+The taxonomy builder merges taxonomic trees in DwCA form to provide a single, 
+consistent(ish) taxonomy.
+A scoring system is used to choose between different sources of information when
+there are conflicts.
+
+The combined index can be cleanly fed into the index builders for the name matching librariues
+and the BIE.
+
 
 
 
