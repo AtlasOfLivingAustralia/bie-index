@@ -73,6 +73,7 @@ class SearchService {
                 results: formatDocs(json.response.docs, null, null)
         ]
     }
+
     /**
      * Retrieve species & subspecies for the supplied taxon which have images.
      *
@@ -111,7 +112,7 @@ class SearchService {
     def search(String q, GrailsParameterMap params, List requestedFacets) {
         params.remove("controller") // remove Grails stuff from query
         params.remove("action") // remove Grails stuff from query
-        log.info "params = ${params.toMapString()}"
+        log.debug "params = ${params.toMapString()}"
         def fqs = params.fq
         def query = []
         def queryTitle = null
@@ -187,10 +188,11 @@ class SearchService {
         }
 
         String solrUlr = grailsApplication.config.indexLiveBaseUrl + "/select?" + query.join('&')
-        log.info "SOLR URL = ${solrUlr}"
+        log.debug "SOLR URL = ${solrUlr}"
         def queryResponse = new URL(Encoder.encodeUrl(solrUlr)).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
+
         if (json.response.numFound as Integer == 0) {
 
             try {
@@ -843,9 +845,9 @@ class SearchService {
                         nameAccordingTo: taxon.nameAccordingTo,
                         nameAccordingToID: taxon.nameAccordingToID,
                         namePublishedIn: taxon.namePublishedIn,
-                        taxonRemarks: taxon.taxonRemarks,
                         namePublishedInYear: taxon.namePublishedInYear,
                         namePublishedInID: taxon.namePublishedInID,
+                        taxonRemarks: taxon.taxonRemarks,
                         infoSourceURL: taxon.source ?: taxonDatasetURL,
                         datasetURL: taxonDatasetURL
                 ],
@@ -1062,7 +1064,7 @@ class SearchService {
 
         docs.each {
             Map doc = null
-            if(it.idxtype == IndexDocType.TAXON.name()) {
+            if (it.idxtype == IndexDocType.TAXON.name()) {
 
                 def commonNameSingle = ""
                 def commonNames = ""
@@ -1126,7 +1128,7 @@ class SearchService {
                 def map = extractClassification(it)
 
                 doc.putAll(map)
-            } else if(it.idxtype == IndexDocType.TAXONVARIANT.name()){
+            } else if (it.idxtype == IndexDocType.TAXONVARIANT.name()){
                 doc = [
                         "id" : it.id, // needed for highlighting
                         "guid" : it.guid,
@@ -1149,32 +1151,32 @@ class SearchService {
                 ]
             } else {
                 doc = [
-                        id : it.id,
-                        guid : it.guid,
-                        linkIdentifier : it.linkIdentifier,
-                        idxtype: it.idxtype,
-                        name : it.name,
-                        description : it.description
+                        id            : it.id,
+                        guid          : it.guid,
+                        linkIdentifier: it.linkIdentifier,
+                        idxtype       : it.idxtype,
+                        name          : it.name,
+                        description   : it.description
                 ]
                 if (it.taxonGuid) {
                     doc.put("taxonGuid", it.taxonGuid)
                 }
-                if(it.centroid){
+                if (it.centroid) {
                     doc.put("centroid", it.centroid)
                 }
 
-                if(getAdditionalResultFields()){
+                if (getAdditionalResultFields()) {
                     getAdditionalResultFields().each { field ->
-                        if(it."${field}") {
+                        if (it."${field}") {
                             doc.put(field, it."${field}")
                         }
                     }
                 }
-                if (doc) {
-                    if (fields)
-                        doc = doc.subMap(fields)
-                    formatted << doc
-                }
+            }
+            if (doc) {
+                if (fields)
+                    doc = doc.subMap(fields)
+                formatted << doc
             }
         }
 

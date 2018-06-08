@@ -136,7 +136,7 @@ class SearchController {
             return null
         }
         def model = searchService.getTaxon(guid)
-        log.info "taxon model = ${model}"
+        log.debug "taxon model = ${model}"
 
         if(!model) {
             response.sendError(404, "GUID not recognised ${guid}")
