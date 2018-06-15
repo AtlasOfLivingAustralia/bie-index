@@ -11,7 +11,7 @@ buildscript {
     }
 }
 
-version "1.4.2"
+version "1.4.3-SNAPSHOT"
 group "au.org.ala"
 
 apply plugin:"eclipse"
@@ -65,7 +65,7 @@ dependencies {
         exclude group: 'com.google.guava', module: 'guava'
     }
     compile "com.google.guava:guava:19.0"
-    compile("au.org.ala:ala-name-matching:2.4.7") {
+    compile("au.org.ala:ala-name-matching:2.4.8-SNAPSHOT") {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'org.apache.bval', module: 'org.apache.bval.bundle'
     }
