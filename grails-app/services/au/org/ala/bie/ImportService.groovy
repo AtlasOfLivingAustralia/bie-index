@@ -2149,9 +2149,9 @@ class ImportService {
             return nameFormatted
         if (nameComplete) {
             def authorIndex = scientificNameAuthorship ? nameComplete.indexOf(scientificNameAuthorship) : -1
-            if (authorIndex < 0)
+            if (authorIndex <= 0)
                 return "<span class=\"${formattedCssClass}\">${StringEscapeUtils.escapeHtml(nameComplete)}</span>"
-            def preAuthor = nameComplete.substring(0, authorIndex - 1).trim()
+            def preAuthor = nameComplete.substring(0, authorIndex).trim()
             def postAuthor = nameComplete.substring(authorIndex + scientificNameAuthorship.length()).trim()
             def name = "<span class=\"${formattedCssClass}\">"
             if (preAuthor && !preAuthor.isEmpty())
