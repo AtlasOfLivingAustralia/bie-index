@@ -28,6 +28,9 @@ Some vocabulary:
 * A *taxon* is a group of organisms that share some sort of common characteritics.
 A taxon can have several names, one of which is the *valid* or *accepted* name.
 * A *synonym* is a name applied to a taxon that now goes by a different name.
+  Note that what the ALA regards as a synonym is somewhat looser than the use of the term in
+  the taxonomic community; all the ALA wants is to be able to say "this is now referred to as that"
+  so that supplied names and searches can be redirected.
 * A *taxonomic concept* is the placement of a particular taxon in the taxonomic tree in relation other taxa.
 
 The common identifier for a taxonomic DwCA is the [taxonID](http://rs.tdwg.org/dwc/terms/index.htm#taxonID).
@@ -37,6 +40,7 @@ The common identifier for a taxonomic DwCA is the [taxonID](http://rs.tdwg.org/d
 [Life Sciences Identifiers](http://www.omg.org/cgi-bin/doc?dtc/04-05-01) are resolvable [URNs](https://en.wikipedia.org/wiki/Uniform_Resource_Name) that can be used to identify a taxon, name or taxon concept. An LSID has the form *urn:lsid:&lt;authority&gt;:&lt;namespace&gt;:&lt;id&gt;* for example *urn:lsid:biodiversity.org.au:afd.taxon:bcd1b9ea-1cc1-4ab5-a15c-bbca5a987fb2* is a reference to an AFD taxon controlled by biodiversity.org.au. LSIDs can be resolved by going to the service at http://lsid.tdwg.org/
 
 LSIDs are preferred for identifiers, where possible, because they allow links to further information about the taxon.
+However, many sources use URLs, instead, for identifiers; these are also perfectly acceptable.
 
 ## <a name="taxonomic-status"/> Taxonomic Status
 
@@ -59,12 +63,16 @@ identification into two parts.
 | heterotypicSynonym | yes | A taxonomic synonym, meaning that a species that was originally considered to be separate has been lumped into another species. The zoological term is subjective synonym, since whether they are synonymns or not is a matter of opinion. |
 | subjectiveSynonym | yes | A taxonomic synonym, meaning that a species that was originally considered to be separate has been lumped into another species. The zoological term is subjective synonym, since whether they are synonymns or not is a matter of opinion. |
 | proParteSynonym | no | A synonym where part of an original taxon has been divided. This means that the original name may still be in use or may have been mapped onto several other taxa. Here be dragons. |
+| incertaeSedis | yes | A name of uncertain placement. This is generally treated as an accepted name with the placement supplied. |
+| speciesInquirena | yes | A species under enquiry. This is generally treated as an accepted name with the placement supplied. |
 | misapplied | no | A name incorrectly applied in a publication to a different species. However, the name itself is perfectly valid and has its own taxon. |
 | excluded | no | A name that shouldn't be used, since it refers to something not found in the region of the occurrence record. |
-| miscellaneousLiterature | no | A name that occurs in other literature. |
-| inferredAccepted | yes | A name treated as an accepted taxon by the processing software. Inferred markers indicate that the information has been deduced by the processing sofware, rather than explicitly supplied |
+| miscellaneousLiterature | no | A name that occurs in other literature. This will now be converted to a vernacular name, since it's not really a proper name for the|
+| invalid | no | A name that should not be. |
+| inferredAccepted | yes | A name treated as an accepted taxon by the processing software. Inferred markers indicate that the information has been deduced by the processing sofware, rather than explicitly supplied. |
 | inferredSynonym | no | A name treated as a synonym by the processing software |
 | inferredExcluded | no | A name treated as excluded by the processing software |
+| inferredInvalid | no | A name treated as invalid by the processing software |
 
 Informationm about the type of name is placed in the nomenclaturalStatus term.
 
@@ -196,7 +204,7 @@ Files with a .txt extension are tab-separated values (UTF-8, enclosing quotes of
 
 ### taxon.csv and taxonvariant.csv
 
-The produced taxon.csv contains scientific names (both accepted and synonyms) and information about the
+The produced taxon.csv contains scientific names (accepted, synonyms and odd fish like excluded) and information about the
 taxonomic tree.
 The taxonomic variant file contains the information from different sources that was used to make a specific taxon.
 It can contain the following columns
