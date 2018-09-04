@@ -18,6 +18,8 @@ import au.org.ala.bie.indexing.RankedName
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
 import au.org.ala.bie.util.TitleCapitaliser
+import au.org.ala.names.model.RankType
+import au.org.ala.names.model.TaxonomicType
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
 import grails.converters.JSON
@@ -28,6 +30,7 @@ import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
 import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.common.params.MapSolrParams
+import org.gbif.api.vocabulary.TaxonomicStatus
 import org.gbif.dwc.terms.*
 import org.gbif.dwca.io.Archive
 import org.gbif.dwca.io.ArchiveFactory
@@ -60,7 +63,7 @@ class ImportService {
             DcTerm.source, DcTerm.language, DcTerm.license, DcTerm.format, DcTerm.rights, DcTerm.rightsHolder, DcTerm.temporal,
             ALATerm.status, ALATerm.nameID, ALATerm.nameFormatted, ALATerm.nameComplete, ALATerm.priority,
             ALATerm.verbatimNomenclaturalCode, ALATerm.verbatimNomenclaturalStatus, ALATerm.verbatimTaxonomicStatus,
-            DwcTerm.datasetName,
+            DwcTerm.datasetName, DcTerm.provenance,
             GbifTerm.isPlural, GbifTerm.isPreferredName, GbifTerm.organismPart, ALATerm.labels
     ]
     // Terms that have been algorithmically added so needn't be added as extras
@@ -75,7 +78,15 @@ class ImportService {
             DwcTerm.taxonomicStatus,
             ALATerm.nameComplete,
             ALATerm.nameFormatted,
+            DwcTerm.taxonRemarks,
+            DcTerm.provenance
     ] as Set
+    // Count report interval
+    static REPORT_INTERVAL = 100000
+    // Batch size for solr queries/commits and page sizes
+    static BATCH_SIZE = 5000
+    // Buffer size for commits
+    static BUFFER_SIZE = 1000
 
 
     def indexService, searchService
@@ -317,7 +328,7 @@ class ImportService {
 
                     batch << doc
 
-                    if (batch.size() > 10000) {
+                    if (batch.size() > BATCH_INTERVAL) {
                         indexService.indexBatch(batch)
                         batch.clear()
                     }
@@ -691,7 +702,7 @@ class ImportService {
      **/
     def importOccurrenceData() throws Exception {
         String nationalSpeciesDatasets = grailsApplication.config.nationalSpeciesDatasets // comma separated String
-        def pageSize = 10000
+        def pageSize = BATCH_SIZE
         def paramsMap = [
                 q: "taxonomicStatus:accepted", // "taxonomicStatus:accepted",
                 //fq: "datasetID:dr2699", // testing only with AFD
@@ -805,7 +816,7 @@ class ImportService {
      * @return
      */
     def indexDocInQueue(Queue updateDocs, msg) {
-        int batchSize = 1000
+        int batchSize = BUFFER_SIZE
 
         while (isKeepIndexing || updateDocs.size() > 0) {
             if (updateDocs.size() > 0) {
@@ -1006,7 +1017,7 @@ class ImportService {
                 def language = item.kvpValues.find { it.key == languageField }?.get("value") ?: resourceLanguage
                 def source = item.kvpValues.find { it.key == sourceField }?.get("value")
 
-                if (!addVernacularName(item.lsid, item.name, vernacularName, nameId, status, language, source, uid, null, [:], buffer, commonStatus))
+                if (!addVernacularName(item.lsid, item.name, vernacularName, nameId, status, language, source, uid, null, null, [:], buffer, commonStatus))
                     unmatchedTaxaCount++
 
                 if (i > 0) {
@@ -1024,7 +1035,7 @@ class ImportService {
     }
 
 
-    private boolean addVernacularName(String taxonID, String name, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, Map additional, List buffer, Object defaultStatus) {
+    private boolean addVernacularName(String taxonID, String name, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, String provenance, Map additional, List buffer, Object defaultStatus) {
         def taxonDoc = null
 
         if (taxonID)
@@ -1037,6 +1048,8 @@ class ImportService {
         }
         def capitaliser = TitleCapitaliser.create(language ?: grailsApplication.config.commonNameDefaultLanguage)
         vernacularName = capitaliser.capitalise(vernacularName)
+        def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
+        def provenanceList = provenance?.split("\\|").collect({ it.trim()})
         def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
         if (vernacularDoc) {
             // do a SOLR doc (atomic) update
@@ -1056,8 +1069,10 @@ class ImportService {
             }
             if (source)
                 doc["source"] = ["set": source]
-            if (taxonRemarks)
-                doc["taxonRemarks"] = ["set": taxonRemarks]
+            if (remarksList)
+                doc["taxonRemarks"] = ["set": remarksList]
+            if (provenanceList)
+                doc["provenance"] = ["set": provenanceList]
             additional.each { k, v -> doc[k] = ["set": v] }
             log.debug "adding to doc = ${doc}"
             buffer << doc
@@ -1076,8 +1091,10 @@ class ImportService {
             doc["language"] = language
             if (source)
                 doc["source"] = source
-            if (taxonRemarks)
-                doc["taxonRemarks"] = taxonRemarks
+            if (remarksList)
+                doc["taxonRemarks"] = remarksList
+            if (provenanceList)
+                doc["provenance"] = provenanceList
             additional.each { k, v -> doc[k] = v }
             log.debug "new name doc = ${doc} for ${vernacularName}"
             buffer << doc
@@ -1224,8 +1241,9 @@ class ImportService {
 
             buffer << doc
             counter++
-            if (buffer.size() >= 1000) {
-                log("Adding taxa: ${counter}")
+            if (buffer.size() >= BUFFER_SIZE) {
+                if (counter % REPORT_INTERVAL == 0)
+                    log("Adding taxa: ${counter}")
                 indexService.indexBatch(buffer)
                 buffer.clear()
             }
@@ -1268,6 +1286,9 @@ class ImportService {
                 status = preferredStatus
             String organismPart = record.value(GbifTerm.organismPart)
             String taxonRemarks = record.value(DwcTerm.taxonRemarks)
+            def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
+            String provenance = record.value(DcTerm.provenance)
+            def provenanceList = provenance?.split("\\|").collect({ it.trim() })
             String labels = record.value(ALATerm.labels)
             def capitaliser = TitleCapitaliser.create(language ?: defaultLanguage)
             vernacularName = capitaliser.capitalise(vernacularName)
@@ -1291,7 +1312,8 @@ class ImportService {
             doc["lifeStage"] = lifeStage
             doc["isPlural"] = isPlural
             doc["organismPart"] = organismPart
-            doc["taxonRemarks"] = taxonRemarks
+            doc["taxonRemarks"] = remarksList
+            doc["provenance"] = provenanceList
             doc["labels"] = labels
             doc["distribution"] = "N/A"
             def attribution = findAttribution(datasetID, attributionMap, datasetMap)
@@ -1303,10 +1325,11 @@ class ImportService {
             }
             buffer << doc
             count++
-            if (buffer.size() >= 1000) {
+            if (buffer.size() >= BUFFER_SIZE) {
                 indexService.indexBatch(buffer)
                 buffer.clear()
-                log("Processed ${count} records")
+                if (count % REPORT_INTERVAL == 0)
+                    log("Processed ${count} records")
             }
         }
         if (buffer.size() > 0) {
@@ -1334,6 +1357,8 @@ class ImportService {
             def datasetID = record.value(DwcTerm.datasetID)
             def idStatus = record.value(ALATerm.status)
             def status = idStatus ? statusMap.get(idStatus.toLowerCase()) : null
+            String provenance = record.value(DcTerm.provenance)
+            def provenanceList = provenance?.split("\\|").collect({ it.trim() })
 
             def doc = [:]
             doc["id"] = UUID.randomUUID().toString() // doc key
@@ -1347,6 +1372,7 @@ class ImportService {
             doc["subject"] = subject
             doc["format"] = format
             doc["source"] = source
+            doc["provenance"] = provenanceList
             def attribution = findAttribution(datasetID, attributionMap, datasetMap)
             if (attribution) {
                 doc["datasetName"] = attribution["datasetName"]
@@ -1356,10 +1382,11 @@ class ImportService {
             }
             buffer << doc
             count++
-            if (buffer.size() >= 1000) {
+            if (buffer.size() >= BUFFER_SIZE) {
                 indexService.indexBatch(buffer)
                 buffer.clear()
-                log("Processed ${count} records")
+                if (count % REPORT_INTERVAL == 0)
+                    log("Processed ${count} records")
             }
         }
         if (buffer.size() > 0) {
@@ -1384,10 +1411,11 @@ class ImportService {
             buildTaxonRecord(record, doc, attributionMap, datasetMap, taxonRanks, "inferredAccepted", defaultDatasetName)
             buffer << doc
             count++
-            if (buffer.size() >= 1000) {
+            if (buffer.size() >= BUFFER_SIZE) {
                 indexService.indexBatch(buffer)
                 buffer.clear()
-                log("Processed ${count} records")
+                if (count % REPORT_INTERVAL == 0)
+                    log("Processed ${count} records")
             }
         }
         if (buffer.size() > 0) {
@@ -1406,6 +1434,10 @@ class ImportService {
         def nameFormatted = record.value(ALATerm.nameFormatted)
         def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
         def taxonomicStatus = record.value(DwcTerm.taxonomicStatus) ?: defaultTaxonomicStatus
+        String taxonRemarks = record.value(DwcTerm.taxonRemarks)
+        String provenance = record.value(DcTerm.provenance)
+        def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
+        def provenanceList = provenance?.split("\\|").collect({ it.trim() })
 
         doc["datasetID"] = datasetID
         doc["parentGuid"] = parentNameUsageID
@@ -1419,6 +1451,8 @@ class ImportService {
         doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
         doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
         doc["taxonomicStatus"] = taxonomicStatus
+        doc["taxonRemarks"] = taxonRemarks
+        doc["provenance"] = provenanceList
 
         //index additional fields that are supplied in the record
         record.terms().each { term ->
@@ -1474,7 +1508,7 @@ class ImportService {
      * Go through the index and build link identifiers for unique names.
      */
     def buildLinkIdentifiers(online) {
-        int pageSize = 1000
+        int pageSize = BUFFER_SIZE
         int page = 0
         int added = 0
         def js = new JsonSlurper()
@@ -1540,13 +1574,14 @@ class ImportService {
      * Go through the index and build image links for taxa
      */
     def loadImages(online) {
-        int pageSize = 5000
+        int pageSize = BATCH_SIZE
         int processed = 0
         int added = 0
         def js = new JsonSlurper()
         def baseUrl = online ? grailsApplication.config.indexLiveBaseUrl : grailsApplication.config.indexOfflineBaseUrl
         def biocacheSolrUrl = grailsApplication.config.biocache.solr.url
-        def typeQuery = "idxtype:\"" + IndexDocType.TAXON.name() + "\"+AND+taxonomicStatus:accepted"
+        def acceptedQuery = TaxonomicType.values().findAll({ it.accepted }).collect({"taxonomicStatus:${it.term}"}).join('+OR+')
+        def typeQuery = "idxtype:\"${IndexDocType.TAXON.name()}\"+AND+($acceptedQuery)"
         def prevCursor = ""
         def cursor = "*"
         def listConfig = this.getConfigFile(grailsApplication.config.imagesListsUrl)
@@ -1590,7 +1625,6 @@ class ImportService {
                             if (!image) {
                                 def query = null
                                 query = addImageSearch(query, "lsid", taxonID, 100)
-                                query = addImageSearch(query, rank.nameField, name, 50)
                                 query = addImageSearch(query, rank.idField, taxonID, 20)
                                 if (query) {
                                     def taxonSearchUrl = biocacheSolrUrl + "/select?q=(${query}) AND multimedia:Image&${boosts}&rows=5&wt=json&fl=${imageFields}"
@@ -1823,8 +1857,8 @@ class ImportService {
      * @param online Use the online index
      */
     def denormaliseTaxa(online) {
-        int pageSize = 5000
-        int bufferLimit = 1000
+        int pageSize = BATCH_SIZE
+        int bufferLimit = BUFFER_SIZE
         int processed = 0
         def js = new JsonSlurper()
         def baseUrl = online ? grailsApplication.config.indexLiveBaseUrl : grailsApplication.config.indexOfflineBaseUrl
@@ -1909,7 +1943,7 @@ class ImportService {
                 processed++
                 if (!buffer.isEmpty())
                     indexService.indexBatch(buffer, online)
-                if (total > 0 && processed % 1000 == 0) {
+                if (total > 0 && processed % BUFFER_SIZE == 0) {
                     def percentage = Math.round(processed * 100 / total)
                     log("Denormalised ${processed} top-level taxa (${percentage}%)")
                 }
@@ -1945,7 +1979,7 @@ class ImportService {
                 processed++
                 if (!buffer.isEmpty())
                     indexService.indexBatch(buffer, online)
-                if (total > 0 && processed % 1000 == 0) {
+                if (total > 0 && processed % BUFFER_SIZE == 0) {
                     def percentage = Math.round(processed * 100 / total)
                     log("Denormalised ${processed} dangling taxa (${percentage}%)")
                 }
@@ -1991,7 +2025,7 @@ class ImportService {
                         indexService.indexBatch(buffer, online)
                         buffer.clear()
                     }
-                    if (total > 0 && processed % 1000 == 0) {
+                    if (total > 0 && processed % BUFFER_SIZE == 0) {
                         def percentage = Math.round(processed * 100 / total)
                         log("Denormalised ${processed} synonyms (${percentage}%)")
                     }
@@ -2210,9 +2244,9 @@ class ImportService {
             return nameFormatted
         if (nameComplete) {
             def authorIndex = scientificNameAuthorship ? nameComplete.indexOf(scientificNameAuthorship) : -1
-            if (authorIndex < 0)
+            if (authorIndex <= 0)
                 return "<span class=\"${formattedCssClass}\">${StringEscapeUtils.escapeHtml(nameComplete)}</span>"
-            def preAuthor = nameComplete.substring(0, authorIndex - 1).trim()
+            def preAuthor = nameComplete.substring(0, authorIndex).trim()
             def postAuthor = nameComplete.substring(authorIndex + scientificNameAuthorship.length()).trim()
             def name = "<span class=\"${formattedCssClass}\">"
             if (preAuthor && !preAuthor.isEmpty())

@@ -25,6 +25,7 @@ the sort of taxonomic Darwin Core Archives that the bie-index expects.
     * [Codes for Australian Aquatic Biota](caab.md)
     * [New Zealand Organism Register](nzor.md)
     * [Catalogue of Life](col.md)
+* [Merging](merging.md)
 
 ## The Goal
 
@@ -33,7 +34,9 @@ The ALA uses scientific names and taxonomic trees for specific purposes.
 Essentially, the ALA is matching names so that it can build an index of occurrence
 records by species and we want both to join like with like and build an index tree so
 that people can find records across higher taxa, so that "find me all birds" becomes
-"find all records indexed to class:AVES"
+"find all records indexed to class:AVES".
+We also build a search index of names, data sources, localities, etc. that can be used
+by humans to find what they are looking for.
 
 The ALA is *not* in the business of providing some sort of absolute truth.
 This is because the ALA collects occurrence records from across time, space and sanity:
@@ -60,9 +63,12 @@ To do this we do the following:
 * Build a taxonomic tree where each taxon concept has a place in the tree.
 We know that there are a least as many taxonomic trees as there are taxonomists.
 The ALA, where possible, takes the "official" taxonomic trees of the 
-Australian Faunal Directory (AFD) and the Australian Plant Census (AFC) of the Australian Plant Name Index (APNI).
+Australian Faunal Directory (AFD), the Australian Plant Census (AFC) of the Australian Plant Name Index (APNI)
+and the New Zealand Organisms Register (NZOR).
 These "official" trees are essentially the state of the art for anyone who doesn't have a dog in this fight.
 They have some holes in them, so they're supplemented by various other sources.
+  * Where the sources double up or disagree, a [merging](merging.md) step resolves the taxonomies against
+    each other.
 * Build an index of names where each name is mapped onto a place in the taxonomic tree. 
 These names include synonyms (names for species that now go by a different, correct name) and
 vernacular names (commonly used names for species)
@@ -82,13 +88,16 @@ Generally, if a name/author occurs in an earlier source, then the identifier and
 used and identifiers are mapped in following sources.
 The order of priority for sources is:
 
+1. AusFungi (for fungi only)
+1. AusMoss (for mosses only)
 1. Australian Faunal Directory
-2. Australian Plant Name Index/Australian Plant Census
-3. AusFungi
-4. AusMoss
-5. Codes for Australian Aquatic Biota
-6. New Zealand Organism Register
-7. Catalogue of Life
+1. Australian Plant Name Index/Australian Plant Census
+1. New Zealand Organism Register
+1. Australian Plant Name Index (names only)
+1. Codes for Australian Aquatic Biota
+1. Catalogue of Life
+1. Names generated from species lists held by the ALA, such as threatened species lists, special cases
+   and lists of vernacular names.
 
 There are some cases where source disagree on classification to the point where the same species appears
 at a different rank or with different parents.

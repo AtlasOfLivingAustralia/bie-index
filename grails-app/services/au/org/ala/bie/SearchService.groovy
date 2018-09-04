@@ -444,8 +444,9 @@ class SearchService {
             indexServerUrlPrefix = grailsApplication.config.indexOfflineBaseUrl
         }
         def solrServerUrl = indexServerUrlPrefix + "/select?wt=json&q=" +
-                "commonNameExact:\"" + taxonName + "\" OR scientificName:\"" + taxonName + "\" OR exact_text:\"" + taxonName + "\"" // exact_text added to handle case differences in query vs index
-
+                "commonNameExact:\"" + taxonName + "\" OR scientificName:\"" + taxonName + "\" OR exact_text:\"" + taxonName + "\"" + // exact_text added to handle case differences in query vs index
+                (grailsApplication.config?.solr?.bq ? "&" + grailsApplication.config.solr.bq + "&defType=dismax" : "") //use boosting if provided, since the first match will be selected which is otherwise arbitrary
+        
         def queryResponse = new URL(Encoder.encodeUrl(solrServerUrl)).getText("UTF-8")
         def js = new JsonSlurper()
         def json = js.parseText(queryResponse)
@@ -848,6 +849,7 @@ class SearchService {
                         namePublishedInYear: taxon.namePublishedInYear,
                         namePublishedInID: taxon.namePublishedInID,
                         taxonRemarks: taxon.taxonRemarks,
+                        provenance: taxon.provenance,
                         infoSourceURL: taxon.source ?: taxonDatasetURL,
                         datasetURL: taxonDatasetURL
                 ],
@@ -871,6 +873,7 @@ class SearchService {
                             namePublishedInID: synonym.namePublishedInID,
                             nameAuthority: synonym.datasetName ?: datasetName ?: grailsApplication.config.synonymSourceAttribution,
                             taxonRemarks: synonym.taxonRemarks,
+                            provenance: synonym.provenance,
                             infoSourceURL: synonym.source ?: datasetURL,
                             datasetURL: datasetURL
                     ]
@@ -892,6 +895,7 @@ class SearchService {
                             isPlural: commonName.isPlural,
                             organismPart: commonName.organismPart,
                             taxonRemarks: commonName.taxonRemarks,
+                            provenance: commonName.provenance,
                             labels: commonName.labels,
                             infoSourceName: commonName.datasetName ?: datasetName ?: grailsApplication.config.commonNameSourceAttribution,
                             infoSourceURL: commonName.source ?: datasetURL,
@@ -914,6 +918,7 @@ class SearchService {
                             status: identifier.status,
                             subject: identifier.subject,
                             format: identifier.format,
+                            provenance: identifier.provenance,
                             infoSourceName: identifier.datasetName ?: datasetName ?: grailsApplication.config.identifierSourceAttribution,
                             infoSourceURL: identifier.source ?: datasetURL,
                             datasetURL: datasetURL
@@ -937,6 +942,7 @@ class SearchService {
                             namePublishedInID: variant.namePublishedInID,
                             nameAuthority: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
                             taxonRemarks: variant.taxonRemarks,
+                            provenance: variant.provenance,
                             infoSourceName: variant.datasetName ?: datasetName ?: grailsApplication.config.variantSourceAttribution,
                             infoSourceURL: variant.source ?: datasetURL,
                             datasetURL: datasetURL,
