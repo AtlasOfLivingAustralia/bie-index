@@ -11,7 +11,7 @@ buildscript {
     }
 }
 
-version "1.4.2-SNAPSHOT"
+version "1.4.3-SNAPSHOT"
 group "au.org.ala"
 
 apply plugin:"eclipse"
@@ -65,18 +65,18 @@ dependencies {
         exclude group: 'com.google.guava', module: 'guava'
     }
     compile "com.google.guava:guava:19.0"
-    compile("au.org.ala:ala-name-matching:2.4.7-SNAPSHOT") {
+    compile("au.org.ala:ala-name-matching:2.4.8-SNAPSHOT") {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'org.apache.bval', module: 'org.apache.bval.bundle'
     }
     compile "org.jsoup:jsoup:1.8.3"
     compile 'org.grails.plugins:external-config:1.1.1'
 
-    compile group: 'org.grails.plugins', name: 'ala-bootstrap3', version: '3.0.3', changing: true
-    compile(group: 'org.grails.plugins', name: 'ala-auth', version:'3.1.0-SNAPSHOT', changing: true) {
+    compile group: 'org.grails.plugins', name: 'ala-bootstrap3', version: '3.0.3'
+    compile(group: 'org.grails.plugins', name: 'ala-auth', version:'3.1.0') {
         exclude group: 'javax.servlet', module: 'servlet-api'
     }
-    compile group: 'org.grails.plugins', name: 'ala-admin-plugin', version: '2.0', changing: true
+    compile group: 'org.grails.plugins', name: 'ala-admin-plugin', version: '2.0'
     compile "org.grails.plugins:grails-spring-websocket:2.3.0"
     //compile "org.grails.plugins:rxjava2:2.0.0"
 }
