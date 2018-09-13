@@ -1,0 +1,1913 @@
+openapi: "3.0.0"
+info:
+  title: "ALA BIE service"
+  description: "Web services for the Biological Information Explorer (BIE)"
+  version: "1.0"
+  termsOfServices: "http://www.ala.org.au/"
+  contact:
+    name: "ALA Support"
+    url: "http://www.ala.org.au/"
+    email: "support@ala.org.au"
+  license:
+    name: "ALA licence"
+    url: "http://www.ala.org.au/"
+paths:
+  /search{format}:
+    get:
+      summary: Search the BIE
+      description: Search the BIE by solr query and return a list of possible matches
+      tags:
+      - search
+      parameters:
+      - $ref: '#/components/parameters/queryParam'
+      - $ref: '#/components/parameters/filterQueryParam'
+      - $ref: '#/components/parameters/facetQueryParam'
+      - $ref: '#/components/parameters/formatParam'
+      - $ref: '#/components/parameters/startParam'
+      - $ref: '#/components/parameters/rowsParam'
+      - name: sort
+        description: The index field to sort upon
+        in: query
+        schema:
+          type: string
+        required: false
+      - name: dir
+        description: The sort direction
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: asc
+        required: false
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                oneOf:
+                - $ref: '#/components/schemas/SearchResults'
+                - type: object
+                  description: Error result
+                  properties:
+                    error:
+                      type: string
+                      description: The error message
+                    indexServer:
+                      type: string
+                      format: url
+                      description: The URL of the solr index server
+  /search/auto:
+    get:
+      summary: Autocomplete search
+      description: Search the BIE for fragments that match the supplied query
+      tags:
+      - search
+      parameters:
+      - $ref: '#/components/parameters/queryParam'
+      - name: limit
+        description: Limit the number of results to this value
+        in: query
+        schema:
+          type: integer
+        required: false
+      - name: idxtype
+        description: The type of object to find in the index
+        in: query
+        schema:
+          type: string
+        required: false
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  autoCompleteList:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        commonName:
+                          type: string
+                          description: A matching common name
+                        commonNameMatches:
+                          type: array
+                          description: Highlighted matches to the common name
+                          items:
+                            type: string
+                        georeferencedCount:
+                          type: integer
+                        guid:
+                          $ref: '#/components/schemas/GUID'
+                        matchedNames:
+                          type: array
+                          description: Highlighted matches to the name
+                          items:
+                            type: string
+                        occurrenceCount:
+                          type: integer
+                        rankID:
+                          $ref: '#/components/schemas/RankID'
+                        rankString:
+                          $ref: '#/components/schemas/RankName'
+                        scientificNameMatches:
+                          type: array
+                          description: Highlighted matches to the scientific name
+                          items:
+                            type: string
+  /taxon/{id}:
+    get:
+      summary: Alternative form of /species/{id}
+      tags:
+        - lookup
+  /species/{id}:
+    get:
+      summary: Get detailed information about a taxon
+      description: Get all available infomation about a taxon, including classification and alternative representations
+      tags:
+      - lookup
+      parameters:
+      - $ref: '#/components/parameters/idParam'
+      responses:
+        404:
+          description: The identifier was not found
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  taxonConcept:
+                    description: Information about the base taxon concept
+                    $ref: '#/components/schemas/TaxonConcept'
+                  taxonName:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: null
+                  classification:
+                    type: object
+                    description: >
+                      The higher-order classification for the base taxon concept.
+                      Each higher-order rank has a name, given by the rank and a GUID, given by rankGuid.
+                      eg. kingdom: 'Plantae', kingdomGuid: 'http://id.biodiversity.org.au/node/apni/9443092'
+                    additionalProperties:
+                      type: string
+                  synonyms:
+                    type: array
+                    description: All synonyms that have this taxon as an accepted concept
+                    items:
+                      $ref: '#/components/schemas/TaxonConcept'
+                  commonNames:
+                    type: array
+                    description: All the common names that a taxon is known by
+                    items:
+                      $ref: '#/components/schemas/CommonName'
+                  imageIdentifier:
+                    type: string
+                    format: url
+                    description: The identifier of a representative image
+                  conservationStatuses:
+                    type: object
+                    description: Conservation status, keyed by the source of the conservation designation, eg. Qld
+                    additionalProperties:
+                      type: object
+                      properties:
+                        dr:
+                          type: string
+                          description: The data resource identifier for the list that is the source of the status
+                        status:
+                          type: string
+                          description: The status term
+                  extantStatuses:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: null
+                  habitats:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: null
+                  simpleProperties:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: null
+                  images:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: null
+                  identifiers:
+                    type: array
+                    description: All the identifiers that can be used to refer to this taxon
+                    items:
+                      $ref: '#/components/schemas/Identifier'
+                  variants:
+                    type: array
+                    description: Alternative sources for the base taxon concept (including itself)
+                    items:
+                      $ref: '#/components/schemas/TaxonConcept'
+  /classification/{id}:
+    get:
+      summary: Get the classification of a taxon
+      description: Return the higher-order classification of a taxon
+      tags:
+      - lookup
+      parameters:
+        - $ref: '#/components/parameters/idParam'
+      responses:
+        404:
+          description: The identifier was not found
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                description: A list of classification elements
+                items:
+                  type: object
+                  properties:
+                    rank:
+                      $ref: '#/components/schemas/RankName'
+                    rankID:
+                      $ref: '#/components/schemas/RankID'
+                    scientificName:
+                      type: string
+                      description: The scientific name (without author)
+                    guid:
+                      description: The guid of the ancestor taxon
+                      $ref: '#/components/schemas/GUID'
+  /childConcepts/{id}:
+    get:
+      summary: Get the child concepts of a taxon
+      description: Return the taxon concepts that are direct children of this taxon
+      tags:
+      - lookup
+      parameters:
+      - $ref: '#/components/parameters/idParam'
+      responses:
+        404:
+          description: The identifier was not found
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                description: A list of child concepts
+                items:
+                  type: object
+                  properties:
+                    guid:
+                      type: string
+                      description: The external identifier for the search result. If a taxon, this is the taxon identifier
+                    parentGuid:
+                      type: string
+                      description: The guid of a parent taxon
+                    name:
+                      type: string
+                      description: The scientificName of the result.
+                    author:
+                      type: string
+                      description: The scientificNameAuthorship of the result
+                    nameComplete:
+                      type: string
+                      description: The correctly combined name/author. In some cases, the authorship will not be on the end of the name.
+                    nameFormatted:
+                      type: string
+                      description: The nameComplete marked up with HTML spans and classes for display
+                    rank:
+                      $ref: '#/components/schemas/RankName'
+                    rankID:
+                      $ref: '#/components/schemas/RankID'
+  /imageSearch/{id}:
+    get:
+      summary: Search for a taxon with images
+      description: Return a list of taxa which correspond to a specific taxon id and which have images available
+      tags:
+      - search
+      parameters:
+      - $ref: '#/components/parameters/idParam'
+      - $ref: '#/components/parameters/startParam'
+      - $ref: '#/components/parameters/rowsParam'
+      - name: qc
+        in: query
+        description: Solr query context, passed on to the search engine
+        required: false
+        schema:
+          type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResults'
+  /guid/{name}:
+    get:
+      summary: Look up a taxon guid by name
+      description: Search for a list of taxa that match the supplied name
+      tags:
+      - search
+      parameters:
+      - name: name
+        in: path
+        description: The name to search for
+        required: true
+        schema:
+          type: string
+          example: Acacia dealbata
+      responses:
+        404:
+          description: If the name is not found
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GuidProfile'
+  /species/image/{imageType}/{id}:
+    get:
+      summary: Get a suitably sized representative image for a taxon
+      description: Return a URL to the representative image
+      tags:
+      - lookup
+      parameters:
+      - $ref: '#/components/parameters/idParam'
+      - name: imageType
+        in: path
+        description: The size of the image
+        required: true
+        schema:
+          type: string
+          enum:
+          - thumbnail
+          - small
+          - large
+      - name: showNoImage
+        in: query
+        description: Return a URL to a 'not found' image, rather than a 404 if an image is not found
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - name: qc
+        in: query
+        description: Solr query context, passed on to the search engine
+        required: false
+        schema:
+          type: string
+      responses:
+        404:
+          description: If there is no image for the supplied id and showNoImage=false
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: url
+                    description: The URL of the requested image
+  /species/shortProfile/{id}:
+    get:
+      summary: Get a short description of a taxon
+      description: Get a summary of taxon data without details such as variants, additional identifiers, etc.
+      tags:
+      - lookup
+      parameters:
+      - $ref: '#/components/parameters/idParam'
+      responses:
+        404:
+          description: If the taxon identifier is not found
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortProfile'
+  /guid/batch:
+    get:
+      summary: Batch lookup of multiple names
+      description: Search for multiple names with idividual name queries and return short profiles for each name
+      tags:
+      - search
+      parameters:
+      - name: q
+        in: query
+        required: true
+        style: form
+        explode: true
+        description: The names to search for, one query for each
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Results keyed by the original query parameter
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/GuidProfile'
+  /species/guids/bulklookup:
+    post:
+      summary: Bulk retrieval of species by identifier
+      description: >
+        Retrieve taxon information for a list of identifiers.
+        This operation can be used to retrieve large lists of taxa
+      tags:
+      - bulk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                description: The guids to look up
+      responses:
+        404:
+          description: If a guid is not found
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  searchDTOList:
+                    type: array
+                    items:
+                      type: object
+                      description: A summary of the taxon
+                      properties:
+                        guid:
+                          description: The taxon guid
+                          $ref: '#/components/schemas/GUID'
+                        name:
+                          type: string
+                          description: The scientific name of the taxon
+                          deprecated: true
+                        scientificName:
+                          type: string
+                          description: The scientific name of the taxon
+                        author:
+                          type: string
+                          description: The taxon concept authorship
+                        nameComplete:
+                          type: string
+                          description: The name and author, correctly structured
+                        rank:
+                          $ref: '#/components/schemas/RankName'
+                        kingdom:
+                          type: string
+                          description: The Linnaean kingdom of the taxon
+                        phylum:
+                          type: string
+                          description: The Linnaean phylum of the taxon
+                        class:
+                          type: string
+                          description: The Linnaean class of the taxon
+                        order:
+                          type: string
+                          description: The Linnaean order of the taxon
+                        family:
+                          type: string
+                          description: The Linnaean family of the taxon
+                        genus:
+                          type: string
+                          description: The Linnaean genus of the taxon
+                        datatsetName:
+                          type: string
+                          description: The name of the source of taxon information
+                        datatsetID:
+                          type: string
+                          description: The identifier of the source of taxon information
+                        linkIdentifier:
+                          type: string
+                          description: An option unique, human readable short link to this taxon
+  /species/lookup/bulk:
+    post:
+      summary: Bulk search for species by name
+      description: >
+        Retrieve taxon information for a list of vernacular or scientific names.
+        This operation can be used to retrieve large lists of taxa
+      tags:
+      - bulk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vernacular:
+                  type: boolean
+                  description: Look up via vernacular names as well as scientific names
+                  default: false
+                names:
+                  type: array
+                  description: The list of names to search for
+                  items:
+                    type: string
+      responses:
+        400:
+          description: On an invalid request
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LongProfile'
+  /download:
+    get:
+      summary: Download the results of a search
+      description: Search the BIE and return the taxonomic results of the search in tabular form
+      tags:
+      - bulk
+      parameters:
+      - $ref: '#/components/parameters/queryParam'
+      - $ref: '#/components/parameters/filterQueryParam'
+      - name: fields
+        description: A list of fields to download
+        in: query
+        style: simple
+        schema:
+          type: array
+          items:
+            type: string
+        required: false
+        default: guid,rank,scientificName,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName
+      responses:
+        200:
+          content:
+            text/csv:
+              schema:
+                type: object
+                description: A file of comma-separated values for the results that match the supplied query
+  /subgroups:
+    get:
+      summary: Get species groups and subgroups
+      description: Gets the list of groups and subgoups used to classify species for casual search
+      tags:
+      - metadata
+      responses:
+        404:
+          description: If the species group configuration is not found
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    speciesGroup:
+                      type: string
+                      description: The common name for this group of species
+                    taxonRank:
+                      type: string
+                      description: The rank that this grouping occurs at
+                    taxa:
+                      description: Sub-group descriptions
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            description: The scientific name for the sub-group
+                          common:
+                            type: string
+                            description: The common name for the sub-group
+  /indexFields{format}:
+    get:
+      summary: Get indexed fields
+      description: Gets a description of the fields stored in the BIE index. These fields can be used to additionally fielter searches
+      tags:
+      - metadata
+      parameters:
+      - $ref: '#/components/parameters/formatParam'
+      responses:
+        500:
+          description: If unable to connect to the solr index
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    dataType:
+                      type: string
+                      description: The data type of the field. This may include user-defined datatypes such as lowercase
+                    indexed:
+                      type: boolean
+                      description: Is this field indexed (and is searchable)
+                    name:
+                      type: string
+                      description: The name of the field
+                    numberDistinctValues:
+                      type: null
+                      description: Always null
+                    stored:
+                      type: boolean
+                      description: Is this field stored in the index (and is retrievable)
+  /ranks:
+    get:
+      summary: Get ranks
+      description: Gets a description of the ranks used to classify levels of taxa
+      tags:
+      - metadata
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A dictionary of ranks, keyed to the name of the rank
+                additionalProperties:
+                  type: object
+                  properties:
+                    branch:
+                      type: string
+                      description: The branch of biology that uses this rank, if relevant
+                      example: botany
+                    notes:
+                      type: string
+                      description: Additional notes and description
+                    otherNames:
+                      type: array
+                      description: A list of alternative names for this rank
+                      items:
+                        type: string
+                        example: sectio
+                    rank:
+                      type: string
+                      description: The rank name
+                      example: section botany
+                    rankGroup:
+                      type: string
+                      description: The major Linnaean rank that this rank is most associated with
+                      example: genus
+                    rankID:
+                      type: integer
+                      description: The rank identifier
+                      example: 6600
+  /habitats:
+    get:
+      summary: Get a list of habitats
+      description: Gets a list of habitat types. Currently, this will just return an empty list
+      deprecated: true
+      tags:
+      - metadata
+      responses:
+        500:
+          description: If unable to connect to the solr index
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  searchResults:
+                    type: object
+                    items:
+                      type: null
+  /habitats/tree:
+    get:
+      summary: Get a tree of habitats
+      description: Gets a tree of habitat types. Currently, this will just return an empty tree
+      deprecated: true
+      tags:
+      - metadata
+      responses:
+        500:
+          description: If unable to connect to the solr index
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  searchResults:
+                    type: object
+  /habitat/{guid}:
+    get:
+      summary: Get a habitat description
+      description: Gets a description of a habitat. Currently, this will just return an empty value
+      deprecated: true
+      tags:
+      - metadata
+      responses:
+        500:
+          description: If unable to connect to the solr index
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  searchResults:
+                    type: object
+                    items:
+                      type: null
+  /habitat/ids/{guid}:
+    get:
+      summary: Get a the identifiers associated with a habitat
+      description: Gets a set of habitat ids. Currently, this will just return an empty value
+      deprecated: true
+      tags:
+      - metadata
+      responses:
+        500:
+          description: If unable to connect to the solr index
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  searchResults:
+                    type: object
+                    items:
+                      type: null
+  /admin/import/importAll:
+    get:
+      summary: Import all features
+      description: >
+        Imports all information into the BIE offline index.
+        The definition of "all" depends on the configuration of the service but usually includes
+        importing dataset descriptions, spatial layers, taxonomies, etc. and then searching for images, denormalising
+        synonyms and the like.
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /updateImages:
+    get:
+      summary: Update preferred taxon images
+      description: Updates any preferred taxon images that are associated with specific taxa
+      tags:
+      - admin
+      security:
+      - apiKey: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: True if the update was successful
+                  message:
+                    type: string
+                    description: Additional information on success/failure
+  /admin/import/importAllDwCA:
+    get:
+      summary: Import all darwin core archive
+      description: >
+        Imports all the darwin core archives found in a server-configured directory into the offline index
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/deleteDanglingSynonyms:
+    get:
+      summary: Delete synonyms without an accepted concept
+      description: >
+        Scans all synonyms and deletes any that do not have a matching accepted concept in the offline index
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importCollectory:
+    get:
+      summary: Import the contents of the collectory
+      description: >
+        Import data resources, collections etc. from the collectory into the offline index
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importLayers:
+    get:
+      summary: Import spatial layers
+      description: >
+        Imports all spatial layer descriptions from the spatial service into the offline index
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importLocalities:
+    get:
+      summary: Import localities
+      description: >
+        Imports all locality descriptions from the spatial service and gazetteer layer into the offline index
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importRegions:
+    get:
+      summary: Import region descriptions
+      description: >
+        Imports all region descriptions from the spatial service into the offline index
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importHabitats:
+    get:
+      summary: Import habitat descriptions
+      description: >
+        Imports habitat descriptions from a server-local configuration file into the offline index
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importWordpress:
+    get:
+      summary: Import workpress pages
+      description: >
+        Imports wordpress pages into the offline index
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importOccurrences:
+    get:
+      summary: Scan for occurrence counts
+      description: >
+        Scans each taxon for occurrence counts in the biocache and annotates taxa in the offline index.
+        Note that, with a new name index, the taxon identifiers may have changed and loading occurrences needs
+        to wait until after reprocessing is done.
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importConservationSpeciesLists:
+    get:
+      summary: Import conservation lists
+      description: >
+        Imports the flagged conservation lists from the list server and annotate taxa in the offline index
+        Note that, with a new name index, the taxon identifiers may have changed the scan needs
+        to wait until after the lists are updated.
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importVernacularSpeciesLists:
+    get:
+      summary: Import conservation lists
+      description: >
+        Imports the flagged vernacular lists from the list server and add to the offline index
+        Deprecated: it is better to load these into the combined taxonomy.
+      deprecated: true
+      tags:
+      - admin
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/buildLinkIdentifiers:
+    get:
+      summary: Build link identifiers for unique taxa
+      description: >
+        Scan the index and, if a name is unique, create a link identifier than can be used to find it
+      tags:
+      - admin
+      parameters:
+      - name: online
+        in: query
+        description: Scan the online, rather than the offline, index
+        schema:
+          type: boolean
+        default: false
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/denormaliseTaxa:
+    get:
+      summary: Add parent taxon information to each taxon
+      description: >
+        Scan the index and add higher order taxonomy into each taxon.
+        For example, Gastropoda will have phylum Mollusca and kingdom Animalia inserted into its description.
+        Synonyms are also given an accepted concept name.
+      tags:
+      - admin
+      parameters:
+      - name: online
+        in: query
+        description: Scan the online, rather than the offline, index
+        schema:
+          type: boolean
+        default: false
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/loadPreferredImages:
+    get:
+      summary: Load preferred images for taxa
+      description: >
+        Use the preferred images list to annotate taxa with their preferred images.
+      tags:
+      - admin
+      parameters:
+      - name: online
+        in: query
+        description: Scan the online, rather than the offline, index
+        schema:
+          type: boolean
+        default: false
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/loadImages:
+    get:
+      summary: Scan for representative images
+      description: >
+        Scan the major taxa and either use a preferred image or search for a suitable representative image.
+      tags:
+      - admin
+      parameters:
+      - name: online
+        in: query
+        description: Scan the online, rather than the offline, index
+        schema:
+          type: boolean
+        default: false
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importDwCA:
+    get:
+      summary: Import a darwin core archive
+      description: Imports a local darwin core archive into the offline index
+      tags:
+      - admin
+      parameters:
+      - name: dwca_dir
+        in: query
+        description: The path to a server-local expanded DwCA
+        required: true
+        schema:
+          type: string
+      - name: clear_index
+        in: query
+        description: Clear the offline index before loading
+        default: false
+        schema:
+          type: boolean
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/job{format}:
+    get:
+      summary: List running and recently completed jobs
+      description: Returns a list of the currently running jobs and what the status of that job is
+      tags:
+      - admin
+      parameters:
+      - $ref: '#/components/parameters/formatParam'
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobStatus'
+  /admin/job/{id}{format}:
+    get:
+      summary: Get a summary of a specific job
+      description: Returns a list of the currently running jobs and what the status of that job is
+      tags:
+      - admin
+      parameters:
+      - name: id
+        description: The job identifier
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/formatParam'
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobStatus'
+  /admin/job/{id}/cancel:
+    get:
+      summary: Cancel a job
+      description: Attempts to stop a job. The job will be cancelled at the first natural break point, which may be some time.
+      tags:
+      - admin
+      parameters:
+      - name: id
+        description: The job identifier
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/formatParam'
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobStatus'
+  /admin/job/{id}/remove:
+    get:
+      summary: Remove a completed job
+      description: Manually remove a completed job from the list of jobs. Completed jobs are automatically removed after an hour.
+      tags:
+      - admin
+      parameters:
+      - name: id
+        description: The job identifier
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/formatParam'
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobStatus'
+components:
+  schemas:
+    GUID:
+      type: string
+      description: >
+        The external, unique identifier for a BIE resource, such as a taxon or data resource.
+        GUIDs tend to reflect the source of the information and can have many forms: URLs, LSIDs, UUIDs or simple strings
+    RankName:
+      type: string
+      description: >
+        The Linnaean rank.
+        This may include ranks outside the standard Linnaean classification (eg. subphylum or supertribe).
+        Ranks that have different meanings across nomenclatural codes, in which case they are marked with
+        their origin (eg. division zoology).
+    RankID:
+      type: integer
+      description: >
+        An integer identifier corresponding to the Linnaean rank, the lower the value, the higher the rank is in the taxonomy.
+        The primary Linnaean ranks are kingdom = 1000, phylum = 2000, ..., species = 7000; sub- and super-ranks are interpolated
+        between these value and subspecies ranks continue to rise.
+        An informal rank has the value -1 and and unranked taxon has the value 0.
+    SearchResults:
+        type: object
+        description: Successful search
+        properties:
+          searchResults:
+            type: object
+            properties:
+              totalRecords:
+                type: integer
+                description: The total number of records that match the search
+              facetResults:
+                type: array
+                description: Facet summaries for requested facet fields
+                items:
+                  type: object
+                  properties:
+                    fieldName:
+                      type: string
+                      description: The field that was faceted
+                    fieldResult:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          label:
+                            type: string
+                            description: A human-readable label for the facet
+                          count:
+                            type: integer
+                            description: The count of results for that facet
+                          fieldValue:
+                            type: string
+                            description: The actual field value
+              results:
+                type: array
+                description: A list of any sort of result that matches the query. This will include taxa, data resources, locations, etc.
+                items:
+                  type: object
+                  description: >
+                    A search result.
+                    Search results have different types, depending on the idxtype field.
+                    Some fields are derived from the Darwin Core vocabulary.
+                  properties:
+                    id:
+                      type: string
+                      style: uuid
+                      description: An internal, index-specific identifier. Best ignored
+                    guid:
+                      type: string
+                      description: The external identifier for the search result. If a taxon, this is the taxon identifier
+                    idxtype:
+                      type: string
+                      description: The type of entry
+                      enum:
+                      - TAXON
+                      - LAYER
+                      - REGION
+                      - LOCALILTY
+                      - DATARESOURCE
+                      - DATAPROVIDER
+                      - COLLECTION
+                      - INSTITUTION
+                      - SPECIESLIST
+                      - HABITAT
+                      - WORDPRESS
+                      - COMMON
+                      - IDENTIFIER
+                      - TAXONVARIANT
+                    linkIdentifier:
+                      type: string
+                      description: A human-friendly identifier for entries that can be uniquely identified by name
+                    name:
+                      type: string
+                      description: The name of the result. If a taxon, the scientific name, otherwise the data resource name, layer name etc.
+                    description:
+                      type: string
+                      description: A long description of the result
+                    taxonGuid:
+                      type: string
+                      description: The guid of the actual taxon associated with
+                    nomenclaturalCode:
+                      type: string
+                      description: The acronym of the nomenclatural code governing the scientific name
+                    scientificName:
+                      type: string
+                      description: The scientific name (without author)
+                    scientificNameAuthorship:
+                      type: string
+                      description: The taxon author
+                    author:
+                      type: string
+                      description: A synonym of scientificNameAuthorship for compatibility reasons
+                    nameComplete:
+                      type: string
+                      description: The correctly combined name/author. In some cases, the authorship will not be on the end of the name.
+                    nameFormatted:
+                      type: string
+                      description: The nameComplete marked up with HTML spans and classes for display
+                    taxonomicStatus:
+                      type: string
+                      description: The taxonomic status.
+                    nomenclaturalStatus:
+                      type: string
+                      description: The nomenclatural status of a taxon
+                    parentGuid:
+                      type: string
+                      description: The guid of a parent taxon
+                    acceptedConceptID:
+                      type: string
+                      description: The guid of the accepted concept for a synonym
+                    acceptedConceptName:
+                      type: string
+                      description: The name of the accepted concept for a synonym
+                    rank:
+                      $ref: '#/components/schemas/RankName'
+                    rankID:
+                      $ref: '#/components/schemas/RankID'
+                    commonName:
+                      type: string
+                      description: A list of common names, separated by commas
+                    commonNameSingle:
+                      type: string
+                      description: A single preferred common name
+                    occurrenceCount:
+                      type: integer
+                      description: >
+                        An estimated count of occurrence records for this taxon in the biocache.
+                        This count is pre-computed on loading and may be out of date.
+                    conservationStatus:
+                      type: string
+                      description: Species conservation status in various localities
+                    infoSourceName:
+                      type: string
+                      description: The name of the primary source of this information
+                    infoSourceURL:
+                      type: string
+                      format: url
+                      description: A link to a description of the primary source
+                    image:
+                      type: string
+                      format: uuid
+                      description: An image identifier for a representative image
+                    imageUrl:
+                      type: string
+                      format: url
+                      description: A link to the representative image
+                    thumbnailUrl:
+                      type: string
+                      format: url
+                      description: A link to a thumbnail of the representative image
+                    smallImageUrl:
+                      type: string
+                      format: url
+                      description: A link to a small version of the representative image
+                    largeImageUrl:
+                      type: string
+                      format: url
+                      description: A link to a large version of the representative image
+                    kingdom:
+                      type: string
+                      description: The kingdom of a taxon
+                    kingdomGuid:
+                      type: string
+                      description: The kingdom guid of a taxon in the Linnaean hierarchy
+                    phylum:
+                      type: string
+                      description: The phylum of a taxon
+                    phylumGuid:
+                      type: string
+                      description: The plylum guid of a taxon in the Linnaean hierarchy
+                    class:
+                      type: string
+                      description: The class of a taxon
+                    classGuid:
+                      type: string
+                      description: The class guid of a taxon in the Linnaean hierarchy
+                    order:
+                      type: string
+                      description: The order of a taxon
+                    orderGuid:
+                      type: string
+                      description: The order guid of a taxon in the Linnaean hierarchy
+                    family:
+                      type: string
+                      description: The family of a taxon
+                    familyGuid:
+                      type: string
+                      description: The family guid of a taxon in the Linnaean hierarchy
+                    genus:
+                      type: string
+                      description: The genus of a taxon
+                    genusGuid:
+                      type: string
+                      description: The genus guid of a taxon in the Linnaean hierarchy
+                    species:
+                      type: string
+                      description: The kingdom of a taxon
+                    speciesGuid:
+                      type: string
+                      description: The kingdom guid of a taxon in the Linnaean hierarchy
+                    highlight:
+                      type: string
+                      description: An HTML formatted version of the result showing the match against the search term
+    ShortProfile:
+      type: object
+      description: A short description of the most basic information about a taxon
+      properties:
+        taxonID:
+          type: string
+          description: The taxon guid
+        scientificName:
+          type: string
+          description: The scientific name of the taxon (without authorship)
+        scientificNameAuthorship:
+          type: string
+          description: The authorship of the taxon
+        author:
+          type: string
+          description: A synonym of scientificNameAuthorship for commpatibilty reasons
+          deprecated: true
+        rank:
+          $ref: '#/components/schemas/RankName'
+        rankID:
+          $ref: '#/components/schemas/RankID'
+        kingdom:
+          type: string
+          description: The kingdom this taxon belongs to
+        family:
+          type: string
+          description: The family this taxon belongs to
+        commonName:
+          type: string
+          description: A representative common name
+        thumbnailUrl:
+          type: string
+          format: url
+          description: A link to a representative thumnail image, if available
+          required: false
+        imageUrl:
+          type: string
+          format: url
+          description: A link to a representative image, if available
+          required: false
+    LongProfile:
+      type: object
+      description: A description of essential information about a taxon
+      properties:
+        identifier:
+          type: string
+          description: The same as the guid
+          deprecated: true
+        guid:
+          description: The taxon, dataset, layer or other resource guid
+          $ref: '#/components/schemas/GUID'
+        parentGuid:
+          type: string
+          description: The guid of the parent taxon of this taxon
+        name:
+          type: string
+          description: The name of the result. If a taxon, the scientific name, otherwise the data resource name, layer name etc.
+        nameComplete:
+          type: string
+          description: The correctly combined name/author. In some cases, the authorship will not be on the end of the name.
+        commonName:
+          type: string
+          description: A list of common names, separated by commas
+        commonNameSingle:
+          type: string
+          description: A single preferred common name
+        rank:
+          $ref: '#/components/schemas/RankName'
+        rankId:
+          $ref: '#/components/schemas/RankID'
+        acceptedConceptGuid:
+          type: string
+          description: The guid of the accepted concept for a synonym
+        acceptedConceptName:
+          type: string
+          description: The name of the accepted concept for a synonym
+        taxonomicStatus:
+          type: string
+          description: The taxonomic status.
+        imageId:
+          type: string
+          format: uuid
+          description: An image identifier for a representative image
+        imageUrl:
+          type: string
+          format: url
+          description: A link to the representative image
+        thumbnailUrl:
+          type: string
+          format: url
+          description: A link to a thumbnail of the representative image
+        largeImageUrl:
+          type: string
+          format: url
+          description: A link to a large version of the representative image
+        smallImageUrl:
+          type: string
+          format: url
+          description: A link to a small version of the representative image
+        imageMetadataUrl:
+          type: string
+          format: url
+          description: A link metadata about the representative image
+        kingdom:
+          type: string
+          description: The kingdom of a taxon
+        phylum:
+          type: string
+          description: The phylum of a taxon
+        class:
+          type: string
+          description: The class of a taxon
+        order:
+          type: string
+          description: The order of a taxon
+        family:
+          type: string
+          description: The family of a taxon
+        genus:
+          type: string
+          description: The genus of a taxon
+        author:
+          type: string
+          description: The taxon author
+        linkIdentifier:
+          type: string
+          description: A human-friendly identifier for entries that can be uniquely identified by name
+    GuidProfile:
+      type: object
+      properties:
+        identifier:
+          type: string
+          description: The guid of the found concept
+        name:
+          type: string
+          description: The scientific name of the found concept
+        acceptedIdentifier:
+          type: string
+          description: The guid of the accepted concept, if the found entry is a synonym, or the identifier
+        acceptedName:
+          type: string
+          description: The scientific name of the accepted concept, if the found entry is a synonym, or the name
+    TaxonConcept:
+      type: object
+      description: A description of a taxon concept or taxon concept variant
+      externalDocs:
+        description: Darwin Core Reference
+        url: http://rs.tdwg.org/dwc/terms/
+      properties:
+        guid:
+          type: string
+          description: The guid of the taxon
+        identifier:
+          type: string
+          description: The identifier of a taxon variant linked to this taxon
+        nameGuid:
+          type: string
+          description: The identifier of a synonym linked to this taxon
+        parentGuid:
+          type: string
+          description: The guid of the parent to this taxon
+        nameString:
+          type: string
+          description: The scientific name, without authorship
+        nameComplete:
+          type: string
+          description: The scientific name and authorship, with the author correctly placed
+        nameFormatted:
+          type: string
+          description: An HTML version of the name, using span elements and classes to mark the parts of the name
+        author:
+          type: string
+          description: The author of the taxon concept
+        nomenclaturalCode:
+          type: string
+          description: The acronym of the nomenclatural code governing the name
+        taxonomicStatus:
+          type: string
+          description: A term describing the status of the taxon
+          example: objectiveSynonym
+        nomenclaturalStatus:
+          type: string
+          description: A term describing the status of the taxon
+          example: nom. cons.
+        rankString:
+          $ref: '#/components/schemas/RankName'
+        nameAuthority:
+          type: string
+          description: The source of authority for this taxon concept
+          example: APC
+        rankID:
+          $ref: '#/components/schemas/RankID'
+        nameAccordingTo:
+          type: string
+          description: The name or reference to the authority placing this taxon in a specific location on the taxonomic tree
+        nameAccordingToID:
+          type: string
+          description: An external identifier for the placement
+        namePublishedIn:
+          type: string
+          description: The name or reference to the original publication of the name
+        namePublishedInYear:
+          type: integer
+          description: The year of publication
+        namePublishedInID:
+          type: string
+          description: An external identifier for the publication
+        taxonRemarks:
+          type: array
+          description: Any addiitonal remarks about the taxon
+          items:
+            type: string
+        provenance:
+          type: array
+          description: A series of comments about where the taxon concept came from and how it was processed
+          items:
+            type: string
+        infoSourceURL:
+          type: string
+          format: url
+          description: A link to the original source of this taxon concept, if available
+        datasetURL:
+          type: string
+          format: url
+          description: A link to information about the dataset that supplied this data
+        priority:
+          type: integer
+          description: The priority of a taxon variant
+    CommonName:
+      type: object
+      description: A description of a common (local, vernacular) name that is used for a taxon
+      externalDocs:
+        description: Darwin Core Vernacular Name Extension
+        url: https://tools.gbif.org/dwca-validator/extension.do?id=gbif:VernacularName
+      properties:
+        nameString:
+          type: string
+          description: The name
+          example: Silver Wattle
+        status:
+          type: string
+          description: The status of the name
+          example: preferred
+        priority:
+          type: integer
+          description: The priority of the name, for ordering
+          example: 400
+        language:
+          type: string
+          description: A code giving the language of the name, usually an ISO 2- or 3-letter language code
+          example: en-AU
+        temporal:
+          type: string
+          description: Any temporal restrictions on the name
+          example: spring
+        locationID:
+          type: string
+          description: An external identifier for the locality this name is used in
+        locality:
+          type: string
+          description: The locality this name is used in
+          example: South Coast of NSW
+        countryCode:
+          type: string
+          description: A code giving the country this name is from, usually an ISO 2-letter code
+          example: AU
+        sex:
+          type: string
+          description: The sex this name applies to (eg. Bull, Cow)
+          example: female
+        lifeStage:
+          type: string
+          description: The life stage this name applies to
+          example: larval
+        isPlural:
+          type: boolean
+          description: Is this a plural form of ths name
+        organismPart:
+          type: string
+          description: The part of an organism this applies to
+          example: head
+        taxonRemarks:
+          type: array
+          description: Any addiitonal remarks about the name
+          items:
+            type: string
+        provenance:
+          type: array
+          description: A series of comments about where the name came from and how it was processed
+          items:
+            type: string
+        labels:
+          type: array
+          description: Tags or labels that apply to this name
+          items:
+            type: string
+            example: TK-A
+        infoSourceName:
+          type: string
+          description: A the name of the original source of the information
+        infoSourceURL:
+          type: string
+          format: url
+          description: A link to the original source of this name, if available
+        datasetURL:
+          type: string
+          format: url
+          description: A link to information about the dataset that supplied this data
+    Identifier:
+      type: object
+      description: Information about identifiers associated with a taxon
+      externalDocs:
+        description: Darwin Core Alternative Identifiers Extension
+        url: https://tools.gbif.org/dwca-validator/extension.do?id=gbif:Identifier
+      properties:
+        identifier:
+          type: string
+          description: The identifier
+          example: NZOR-4-131821
+        nameString:
+          type: string
+          description: The name of the identifier, usually the title of the identifier saying what it is for
+          example: Taxon Concept
+        status:
+          type: string
+          description: The status of the identifier
+          example: current
+        subject:
+          type: string
+          description: Keywords qualifying the identifer
+          example: historical
+        temporal:
+          type: string
+          description: Any temporal restrictions on the name
+          example: spring
+        locationID:
+          type: string
+          description: An external identifier for the locality this name is used in
+        locality:
+          type: string
+          description: The locality this name is used in
+          example: South Coast of NSW
+        countryCode:
+          type: string
+          description: A code giving the country this name is from, usually an ISO 2-letter code
+          example: AU
+        sex:
+          type: string
+          description: The sex this name applies to (eg. Bull, Cow)
+          example: female
+        lifeStage:
+          type: string
+          description: The life stage this name applies to
+          example: larval
+        isPlural:
+          type: boolean
+          description: Is this a plural form of ths name
+        organismPart:
+          type: string
+          description: The part of an organism this applies to
+          example: head
+        taxonRemarks:
+          type: array
+          description: Any addiitonal remarks about the name
+          items:
+            type: string
+        provenance:
+          type: array
+          description: A series of comments about where the name came from and how it was processed
+          items:
+            type: string
+        labels:
+          type: array
+          description: Tags or labels that apply to this name
+          items:
+            type: string
+        infoSourceName:
+          type: string
+          description: A the name of the original source of the information
+        infoSourceURL:
+          type: string
+          format: url
+          description: A link to the original source of this name, if available
+        datasetURL:
+          type: string
+          format: url
+          description: A link to information about the dataset that supplied this data
+    JobStatus:
+      description: >
+        The current state of a long-running job, usually a load process.
+        Errors are returned with a success of false and a message describing the error.
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The job identifier
+        active:
+          type: boolean
+          description: Is this job currently active?
+        success:
+          type: boolean
+          description: Is this job currently a success?
+        completed:
+          type: boolean
+          description: Has this job completed running
+        title:
+          type: string
+          description: The name of the job
+        message:
+          type: string
+          description: A message about the state of the job or an error
+        lastUpdated:
+          type: string
+          format: date-time
+          description: When this status was last updated
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      description: Authentication via ALA apikey in request header
+      in: header
+      name: Authorization
+    cas:
+      type: apiKey
+      in: cookie
+      description: Authentication via ALA CAS authentication
+      name: ALA-Auth
+  parameters:
+    formatParam:
+      name: format
+      in: path
+      description: Optional response format
+      required: false
+      schema:
+        type: string
+        enum:
+        - .json
+        - .xml
+        default: .json
+    queryParam:
+      name: 'q'
+      in: query
+      description: The search query, as a solr query
+      required: true
+      schema:
+        type: string
+        externalDocs:
+          description: Solr Standard Query Parser
+          url: https://lucene.apache.org/solr/guide/6_6/the-standard-query-parser.html
+    filterQueryParam:
+      name: 'fq'
+      in: query
+      description: Additional filter queries, formatted as a solr filter query
+      required: false
+      schema:
+        type: array
+        externalDocs:
+          description: Solr Standard Query Parser
+          url: https://lucene.apache.org/solr/guide/6_6/the-standard-query-parser.html
+        items:
+          type: string
+      style: form
+      explode: true
+    facetQueryParam:
+      name: 'facets'
+      in: query
+      description: Facets to use when faceting the results
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: simple
+    idParam:
+      name: 'id'
+      in: path
+      description: >
+        The guid of a specific taxon, data resource, layer etc.
+        Since guids can be URLs but can also be interpolated into paths, a http:// prefix may be converted into http:/ by
+        the tomcat container.
+        A supplied guid of, eg. http:/id.biodiversity.org.au/node/apni/50587232 will be converted into
+        http://id.biodiversity.org.au/node/apni/50587232
+      required: true
+      schema:
+        $ref: '#/components/schemas/GUID'
+      examples:
+        LSID:
+          summary: LSID form
+          value: urn:lsid:biodiversity.org.au:afd.taxon:68d5fd52-71e7-4729-bf20-db7063f47ad5 (Cracticus tibicen)
+        URL:
+          summary: URL form
+          value: http://id.biodiversity.org.au/node/apni/50587232 (Plantae)
+        UUID:
+          summary: UUID form
+          value: 4af8ff9c-e525-4290-b25a-92b8a04bbc8b (Sorosporium arundinellae)
+        DataResource:
+          summary: Data resource identifier from the collectory
+          value: dr702 (Atlas of Life in the Coastal Wilderness)
+    startParam:
+      name: start
+      description: The offset into the retrieved results, used for paging search results
+      in: query
+      schema:
+        type: integer
+        default: 0
+      required: false
+    rowsParam:
+      name: rows
+      description: The number of results to retrieve, used for paging search results
+      in: query
+      schema:
+        type: integer
+        default: 10
+      required: false
+tags:
+- name: search
+  description: Search the BIE
+- name: lookup
+  description: Retrieve information about specific resources
+- name: metadata
+  description: Provides information about the structure of the BIE and its index
+- name: bulk
+  description: Bulk data retrieval
+- name: admin
+  description: Administration functions
+

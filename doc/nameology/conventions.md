@@ -38,7 +38,7 @@ The common identifier for a taxonomic DwCA is the [taxonID](http://rs.tdwg.org/d
 
 LSIDs are preferred for identifiers, where possible, because they allow links to further information about the taxon.
 
-## <a name="taxonomic-status"/> Taxonomic Status
+## Taxonomic Status
 
 Taxonomic status indicates whether a name or taxon is currently accepted, a synonym or of some other, murkier status.
 

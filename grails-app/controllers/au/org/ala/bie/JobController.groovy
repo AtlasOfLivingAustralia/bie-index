@@ -8,6 +8,7 @@ import grails.converters.XML
 class JobController {
     def jobService
 
+    // Documented in openapi.yml
     def index() {
         def jobs = jobService.list().collect { it.status() }
         withFormat {
@@ -18,6 +19,7 @@ class JobController {
         }
     }
 
+    // Documented in openapi.yml
     def status() {
         def id = params.id
         def status = jobService.get(id)?.status() ?: notFoundStatus(id)
@@ -35,6 +37,7 @@ class JobController {
         [job: status]
     }
 
+    // Documented in openapi.yml
     def cancel() {
         def id = params.id
         jobService.cancel(params.id)
@@ -47,6 +50,7 @@ class JobController {
         }
     }
 
+    // Documented in openapi.yml
     def remove() {
         def id = params.id
         def removed = jobService.remove(params.id)
