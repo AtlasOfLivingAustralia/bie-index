@@ -60,6 +60,7 @@ class ImportController {
      *
      * @return
      */
+    // Dcoumented in openapi.yml
     def importDwcA() {
 
         if(!params.dwca_dir || !(new File(params.dwca_dir).exists())){
@@ -78,6 +79,7 @@ class ImportController {
         }
     }
 
+    // Dcoumented in openapi.yml
     def importAll(){
         def job = execute(
                 "importDwca,importCollectory,deleteDanglingSynonyms,importLayers,importLocalities,importRegions,importHabitats,importHabitats," +
@@ -93,6 +95,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importAllDwcA() {
         if(new File(grailsApplication.config..getProperty('import.taxonomy.dir')).exists()){
             def job = execute("importDwca", "admin.button.importalldwca", { importService.importAllDwcA() })
@@ -102,6 +105,7 @@ class ImportController {
         }
     }
 
+    // Documented in openapi.yml
     def deleteDanglingSynonyms(){
         def job = execute("deleteDanglingSynonyms", "admin.button.deletedanglingsynonyms", { importService.clearDanglingSynonyms() })
         asJson(job.status())
@@ -112,6 +116,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importCollectory(){
         if(grailsApplication.config.collectoryServicesUrl){
             def job = execute("importCollectory", "admin.button.importcollectory", { importService.importCollectory() })
@@ -126,6 +131,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importLayers(){
         if(grailsApplication.config.layersServicesUrl){
             def job = execute("importLayers", "admin.button.importlayer", { importService.importLayers() })
@@ -140,6 +146,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importLocalities(){
         if(grailsApplication.config.layersServicesUrl && grailsApplication.config.gazetteerLayerId){
             def job = execute("importLocalities", "admin.button.importlocalities", { importService.importLocalities() })
@@ -154,6 +161,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importRegions(){
         if(grailsApplication.config.layersServicesUrl){
             def job = execute("importRegions", "admin.button.importregions", { importService.importRegions() })
@@ -168,6 +176,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importHabitats(){
         def job = execute("importHabitats", "admin.button.importhabitats", { importService.importHabitats() })
         asJson(job.status())
@@ -178,6 +187,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importWordPress(){
         def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages() })
         asJson(job.status())
@@ -188,6 +198,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importOccurrences(){
         def job = execute("importOccurrences", "admin.button.loadoccurrence", { importService.importOccurrenceData() })
         asJson (job.status())
@@ -199,6 +210,7 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importConservationSpeciesLists(){
         def job = execute("importConsevationSpeciesLists", "admin.button.importlistconservatioon", { importService.importConservationSpeciesLists() })
         asJson(job.status())
@@ -209,12 +221,14 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importVernacularSpeciesLists(){
         def job = execute("buildVernacularSpeciesLists", "admin.button.importlistvernacular", { importService.importVernacularSpeciesLists() })
         asJson (job.status())
 
     }
 
+    // Documented in openapi.yml
     def buildLinkIdentifiers() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
         def job = execute("buildLinkIdentifiers", "admin.button.buildLinks", { importService.buildLinkIdentifiers(online) })
@@ -222,6 +236,7 @@ class ImportController {
 
     }
 
+    // Documented in openapi.yml
     def denormaliseTaxa() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
         def job = execute("denormaliseTaxa", "admin.button.denormalise", { importService.denormaliseTaxa(online) })
@@ -235,18 +250,21 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def loadPreferredImages() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
         def job = execute("loadImages", "admin.button.loadimagespref", { importService.loadPreferredImages(online) })
         asJson (job.status())
     }
 
+    // Documented in openapi.yml
     def loadImages() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
         def job = execute("loadImages", "admin.bitton.loadimagesall", { importService.loadImages(online) })
         asJson (job.status())
     }
 
+    // Documented in openapi.yml
     def ranks() {
         asJson(importService.ranks())
     }
