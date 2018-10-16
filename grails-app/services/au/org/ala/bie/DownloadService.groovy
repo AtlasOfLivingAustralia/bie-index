@@ -29,16 +29,13 @@ class DownloadService {
      * @return
      */
     def download(params, OutputStream outputStream, Locale locale){
-        def q = params.q ?: "*:*"
+        def q = Encoder.escapeQuery(params.q ?: "*:*")
         def fq = ""
-        def fields = grailsApplication.config.defaultDownloadFields?:"guid,rank,scientificName,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
+        def fields = params.fields ?: grailsApplication.config.defaultDownloadFields ?: "guid,rank,scientificName,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
 
-        if (params.fields) {
-            fields = params.fields
-        }
-
+        fields = Encoder.escapeQuery(fields)
         if (params.fq) {
-            String fqs = params.list("fq").join("&fq=")
+            String fqs = params.list("fq").collect({ Encoder.escapeQuery(it) }).join("&fq=")
             fq = "&fq=${fqs}"
         }
 
@@ -46,7 +43,7 @@ class DownloadService {
                 fields + "&csv.header=false&rows=" + Integer.MAX_VALUE +
                 "&q=${q}${fq}"
 
-        def connection = new URL(Encoder.encodeUrl(queryUrl)).openConnection()
+        def connection = new URL(queryUrl).openConnection()
         def input = connection.getInputStream()
         def headers = []
 

@@ -14,6 +14,9 @@ package au.org.ala.bie.util
 
 import groovy.util.logging.Log4j
 
+import java.text.FieldPosition
+import java.text.MessageFormat
+
 /**
  * Utility class to encode URLs
  * taken from http://stackoverflow.com/a/10786112/249327
@@ -22,6 +25,8 @@ import groovy.util.logging.Log4j
  */
 @Log4j
 class Encoder {
+    static SOLR_ESCAPE = ~/([+\-&|!(){}\[\]\^"~*?:\\])/
+
     /**
      * Encode params so Tomcat security "improvements" don't reject SOLR URL
      * This method emulates a browser in the way it automatically encodes certain param values
@@ -29,6 +34,8 @@ class Encoder {
      *
      * @param url
      * @return encoded url
+     *
+     * @deprecated This doesn't handle entries with an ampersand in it, such as "Anthocerotophyta Rothm. ex Stotler & Crand.-Stotl." at all well. Use {@link #escapeQuery} on individual query elements instead.
      */
     static String encodeUrl(String inputUrlStr) {
         URL url = new URL(inputUrlStr)
@@ -37,5 +44,61 @@ class Encoder {
         uri.toASCIIString()
     }
 
+    /**
+     * Escape a term in a solr query that might contain special SOLR punctuation.
+     *
+     * @param term The term to escape
+     *
+     * @return The term with special characters preceeded by a backslash
+     */
+    static String escapeSolr(String term) {
+        if (!term)
+            return term
+        def matches = SOLR_ESCAPE.matcher(term)
+        return matches.replaceAll('\\\\$1')
+    }
+
+    /**
+     * Encode a query term.
+     *
+     * @param term
+     *
+     * @return The query term with special characters escaped.
+     */
+    static String escapeQuery(String term) {
+        return URLEncoder.encode(term, "UTF-8")
+    }
+
+    /**
+     * Encode a query term, removing any "difficult" elements.
+     *
+     * @param term
+     *
+     * @return The query term with special characters escaped.
+     */
+    static String stripQuery(String term) {
+        term = SOLR_ESCAPE.matcher(term).replaceAll(' ').trim()
+        return URLEncoder.encode(term, "UTF-8")
+    }
+
+    /**
+     * Build a call to a service.
+     * <p>
+     * The path follows the {@link MessageFormat} conventions, so that a complex URL can be built
+     *
+     * @param service The base service (without trailing /)
+     * @param pathFormat The path (with leading /)
+     * @param args Any arguments to place in the path
+     *
+     * @return The formatted service URL
+     */
+    static URL buildServiceUrl(String service, String pathFormat, Object... args) {
+        StringBuffer buffer = new StringBuffer(service.length() + pathFormat.length())
+        buffer.append(service)
+        MessageFormat format = new MessageFormat(pathFormat)
+        args = args.collect { escapeQuery(it.toString()) }
+        format.format(args, buffer, new FieldPosition(0))
+        return new URL(buffer.toString())
+    }
 
 }

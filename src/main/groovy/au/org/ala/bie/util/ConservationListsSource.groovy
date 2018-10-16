@@ -14,6 +14,7 @@ class ConservationListsSource {
     static log = LoggerFactory.getLogger(ConservationListsSource.class)
 
     def defaultSourceField = 'status'
+    def defaultKingdomField = 'kingdom'
     def lists = []
 
     /**
@@ -30,6 +31,7 @@ class ConservationListsSource {
             JsonSlurper slurper = new JsonSlurper()
             def config = slurper.parse(source)
             defaultSourceField = config?.defaultSourceField ?: 'status'
+            defaultKingdomField = config?.defaultKingdomField ?: 'kingdom'
             lists = config?.lists ?: []
             log.info("Loaded " + lists.size() + " lists")
         } catch (Exception ex) {

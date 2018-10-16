@@ -1,6 +1,8 @@
 package au.org.ala.bie
 
 import grails.converters.JSON
+import au.org.ala.bie.util.Encoder
+
 /**
  * A set of JSON based search web services.
  */
@@ -198,26 +200,20 @@ class SearchController {
      */
     // Documented in openapi.yml
     def auto(){
-        log.debug("auto called with q = " + params.q)
-        log.debug("auto called with queryString = " + request.queryString)
         def fq = []
         def limit = params.limit
         def idxType = params.idxType
         def geoOnly = params.geoOnly
 
-        if (limit) {
-            fq << "&rows=${limit}"
-        }
-
         if (idxType) {
-            fq << "&fq=idxtype:${idxType.toUpperCase()}"
+            fq << "idxtype:${idxType.toUpperCase()}"
         }
 
         if (geoOnly) {
             // TODO needs WS lookup to biocache-service (?)
         }
 
-        def autoCompleteList = autoCompleteService.auto(params.q, fq)
+        def autoCompleteList = autoCompleteService.auto(params.q, fq, limit)
         def payload = [autoCompleteList:autoCompleteList]
         asJson payload
     }

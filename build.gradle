@@ -60,7 +60,7 @@ dependencies {
     }
 
     compile 'net.sf.opencsv:opencsv:2.3'
-    compile "org.apache.solr:solr-solrj:5.4.0"
+    compile "org.apache.solr:solr-solrj:6.6.5"
     compile("org.gbif:dwca-io:1.24") {
         exclude group: 'com.google.guava', module: 'guava'
     }
@@ -80,6 +80,9 @@ dependencies {
     compile "org.grails.plugins:grails-spring-websocket:2.3.0"
     compile 'org.webjars:swagger-ui:3.18.2'
     //compile "org.grails.plugins:rxjava2:2.0.0"
+
+    testCompile 'com.github.tomakehurst:wiremock:2.19.0'
+    testCompile 'com.github.tomjankes:wiremock-groovy:0.2.0'
 }
 
 bootRun {

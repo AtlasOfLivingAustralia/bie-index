@@ -118,7 +118,7 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importCollectory(){
-        if(grailsApplication.config.collectoryServicesUrl){
+        if(grailsApplication.config.collectory.service){
             def job = execute("importCollectory", "admin.button.importcollectory", { importService.importCollectory() })
             asJson(job.status())
         } else {
@@ -133,11 +133,11 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importLayers(){
-        if(grailsApplication.config.layersServicesUrl){
+        if(grailsApplication.config.layers.service){
             def job = execute("importLayers", "admin.button.importlayer", { importService.importLayers() })
             asJson(job.status())
         } else {
-            asJson([success: false, message: 'layersServicesUrl not configured'])
+            asJson([success: false, message: 'layers.service not configured'])
         }
     }
 
@@ -148,11 +148,11 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importLocalities(){
-        if(grailsApplication.config.layersServicesUrl && grailsApplication.config.gazetteerLayerId){
+        if(grailsApplication.config.layers.service && grailsApplication.config.layers.gazetteerId){
             def job = execute("importLocalities", "admin.button.importlocalities", { importService.importLocalities() })
             asJson(job.status())
         } else {
-            asJson([success: false, message: 'layersServicesUrl not configured or gazetteerLayerId not configured'])
+            asJson([success: false, message: 'layers.services not configured or layers.gazetteerId not configured'])
         }
     }
 
@@ -163,11 +163,11 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importRegions(){
-        if(grailsApplication.config.layersServicesUrl){
+        if(grailsApplication.config.layers.service){
             def job = execute("importRegions", "admin.button.importregions", { importService.importRegions() })
             asJson(job.status())
         } else {
-            asJson([success: false, message: 'layersServicesUrl not configured'])
+            asJson([success: false, message: 'layers.service not configured'])
         }
     }
 
@@ -246,7 +246,7 @@ class ImportController {
 
     /**
      * Reads preferred images list in list tool and updates imageId if values have changed
-     * list DR is defined by config var ${imagesListsUrl} - property {lists}
+     * list DR is defined by config var ${images.config} - property {lists}
      *
      * @return
      */

@@ -4,6 +4,9 @@ import au.org.ala.bie.search.AutoCompleteDTO
 import au.org.ala.bie.util.Encoder
 import grails.converters.JSON
 import groovy.json.JsonSlurper
+import org.apache.solr.client.solrj.response.Group
+import org.apache.solr.client.solrj.response.GroupCommand
+import org.apache.solr.client.solrj.response.Suggestion
 import org.apache.solr.client.solrj.util.ClientUtils
 
 import java.util.regex.Pattern
@@ -14,17 +17,18 @@ import java.util.regex.Pattern
 class AutoCompleteService {
 
     def grailsApplication
+    def indexService
 
     def serviceMethod() {}
 
-    List auto(String q, List otherParams){
-        Boolean useLegacyAuto = grailsApplication.config.useLegacyAuto.toBoolean()
+    List auto(String q, List fq, Integer rows){
+        Boolean useLegacyAuto = grailsApplication.config.autocomplete.legacy as Boolean
         List results
 
         if (useLegacyAuto) {
-            results = autoLegacy(q, otherParams)
+            results = autoLegacy(q, fq, rows)
         } else {
-            results = autoSuggest(q, otherParams)
+            results = autoSuggest(q, fq, rows)
         }
 
         results
@@ -34,89 +38,47 @@ class AutoCompleteService {
      * Autocomplete service. This relies on the /suggest service which should be configured
      * in SOLR in the files solrconfig.xml and schema.xml.
      *
-     * @param q
-     * @param otherParams
+     * @param q The query
+     * @param fq Filter query
+     * @param rows The number of rows to retrieve
+     *
      * @return
      */
-    List autoSuggest(String q, List otherParams){
+    List autoSuggest(String q, List fq, Integer rows){
         log.debug("auto called with q = " + q)
 
-        def autoCompleteList = []
+        if (!q || q.trim() == "*")
+            q = "*:*"
 
-        List query = []
-        if (!q || q.trim() == "*") {
-            query << "q=*:*"
-        } else if (q) {
-            // encode query (no fields needed due to qf params
-            query << "q=" + URLEncoder.encode("" + q + "","UTF-8")
+        def response = indexService.suggest(true, q, fq, rows)
+        GroupCommand names = response?.groupResponse?.values?.find { it.name == 'scientificName_s' }
+        def autoCompleteList = names?.values?.collect { Group group ->
+            createAutoCompleteFromIndex(group.result.get(0), q)
         }
-        query << "wt=json"
-        query.addAll(otherParams)
-
-        log.debug "autocomplete query = ${query}"
-
-        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/suggest?" + query.join('&')
-        log.debug "queryUrl = |${queryUrl}|"
-        def queryResponse = new URL(Encoder.encodeUrl(queryUrl)).getText("UTF-8")
-        def js = new JsonSlurper()
-        def json = js.parseText(queryResponse)
-
-        json.grouped.scientificName_s.groups.each { group ->
-            autoCompleteList << createAutoCompleteFromIndex(group.doclist.docs[0], q)
-        }
-        log.debug("results: " + autoCompleteList.size())
-        autoCompleteList
+        return autoCompleteList ? autoCompleteList : []
     }
 
     /**
      * Legacy Autocomplete service. This uses the normal /select service.
      *
-     * @param q
-     * @param otherParams
+     * @param q Query
+     * @param fq Filter query
+     * @param rows Rows to return
      * @return
      */
-    List autoLegacy(String q, List otherParams) {
+    List autoLegacy(String q, List fq, Integer rows) {
         log.debug("auto called with q = " + q)
 
-        def autoCompleteList = []
-        def query = []
-        // TODO store param string in config var
-        String qf = "qf=commonNameSingle^100+commonName^100+auto_text^100+text"
-        String bq = "bq=taxonomicStatus:accepted^1000&bq=rankID:7000^500&bq=rankID:6000^100&bq=-scientificName:\"*+x+*\"^100"
-        def additionalParams = "&defType=edismax&${qf}&${bq}&wt=json"
-
-        if (!q || q.trim() == "*") {
-            query << "q=*:*"
-        } else if (q) {
-            // encode query (no fields needed due to qf params
-            query << "q=" + URLEncoder.encode("" + q + "", "UTF-8")
-        }
-        query << "wt=json"
-        if (grailsApplication.config.solr.qf) {
-            query << "qf=${grailsApplication.config.solr.qf}"
-        }
-        grailsApplication.config.solr.bq.each { query << "bq=${it}" }
-        if (grailsApplication.config.solr.defType) {
-            query << "defType=${grailsApplication.config.solr.defType}"
-        }
-        query.addAll(additionalParams)
-        log.debug "queryString = ${query}"
-
-        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?" + query.join('&')
-        log.debug "queryUrl = |${queryUrl}|"
-        def queryResponse = new URL(Encoder.encodeUrl(queryUrl)).getText("UTF-8")
-        def js = new JsonSlurper()
-        def json = js.parseText(queryResponse)
-
-        json.response.docs.each {
-            autoCompleteList << createAutoCompleteFromIndex(it, q)
+        def response = indexService.search(true, q, fq, [], 0, rows)
+        def autoCompleteList = response?.results?.collect {
+            createAutoCompleteFromIndex(it, q)
         }
 
         // sort by rank ID
         // code removed by Nick (2016-08-02) see issue #72 - boost query values now perform same function
 
         log.debug("results: " + autoCompleteList.size())
-        autoCompleteList
+        autoCompleteList ? autoCompleteList : []
     }
 
     /**

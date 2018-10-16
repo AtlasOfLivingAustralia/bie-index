@@ -2,15 +2,22 @@ package au.org.ala.bie
 
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.search.IndexFieldDTO
+import au.org.ala.bie.util.Encoder
+import groovy.json.JsonSlurper
+import org.apache.solr.client.solrj.SolrQuery
+import org.apache.solr.client.solrj.SolrResponse
 import org.apache.solr.client.solrj.response.QueryResponse
+import org.apache.solr.client.solrj.response.SuggesterResponse
 import org.apache.solr.common.SolrInputDocument
+import org.apache.solr.common.params.CursorMarkParams
 import org.apache.solr.common.params.ModifiableSolrParams
+import org.apache.solr.common.params.SolrParams
 
 /**
  * The interface to SOLR based logic.
  */
 class IndexService {
-
+    def grailsApplication
     def liveSolrClient
     def offlineSolrClient
     def updatingLiveSolrClient
@@ -85,6 +92,143 @@ class IndexService {
         QueryResponse response = liveSolrClient.query(params)
         Set<IndexFieldDTO> results = lukeResponseToIndexFieldDTOs(response, fields != null)
         return results
+    }
+
+    /**
+     * Make a query to the index
+     *
+     * @param query The query
+     * @param online Use the online/offline index
+     *
+     * @return The solr, which are essentially key->value maps
+     */
+    QueryResponse query(SolrQuery query, boolean online) {
+        def client = online ? liveSolrClient : offlineSolrClient
+
+        return client.query(query)
+    }
+
+    /**
+     * Query the index
+     *
+     * @param online Use the online index
+     *
+     * @param q The query
+     * @param fq Any filter queries
+     * @param rows The number of rows to get (default 10)
+     * @param start The start position (default 0)
+     * @param context Additional context parameters
+     * @param sort sort field
+     * @param dir Sort direction
+     * @param cursor Cursor mark if paginating
+     *
+     * @return The query result
+     */
+    QueryResponse query(boolean online, String q, List fq = [], Integer rows = 10, Integer start = 0, String context = null, String sort = null, String dir = 'asc', String cursor = null) {
+        def query = new SolrQuery(q)
+
+        if (context)
+            query.add(context(context))
+        if (fq)
+            fq.each { query.addFilterQuery(it) }
+        if (rows)
+            query.setRows(rows)
+        if (start)
+            query.setStart(start)
+        if (sort) {
+            query.sort = new SolrQuery.SortClause(sort, dir == 'desc' ? SolrQuery.ORDER.desc : SolrQuery.ORDER.asc)
+        }
+        if (cursor)
+            query.set(CursorMarkParams.CURSOR_MARK_PARAM, cursor)
+        return this.query(query, online)
+    }
+
+    /**
+     * Get context from a context string in the form of solr params.
+     *
+     * @param context
+     * @return
+     */
+    SolrParams context(String context) {
+        if (!context)
+            return null
+        ModifiableSolrParams params = context.split('(?<!\\\\)&').inject(new ModifiableSolrParams(), { sedd, param ->
+            def kv = param.split('=', 2)
+            seed.add(kv[0], kv[1])
+            sedd
+        })
+        return params
+    }
+
+    /**
+     * Do a solr search with standard parameters
+     *
+     * @param online Use the online index
+     * @param q The query
+     * @param fqs A list of additional filter queries (empty by default)
+     * @param facets A list of facets (empty by default)
+     * @param start The start position
+     * @param rows The number of rows to retrieve
+     * @param sort The field to sort on
+     * @param dir The sort direction
+     *
+     * @return
+     */
+    QueryResponse search(boolean online, String q, List fqs = [], List facets = [], Integer start = 0, Integer rows = 10, sort = null, dir = SolrQuery.ORDER.asc) {
+        SolrQuery query = new SolrQuery(q)
+
+        if (!dir || !(dir instanceof SolrQuery.ORDER))
+            dir = dir == 'desc' ? SolrQuery.ORDER.desc : SolrQuery.ORDER.asc
+        grailsApplication.config.solr.fq.each { query.addFilterQuery(it) }
+        fqs.each { query.addFilterQuery(it) }
+        // Add query parameters
+        query.set('defType', grailsApplication.config.solr.defType)
+        query.set('qf', grailsApplication.config.solr.qf.join(' '))
+        grailsApplication.config.solr.bq.each { query.add("bq", it) }
+        query.set("q.alt", grailsApplication.config.solr.qAlt)
+        if (grailsApplication.config.solr.hl.hl as Boolean) {
+            query.highlight = true
+            query.highlightFields = (grailsApplication.config.solr.hl.fl as String).split(',')
+            query.highlightSimplePre = grailsApplication.config.solr.hl.simple.pre
+            query.highlightSimplePost = grailsApplication.config.solr.hl.simple.post
+        }
+        query.facet = facets.isEmpty()
+        query.facetMinCount = 1
+        query.facetFields = facets.toArray(new String[0])
+        if (start)
+            query.start = start
+        if (rows)
+            query.rows = rows
+        if (sort)
+            query.sort = new SolrQuery.SortClause(sort, dir)
+        return this.query(query, online)
+    }
+
+    /**
+     * Query suggestions from the index
+     *
+     * @param online Use the online index
+     * @param q The query
+     * @param fq Any filter queries
+     * @param rows The number of rows to get (default 10)
+     * @param start The start position (default 0)
+     * @param context Additional context parameters
+     *
+     * @return The suggestion response (results in groupResponse)
+     */
+    QueryResponse suggest(boolean online, String q, List fq = [], Integer rows = 10, Integer start = 0, String context = null) {
+        def query = new SolrQuery(q)
+
+        query.setRequestHandler('/suggest')
+        if (context)
+            query.add(context(context))
+        if (fq)
+            fq.each { query.addFilterQuery(it) }
+        if (rows)
+            query.setRows(rows)
+        if (start)
+            query.setStart(start)
+        return this.query(query, online)
     }
 
     private boolean isList(object) {
