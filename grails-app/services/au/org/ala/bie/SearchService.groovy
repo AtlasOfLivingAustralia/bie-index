@@ -103,8 +103,8 @@ class SearchService {
         log.debug "params = ${params.toMapString()}"
         def fqs = params.fq
         def queryTitle = null
-        def start = params.start ?: 0
-        def rows = params.rows ?: params.pageSize ?: 10
+        def start = (params.start ?: 0) as Integer
+        def rows = (params.rows ?: params.pageSize ?: 10) as Integer
 
 
         if (q) {
@@ -117,16 +117,10 @@ class SearchService {
             // boost query syntax was removed from here. NdR.
 
             // Add fuzzy search term modifier to simple queries with > 1 term (e.g. no braces)
-            if (q.trim() =~ /\s+/) {
-                q = q.replaceAll('"', " ").trim()
-                def queryArray = []
-                q.split(/\s+/).each {
-                    if (!(it =~ /AND|OR|NOT/)) {
-                        queryArray.add(it + "~0.8")
-                    } else {
-                        queryArray.add(it)
-                    }
-                }
+            q = q.trim()
+            if (!q.startsWith('(') && q.trim() =~ /\s+/) {
+                def qs = q.replaceAll(/[^\p{Alnum}]+/, " ").trim()
+                def queryArray = qs.split(/\s+/).findAll({ it.length() > 5}).collect({ it + "~0.8"})
                 def nq = queryArray.join(" ")
                 log.debug "fuzzy nq = ${nq}"
                 q = "\"${q}\"^100 ${nq}"
@@ -858,8 +852,8 @@ class SearchService {
                 ordered << facet
             }
         }
-        requestedFacets.addAll(formatted)
-        return requestedFacets
+        ordered.addAll(formatted)
+        return ordered
     }
 
     /**

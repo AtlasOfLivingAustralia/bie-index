@@ -192,9 +192,11 @@ class IndexService {
             query.highlightSimplePre = grailsApplication.config.solr.hl.simple.pre
             query.highlightSimplePost = grailsApplication.config.solr.hl.simple.post
         }
-        query.facet = facets.isEmpty()
-        query.facetMinCount = 1
-        query.facetFields = facets.toArray(new String[0])
+        if (facets) {
+            query.facet = true
+            query.facetMinCount = 1
+            facets.each { query.addFacetField(it) }
+        }
         if (start)
             query.start = start
         if (rows)
