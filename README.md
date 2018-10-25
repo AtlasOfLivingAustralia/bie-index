@@ -204,6 +204,7 @@ An example vernacular name list configuration is
 {
   "defaultVernacularNameField": "name",
   "defaultNameIdField": "nameID",
+  "defaultKingdomField": "kingdom",
   "defaultStatusField": "status",
   "defaultLanguageField": "language",
   "defaultsourceField": "source",
@@ -213,6 +214,11 @@ An example vernacular name list configuration is
     {
       "uid": "drt1464664375273",
       "language": "xul"
+    },
+    {
+      "uid": "drt1464664375274",
+      "language": "fr",
+      "statusField": "priority"
     }
   ]
 }
@@ -237,6 +243,7 @@ An example conservation status list configuration is
 ```
 {
   "defaultSourceField": "status",
+  "defaultKingdomField": "kingdom",
   "lists": [
     {
       "uid": "dr656",
@@ -249,13 +256,16 @@ An example conservation status list configuration is
       "field": "conservationStatusVIC_s",
       "term": "conservationStatusVIC",
       "label": "VIC",
-      "sourceField": "statusName"
+      "sourceField": "statusName",
+      "kingdomField": "kgm"
     }
   ]
-}```
+}
+```
 
 The `uid` supplies the list identifier.
 The `field` supplies the solr field which will be used to store the conservation status.
 The `term` supplies the name of the status field.
 `label` gives the label to apply to the conservation status.
-`sourceField`
+`sourceField` gives the name of the field that contains the conservation status.
+`kingdomField` gives the name of the field that contains the kingdom -- handy for name lookups, if available.

@@ -1,5 +1,6 @@
 {
   "defaultSourceField": "status",
+  "defaultKingdomField": "kingdom",
   "lists": [
     {
       "uid": "dr656",

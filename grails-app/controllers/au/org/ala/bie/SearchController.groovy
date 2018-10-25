@@ -1,6 +1,8 @@
 package au.org.ala.bie
 
 import grails.converters.JSON
+import au.org.ala.bie.util.Encoder
+
 /**
  * A set of JSON based search web services.
  */
@@ -17,6 +19,7 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def classification(){
         if(!params.id){
             response.sendError(404, "Please provide a GUID")
@@ -37,6 +40,7 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def imageSearch(){
         render ([searchResults:searchService.imageSearch(regularise(params.id), params.start, params.rows, params.qc)] as JSON)
     }
@@ -44,6 +48,7 @@ class SearchController {
     /**
      * Returns a redirect to an image of the appropriate type
      */
+    // Documented in openapi.yml
     def imageLinkSearch() {
         def showNoImage = params.containsKey("showNoImage") ? params.boolean("showNoImage") : true
         def guid = regularise(params.id)
@@ -64,6 +69,7 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def childConcepts(){
         if(!params.id){
             response.sendError(404, "Please provide a GUID")
@@ -72,6 +78,7 @@ class SearchController {
         render (searchService.getChildConcepts(regularise(params.id), request.queryString) as JSON)
     }
 
+    // Documented in openapi.yml
     def guid(){
         if(params.name == 'favicon') return; //not sure why this is happening....
         if(!params.name){
@@ -87,6 +94,7 @@ class SearchController {
         }
     }
 
+    // Documented in openapi.yml
     def shortProfile(){
         def guid = regularise(params.id)
         if(guid == 'favicon') return; //not sure why this is happening....
@@ -103,6 +111,7 @@ class SearchController {
         }
     }
 
+    // Documented in openapi.yml
     def getSpeciesForNames() {
         def result = params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
         if (!result)
@@ -111,6 +120,7 @@ class SearchController {
             asJsonP(params,result)
      }
 
+    // Documented in openapi.yml
     def bulkGuidLookup(){
         def guidList = request.JSON
         def results = searchService.getTaxa(guidList)
@@ -128,6 +138,7 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def taxon(){
         def guid = regularise(params.id)
         if(guid == 'favicon') return; //not sure why this is happening....
@@ -149,6 +160,7 @@ class SearchController {
         }
     }
 
+    // Documented in openapi.yml
     def speciesLookupBulk() {
         final req = request.getJSON()
         if (!req) {
@@ -172,6 +184,7 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def download(){
         response.setHeader("Cache-Control", "must-revalidate");
         response.setHeader("Pragma", "must-revalidate");
@@ -185,27 +198,22 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def auto(){
-        log.debug("auto called with q = " + params.q)
-        log.debug("auto called with queryString = " + request.queryString)
         def fq = []
         def limit = params.limit
         def idxType = params.idxType
         def geoOnly = params.geoOnly
 
-        if (limit) {
-            fq << "&rows=${limit}"
-        }
-
         if (idxType) {
-            fq << "&fq=idxtype:${idxType.toUpperCase()}"
+            fq << "idxtype:${idxType.toUpperCase()}"
         }
 
         if (geoOnly) {
             // TODO needs WS lookup to biocache-service (?)
         }
 
-        def autoCompleteList = autoCompleteService.auto(params.q, fq)
+        def autoCompleteList = autoCompleteService.auto(params.q, fq, limit)
         def payload = [autoCompleteList:autoCompleteList]
         asJson payload
     }
@@ -215,6 +223,7 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def search(){
         try {
             def facets = []
@@ -232,18 +241,22 @@ class SearchController {
         }
     }
 
+    // Documented in openapi.yml
     def habitats(){
         asJson([searchResults: searchService.getHabitats()])
     }
 
+    // Documented in openapi.yml
     def habitatTree(){
         asJson([searchResults: searchService.getHabitatsTree()])
     }
 
+    // Documented in openapi.yml
     def getHabitat(){
         asJson([searchResults: searchService.getHabitatByGuid(params.guid)])
     }
 
+    // Documented in openapi.yml
     def getHabitatIDs(){
         asJson([searchResults: searchService.getHabitatsIDsByGuid(params.guid)])
     }
