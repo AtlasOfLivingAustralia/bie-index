@@ -794,7 +794,7 @@ class ImportService {
             int end = (start + batchSize < guids.size()) ? start + batchSize - 1 : guids.size()
             log "paging biocache search - ${start} to ${end}"
             def guidSubset = guids.subList(start,end)
-            def guidParamList = guidSubset.collect { String guid -> ClientUtils.escapeQueryChars(guid) } // URL encode guids
+            def guidParamList = guidSubset.collect { String guid -> URLEncoder.encode(ClientUtils.escapeQueryChars(guid), "UTF-8") } // URL encode guids
             def query = "taxon_concept_lsid:" + guidParamList.join("+OR+taxon_concept_lsid:")
             def filterQuery = grailsApplication.config.occurrenceCounts.filterQuery
 
@@ -1438,9 +1438,9 @@ class ImportService {
                     def name = doc.scientificName ?: doc.name
                     try {
                         if (name) {
-                            String encName = ClientUtils.escapeQueryChars(name)
+                            String encName = URLEncoder.encode(ClientUtils.escapeQueryChars(name), "UTF-8")
                             String nameSearchUrl = baseUrl + "/select?wt=json&q=name:" + encName + "+OR+scientificName:" + encName + "&fq=" + typeQuery + "&rows=0"
-                            def nameResponse = Encoder.encodeUrl(nameSearchUrl).toURL().getText("UTF-8")
+                            def nameResponse = nameSearchUrl.toURL().getText("UTF-8")
                             def nameJson = js.parseText(nameResponse)
                             int found = nameJson.response.numFound
                             if (found == 1) {
@@ -1497,8 +1497,8 @@ class ImportService {
         def lastImage = [imageId: "none", taxonID: "none", name: "none"]
         def addImageSearch = { query, field, value, boost ->
             if (field && value) {
-                value = ClientUtils.escapeQueryChars(value)
-                query = query ? query + " OR " : ""
+                value = URLEncoder.encode(ClientUtils.escapeQueryChars(value), "UTF-8")
+                query = query ? query + "+OR+" : ""
                 query = query + "${field}:${value}^${boost}"
             }
             query
@@ -1510,7 +1510,7 @@ class ImportService {
             while (prevCursor != cursor) {
                 def startTime = System.currentTimeMillis()
                 def solrServerUrl = baseUrl + "/select?wt=json&q=" + typeQuery + "&cursorMark=" + cursor + "&sort=id+asc&rows=" + pageSize
-                def queryResponse = Encoder.encodeUrl(solrServerUrl).toURL().getText("UTF-8")
+                def queryResponse = solrServerUrl.toURL().getText("UTF-8")
                 def json = js.parseText(queryResponse)
                 int total = json.response.numFound
                 def docs = json.response.docs
