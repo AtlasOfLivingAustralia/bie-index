@@ -170,12 +170,12 @@ class SearchService {
             query << "sort=${params.sort} ${params.dir ?: 'asc'}" // sort dir example "&sort=name asc"
         }
 
-        grailsApplication.config.solr.fq.each { query << "&fq=${it}"}
+        grailsApplication.config.solr.fq.each { query << "fq=${it}"}
         if(fqs){
             if(isCollectionOrArray(fqs)){
-                fqs.each { query << "&fq=${it}" }
+                fqs.each { query << "fq=${it}" }
             } else {
-                query << "&fq=${fqs}"
+                query << "fq=${fqs}"
             }
         }
 
