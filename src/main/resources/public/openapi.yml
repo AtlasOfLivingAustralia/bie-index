@@ -256,6 +256,18 @@ paths:
       - lookup
       parameters:
       - $ref: '#/components/parameters/idParam'
+      - name: within
+        in: query
+        description: Get children within this rank range
+        schema:
+          type: number
+          default: 2000
+      - name: unranked
+        in: query
+        description: Include unranked children
+        schema:
+          type: boolean
+          default: true
       responses:
         404:
           description: The identifier was not found

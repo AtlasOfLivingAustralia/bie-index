@@ -190,17 +190,17 @@ additionalResultFields: ""
 solr:
     live:
       type: HTTP
-      connection: http://localhost:8080/solr/bie
+      connection: http://localhost:8983/solr/bie
       queueSize: 10
       threadCount: 4
     updatingLive:
       type: UPDATE
-      connection: http://localhost:8080/solr/bie
+      connection: http://localhost:8983/solr/bie
       queueSize: 10
       threadCount: 4
     offline:
       type: UPDATE
-      conenction: http://localhost:8080/solr/bie-offline
+      connection: http://localhost:8983/solr/bie-offline
       queueSize: 10
       threadCount: 4
     qf:
