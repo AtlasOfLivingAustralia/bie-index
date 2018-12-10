@@ -98,8 +98,8 @@ endpoints:
 #Required so that the gbif-ecat library does not bugger up initialisation from its internal application.properties
 app:
   dataDir: /tmp/gbif-ecat
-indexLiveBaseUrl: http://localhost:8080/solr/bie
-indexOfflineBaseUrl: http://localhost:8080/solr/bie-offline
+indexLiveBaseUrl: http://localhost:8983/solr/bie
+indexOfflineBaseUrl: http://localhost:8983/solr/bie-offline
 biocacheService:
   baseUrl: https://biocache.ala.org.au/ws
 biocache:

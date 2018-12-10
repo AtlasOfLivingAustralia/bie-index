@@ -172,6 +172,7 @@ class ImportService {
                 }
             } catch (Exception ex) {
                 def message = "Problem in step ${step}: ${ex.getMessage()}"
+                log.error(message, ex)
                 log(message)
                 log.error(message, ex)
             }

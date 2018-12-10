@@ -77,7 +77,7 @@ dependencies {
         exclude group: 'javax.servlet', module: 'servlet-api'
     }
     compile group: 'org.grails.plugins', name: 'ala-admin-plugin', version: '2.0'
-    compile "org.grails.plugins:grails-spring-websocket:2.3.0"
+    compile "org.grails.plugins:grails-spring-websocket:2.4.1"
     compile 'org.webjars:swagger-ui:3.18.2'
     //compile "org.grails.plugins:rxjava2:2.0.0"
 }
