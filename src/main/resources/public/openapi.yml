@@ -1,6 +1,6 @@
 openapi: "3.0.0"
 info:
-  title: "ALA BIE service"
+  title: "BIE service"
   description: "Web services for the Biological Information Explorer (BIE)"
   version: "1.0"
   termsOfServices: "http://www.ala.org.au/"
@@ -11,6 +11,11 @@ info:
   license:
     name: "ALA licence"
     url: "http://www.ala.org.au/"
+servers:
+  - url: /ws
+    description: Standard web services installation
+  - url: /
+    description: Development environment (local grails run)
 paths:
   /search{format}:
     get:
