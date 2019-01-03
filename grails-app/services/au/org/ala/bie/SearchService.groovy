@@ -2,16 +2,12 @@ package au.org.ala.bie
 
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
-import grails.converters.JSON
 import grails.web.servlet.mvc.GrailsParameterMap
-import groovy.json.JsonSlurper
 import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.response.FacetField
 import org.apache.solr.common.SolrDocument
-import org.apache.solr.common.SolrDocumentList
 import org.apache.solr.common.params.MapSolrParams
 import org.gbif.nameparser.PhraseNameParser
-import org.springframework.web.util.UriUtils
 
 import java.text.MessageFormat
 
@@ -101,7 +97,7 @@ class SearchService {
         params.remove("controller") // remove Grails stuff from query
         params.remove("action") // remove Grails stuff from query
         log.debug "params = ${params.toMapString()}"
-        def fqs = params.fq
+        def fqs = params.list('fq')
         def queryTitle = null
         def start = (params.start ?: 0) as Integer
         def rows = (params.rows ?: params.pageSize ?: 10) as Integer
@@ -129,7 +125,6 @@ class SearchService {
             q = "*:*"
             queryTitle = "all records"
         }
-
         def response = indexService.search(true, q, fqs, requestedFacets, start, rows, params.sort, params.dir)
 
         if (response.results.numFound as Integer == 0) {
@@ -287,9 +282,19 @@ class SearchService {
     }
 
 
-    def getChildConcepts(taxonID, queryString){
-        taxonID = Encoder.escapeSolr(taxonID)
-        def response = indexService.query(true, "parentGuid:\"${taxonID}\"", [ "idxtype:${IndexDocType.TAXON.name()}" ], 1000, 0, queryString)
+    def getChildConcepts(taxonID, queryString, within, unranked){
+        def baseTaxon = lookupTaxon(taxonID)
+        def baseRankID = baseTaxon?.rankID ?: -1
+        def baseFq = "idxtype:${IndexDocType.TAXON.name()}"
+        def fqs = [ baseFq ]
+        if (baseRankID > 0 && within) {
+            fqs << "rankID:[${unranked ? -1 : baseRankID + 1} TO ${baseRankID + within}]"
+        }
+        def q = "parentGuid:\"${ Encoder.escapeSolr(taxonID) }\""
+        def response = indexService.query(true, q, fqs, 1000, 0, queryString)
+        if (response.results.numFound == 0) {
+            response = indexService.query(true, q, [ baseFq ], 1000, 0, queryString)
+        }
         def children = []
         def taxa = response.results
         taxa.each { taxon ->
@@ -304,7 +309,20 @@ class SearchService {
                     rankID:taxon.rankID
             ]
         }
-        children.sort { it.name }
+        children.sort { c1, c2 ->
+            def r1 = c1.rankID
+            def r2 = c2.rankID
+            if (r1 != null && r2 != null) {
+                if (r1 <= 0 && r2 > 0)
+                    return 10000
+                if (r2 <= 0 && r1 > 0)
+                    return -10000
+                if (r2 != r1)
+                    return r1 - r2
+            }
+            return c1.name?.compareTo(c2.name) ?: 0
+        }
+        children
     }
 
     /**

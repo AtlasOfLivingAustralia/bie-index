@@ -1,7 +1,6 @@
 package au.org.ala.bie
 
 import grails.converters.JSON
-import au.org.ala.bie.util.Encoder
 
 /**
  * A set of JSON based search web services.
@@ -71,11 +70,14 @@ class SearchController {
      */
     // Documented in openapi.yml
     def childConcepts(){
-        if(!params.id){
+        def taxonID = params.id
+        if(!taxonID){
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        render (searchService.getChildConcepts(regularise(params.id), request.queryString) as JSON)
+        def within = params.within && params.within.isInteger() ? params.within as Integer : 2000
+        def unranked = params.unranked ? params.unranked.toBoolean() : true
+        render (searchService.getChildConcepts(regularise(taxonID), request.queryString, within, unranked) as JSON)
     }
 
     // Documented in openapi.yml

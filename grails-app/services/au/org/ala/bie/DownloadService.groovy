@@ -18,6 +18,7 @@ import au.org.ala.bie.util.Encoder
 class DownloadService {
 
     def grailsApplication
+    def indexService
     def messageSource
 
     /**
@@ -30,18 +31,17 @@ class DownloadService {
      */
     def download(params, OutputStream outputStream, Locale locale){
         def q = Encoder.escapeQuery(params.q ?: "*:*")
-        def fq = ""
+        def fq = params.list('fq')
         def fields = params.fields ?: grailsApplication.config.defaultDownloadFields ?: "guid,rank,scientificName,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
+        def fqs = ''
 
-        fields = Encoder.escapeQuery(fields)
-        if (params.fq) {
-            String fqs = params.list("fq").collect({ Encoder.escapeQuery(it) }).join("&fq=")
-            fq = "&fq=${fqs}"
+        if (fq) {
+            fqs = '&fq=' + fq.collect({ Encoder.escapeQuery(it) }).join("&fq=")
         }
-
-        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=csv&defType=edismax&fl=" +
-                fields + "&csv.header=false&rows=" + Integer.MAX_VALUE +
-                "&q=${q}${fq}"
+        // TODO Convert this into a SOLRJ API call
+        String queryUrl = grailsApplication.config.solr.live.connection + "/select?wt=csv&defType=edismax&fl=" +
+                Encoder.escapeQuery(fields) + "&csv.header=false&rows=" + Integer.MAX_VALUE +
+                "&q=${q}${fqs}"
 
         def connection = new URL(queryUrl).openConnection()
         def input = connection.getInputStream()

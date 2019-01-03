@@ -126,6 +126,7 @@ collectory:
   resources: /{0}
   # A list of uids for the national species list datasets
   nationalSpeciesDatsets:
+  #- dr2699 - dr2700 -dr2702 -dr2704 -dr2703 -dr3118
 layers:
   service: https://spatial.ala.org.au/ws
   layers: /layers
@@ -179,7 +180,6 @@ vernacularListsUrl: /default-vernacular-lists.json
 # Location of locality keywords (null for default)
 localityKeywordsUrl: /default-locality-keywords.json
 #nationalSpeciesDatasets: dr2699,dr2700,dr2702,dr2704,dr2703,dr3118
-nationalSpeciesDatasets: ""
 defaultDownloadFields: guid,rank,scientificName,scientificNameAuthorship,taxonomicStatus,establishmentMeans,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName,parentGuid,acceptedConceptName,acceptedConceptID
 additionalResultFields: ""
 #toggle for the population of occurrence counts
@@ -190,17 +190,17 @@ additionalResultFields: ""
 solr:
     live:
       type: HTTP
-      connection: http://localhost:8080/solr/bie
+      connection: http://localhost:8983/solr/bie
       queueSize: 10
       threadCount: 4
     updatingLive:
       type: UPDATE
-      connection: http://localhost:8080/solr/bie
+      connection: http://localhost:8983/solr/bie
       queueSize: 10
       threadCount: 4
     offline:
       type: UPDATE
-      conenction: http://localhost:8080/solr/bie-offline
+      connection: http://localhost:8983/solr/bie-offline
       queueSize: 10
       threadCount: 4
     qf:
