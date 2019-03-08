@@ -244,6 +244,22 @@ class ImportController {
 
     }
 
+    // Documented in openapi.yml
+    def buildWeights() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def job = execute("buildWeights", "admin.button.buildweights", { importService.buildWeights(online) })
+        asJson (job.status())
+
+    }
+
+    // Documented in openapi.yml
+    def buildSuggestIndex() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def job = execute("buildSuggestIndex", "admin.button.buildsuggestindex", { importService.buildSuggestIndex(online) })
+        asJson (job.status())
+
+    }
+
     /**
      * Reads preferred images list in list tool and updates imageId if values have changed
      * list DR is defined by config var ${images.config} - property {lists}

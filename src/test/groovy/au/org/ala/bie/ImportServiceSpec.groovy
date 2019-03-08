@@ -1,6 +1,8 @@
 package au.org.ala.bie
 
 import grails.test.mixin.TestFor
+import org.gbif.api.exception.UnparsableException
+import org.gbif.api.vocabulary.NameType
 import org.springframework.messaging.core.MessageSendingOperations
 import spock.lang.Ignore
 import spock.lang.Specification
@@ -14,12 +16,29 @@ class ImportServiceSpec extends Specification {
 
     def setup() {
         importService = new ImportService()
-        importService.grailsApplication = grailsApplication
         importService.brokerMessagingTemplate = Mock(MessageSendingOperations)
         importService.indexService = Mock(IndexService)
     }
 
     def cleanup() {
+    }
+
+    def "test parser 1"() {
+        when:
+        def parser = importService.nameParser
+        def pn = parser.parse("Acacia dealbata")
+        then:
+        pn.type == NameType.SCIENTIFIC
+    }
+
+
+    def "test parser 2"() {
+        when:
+        def parser = importService.nameParser
+        def pn = parser.parse("Acacia dealbata x sussia")
+        then:
+        def ex = thrown UnparsableException
+        ex.type == NameType.HYBRID
     }
 
     @Ignore("This can be used for debugging to trace the load images service")
@@ -39,6 +58,7 @@ class ImportServiceSpec extends Specification {
         grailsApplication.config.imageSources =  [
                 [ drUid: "dr130", boost: 10 ]
         ]
+        importService.setConfiguration(grailsApplication.config)
 
         def images = importService.loadImages(false)
         then:

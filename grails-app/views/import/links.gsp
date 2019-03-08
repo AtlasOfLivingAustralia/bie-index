@@ -46,7 +46,13 @@
         <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary import-button"><g:message code="admin.button.loadimagespref"/></button>
     </div>
     <div>
-        <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary import-button"><g:message code="admin.button.removeorphans"/>s</button>
+        <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary import-button"><g:message code="admin.button.removeorphans"/></button>
+    </div>
+    <div>
+        <button id="build-weights" onclick="javascript:buildWeights()" class="btn btn-primary import-button"><g:message code="admin.button.buildweights"/></button>
+    </div>
+    <div>
+        <button id="build-suggest-index" onclick="javascript:buildSuggestIndex()" class="btn btn-primary import-button"><g:message code="admin.button.buildsuggestindex"/></button>
     </div>
     <div>
         <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
@@ -55,6 +61,12 @@
     <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
 
     <asset:script type="text/javascript">
+        function buildSuggestIndex(){
+            loadInfo("${createLink(controller:'import', action:'buildSuggestIndex')}?online=" + $('#use-online').is(':checked'));
+        }
+        function buildWeights(){
+            loadInfo("${createLink(controller:'import', action:'buildWeights')}?online=" + $('#use-online').is(':checked'));
+        }
         function denormaliseTaxa(){
             loadInfo("${createLink(controller:'import', action:'denormaliseTaxa')}?online=" + $('#use-online').is(':checked'));
         }

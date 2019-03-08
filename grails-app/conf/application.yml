@@ -203,40 +203,44 @@ solr:
       connection: http://localhost:8983/solr/bie-offline
       queueSize: 10
       threadCount: 4
-    qf:
-      - scientificName^1000
-      - commonName^500
-      - exact_text^200
-      - doc_name^100
-      - text
-    bq:
-      - taxonomicStatus:accepted^2000
-      - rankID:7000^500
-      - rankID:6000^100
-      - scientificName:(* -\"* x *\")^500
-      - taxonomicStatus:(* -misapplied -excluded -miscellaneousLiterature -inferredSynonym -inferredAccepted)^1000
-      - idxtype:TAXON^2000
-    fq:
-      - NOT idxtype:IDENTIFIER
-      - NOT idxtype:TAXONVARIANT
-    defType: edismax
-    qAlt: text:*
-    hl:
-      hl: true
-      fl: "*"
-      simple:
-        pre: <b>
-        post: </b>
+    search:
+      qf:
+        - scientificName^1000
+        - commonName^500
+        - exact_text^200
+        - doc_name^100
+        - text
+      bq:
+      fq:
+        - NOT idxtype:IDENTIFIER
+        - NOT idxtype:TAXONVARIANT
+      defType: edismax
+      qAlt: text:*
+      hl:
+        hl: true
+        fl: "*"
+        simple:
+          pre: <b>
+          post: </b>
+      boost: searchWeight
+    suggest:
+
 skin:
   layout: main
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
 import:
-  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,link-identifiers,images,occurrences
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,weights,link-identifiers,images,occurrences,suggest-index
   taxonomy:
     dir: /data/bie/import
   priority:
     norm: 4000
     min: 0.25
     max: 5.0
+  weightConfigUrl: /default-weights.json
+  vernacularName:
+    statusUrl: /default-vernacular-name-status.json
+    common: common
+    legislated: legislated
+    preferred: preferred
 

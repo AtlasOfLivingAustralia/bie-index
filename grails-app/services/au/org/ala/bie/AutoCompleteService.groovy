@@ -21,14 +21,15 @@ class AutoCompleteService {
 
     def serviceMethod() {}
 
-    List auto(String q, List fq, Integer rows){
+    List auto(String q, String idxtype, String kingdom, Integer rows){
         Boolean useLegacyAuto = grailsApplication.config.autocomplete.legacy as Boolean
         List results
 
         if (useLegacyAuto) {
-            results = autoLegacy(q, fq, rows)
+            def fq = idxtype ? ["idxtype:${idxtype}"] : [p]
+            results = autoLegacy(q, idxtype, rows)
         } else {
-            results = autoSuggest(q, fq, rows)
+            results = autoSuggest(q, idxtype, kingdom, rows)
         }
 
         results
@@ -39,23 +40,48 @@ class AutoCompleteService {
      * in SOLR in the files solrconfig.xml and schema.xml.
      *
      * @param q The query
-     * @param fq Filter query
+     * @param idxtype A restriction on the type of result
      * @param rows The number of rows to retrieve
      *
      * @return
      */
-    List autoSuggest(String q, List fq, Integer rows){
+    List autoSuggest(String q, String idxtype, String kingdom, Integer rows){
         log.debug("auto called with q = " + q)
 
-        if (!q || q.trim() == "*")
-            q = "*:*"
-
-        def response = indexService.suggest(true, q, fq, rows)
-        GroupCommand names = response?.groupResponse?.values?.find { it.name == 'scientificName_s' }
-        def autoCompleteList = names?.values?.collect { Group group ->
-            createAutoCompleteFromIndex(group.result.get(0), q)
+        if (!q)
+            q = "*"
+        if (!rows)
+            rows = 10
+        def response = indexService.suggest(true, q, idxtype, rows * 2)
+        List<Suggestion> suggestions = response.suggesterResponse.suggestions.inject([], { List s, String k, List<Suggestion> v ->
+            s.addAll(v)
+            s
+        })
+        suggestions.sort({ o1, o2 -> o2.weight - o1.weight })
+        Set<String> seen = new HashSet<>(suggestions.size())
+        List<AutoCompleteDTO> autoList = []
+        def si = suggestions.iterator()
+        while (autoList.size() < rows && si.hasNext()) {
+            def suggest = si.next()
+            def doc = indexService.getTaxonByGuid(suggest.payload, true)
+            if (!doc)
+                continue
+            if (idxtype && !idxtype.equalsIgnoreCase(doc.idxtype))
+                continue
+            if (kingdom && !kingdom.equalsIgnoreCase(doc.rk_kingdom))
+                continue
+            def dto = createAutoCompleteFromIndex(doc, q)
+            dto.matchedNames.each { name ->
+                if (!seen.contains(name)) {
+                    seen.add(name)
+                    AutoCompleteDTO dtoc = dto.clone()
+                    dtoc.matchedNames.remove(name)
+                    dtoc.matchedNames.add(0, name)
+                    autoList << dtoc
+                }
+            }
         }
-        return autoCompleteList ? autoCompleteList : []
+        return autoList
     }
 
     /**

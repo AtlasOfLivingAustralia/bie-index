@@ -15,39 +15,35 @@ package au.org.ala.bie
 
 import au.com.bytecode.opencsv.CSVReader
 import au.org.ala.bie.indexing.RankedName
+import au.org.ala.bie.indexing.WeightBuilder
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
 import au.org.ala.bie.util.TitleCapitaliser
+import au.org.ala.names.model.ALAParsedName
 import au.org.ala.names.model.RankType
 import au.org.ala.names.model.TaxonomicType
 import au.org.ala.vocab.ALATerm
 import grails.async.PromiseList
-import grails.converters.JSON
+import grails.config.Config
+import grails.core.support.GrailsConfigurationAware
 import groovy.json.JsonParserType
 import groovy.json.JsonSlurper
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.StringEscapeUtils
 import org.apache.commons.lang.StringUtils
 import org.apache.solr.client.solrj.SolrQuery
-import org.apache.solr.client.solrj.util.ClientUtils
 import org.apache.solr.common.params.CursorMarkParams
 import org.apache.solr.common.params.MapSolrParams
-import org.gbif.api.vocabulary.TaxonomicStatus
+import org.gbif.api.exception.UnparsableException
 import org.gbif.dwc.terms.*
 import org.gbif.dwca.io.Archive
 import org.gbif.dwca.io.ArchiveFactory
 import org.gbif.dwca.io.ArchiveFile
 import org.gbif.dwca.record.Record
 import org.gbif.dwca.record.StarRecord
-import org.grails.web.json.JSONElement
-import org.grails.web.json.JSONObject
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
+import org.gbif.nameparser.PhraseNameParser
 import org.jsoup.select.Elements
-import org.springframework.web.util.UriUtils
 
-import java.text.MessageFormat
 import java.text.SimpleDateFormat
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ExecutorService
@@ -57,7 +53,7 @@ import java.util.zip.GZIPInputStream
 /**
  * Services for data importing.
  */
-class ImportService {
+class ImportService implements GrailsConfigurationAware {
     static IN_SCHEMA = [
             DwcTerm.taxonID, DwcTerm.nomenclaturalCode, DwcTerm.establishmentMeans, DwcTerm.taxonomicStatus,
             DwcTerm.taxonConceptID, DwcTerm.scientificNameID, DwcTerm.nomenclaturalStatus, DwcTerm.nameAccordingTo, DwcTerm.nameAccordingToID,
@@ -67,7 +63,8 @@ class ImportService {
             ALATerm.status, ALATerm.nameID, ALATerm.nameFormatted, ALATerm.nameComplete, ALATerm.priority,
             ALATerm.verbatimNomenclaturalCode, ALATerm.verbatimNomenclaturalStatus, ALATerm.verbatimTaxonomicStatus,
             DwcTerm.datasetName, DcTerm.provenance,
-            GbifTerm.isPlural, GbifTerm.isPreferredName, GbifTerm.organismPart, ALATerm.labels
+            GbifTerm.isPlural, GbifTerm.isPreferredName, GbifTerm.organismPart, ALATerm.labels,
+            GbifTerm.nameType
     ]
     // Terms that have been algorithmically added so needn't be added as extras
     static TAXON_ALREADY_INDEXED = [
@@ -82,7 +79,8 @@ class ImportService {
             ALATerm.nameComplete,
             ALATerm.nameFormatted,
             DwcTerm.taxonRemarks,
-            DcTerm.provenance
+            DcTerm.provenance,
+            GbifTerm.nameType
     ] as Set
     // Count report interval
     static REPORT_INTERVAL = 100000
@@ -99,7 +97,6 @@ class ImportService {
     def indexService, searchService, biocacheService
     def listService, layerService, collectoryService, wordpressService
 
-    def grailsApplication
     def speciesGroupService
     def conservationListsSource
     def jobService
@@ -110,10 +107,68 @@ class ImportService {
     def static IMAGE_FIELDS = "taxon_concept_lsid, kingdom, phylum, class, order, family, genus, species, taxon_name, image_url, data_resource_uid"
     def isKeepIndexing = true // so we can cancel indexing thread (single thread only so field is OK)
 
+    def nameParser = new PhraseNameParser()
+
+    // Configuration fields
+    File importDir
+    String[] importSequence
+    String gazetteerId
+    List<String> localityKeywords
+    String wordPressSitemap
+    String wordPressBaseUrl
+    String wordPressPageFormat
+    List wordPressExcludedCategories
+    String vernacularListsUrl
+    Set<String> nationalSpeciesDatasets
+    List<String> occurrenceCountFilter
+    String commonNameDefaultLanguage
+    String imageConfiguration
+    Set<String> autocompleteLanguages
+    double weightMin
+    double weightMax
+    double weightNorm
+    WeightBuilder weightBuilder
+    Map vernacularNameStatus
+    Object commonStatus
+    Object legislatedStatus
+    Object preferredStatus
+
+
     static {
         TermFactory tf = TermFactory.instance()
         for (Term term: ALATerm.values())
             tf.addTerm(term.qualifiedName(), term)
+    }
+
+    /**
+     * Set configuration parameters from the grails config
+     *
+     * @param config The configuration
+     */
+    @Override
+    void setConfiguration(Config config) {
+        importDir = new File(config.import.taxonomy.dir)
+        importSequence = config.import.sequence?.split(',')
+        gazetteerId = config.layers.gazetteerId
+        localityKeywords = getConfigFile(config.localityKeywordsUrl)
+        wordPressSitemap = config.wordPress.sitemap
+        wordPressBaseUrl = config.wordPress.base
+        wordPressPageFormat = config.wordPress.page
+        wordPressExcludedCategories = config.wordPress.excludedCategories
+        vernacularListsUrl = config.vernacularListsUrl
+        nationalSpeciesDatasets = config.collectory.nationalSpeciesDatasets as Set
+        occurrenceCountFilter = config.biocache.occurrenceCount.filterQuery as List
+        commonNameDefaultLanguage = config.commonNameDefaultLanguage
+        imageConfiguration =  config.images.config
+        autocompleteLanguages =  config.autocomplete.languages ? config.autocomplete.languages.split(',') as Set : null
+        weightMin = config.getProperty("import.priority.min", Double, 0.25)
+        weightMax = config.getProperty("import.priority.max", Double, 5.0)
+        weightNorm = config.getProperty("import.priority.norm", Double, 4000.0)
+        weightBuilder = new WeightBuilder(getConfigFile(config.import.weightConfigUrl))
+        vernacularNameStatus = getConfigFile(config.import.vernacularName.statusUrl).collectEntries {e -> [(e.status): e]}
+        commonStatus = vernacularNameStatus.get(config.import.vernacularName.common)
+        legislatedStatus = vernacularNameStatus.get(config.import.vernacularName.legislated)
+        preferredStatus = vernacularNameStatus.get(config.import.vernacularName.preferred)
     }
 
     /**
@@ -122,7 +177,6 @@ class ImportService {
     def retrieveAvailableDwCAPaths() {
 
         def filePaths = []
-        def importDir = new File(grailsApplication.config.getProperty('import.taxonomy.dir'))
         if (importDir.exists()) {
             File[] expandedDwc = importDir.listFiles()
             expandedDwc.each {
@@ -136,8 +190,7 @@ class ImportService {
 
     def importAll() {
         log "Starting import of all data"
-        String[] sequence = grailsApplication.config.getProperty('import.sequence').split(',')
-        for (String step: sequence) {
+        for (String step: importSequence) {
             if (!jobService.current || jobService.current.cancelled) {
                 log "Cancelled"
                 return
@@ -174,11 +227,17 @@ class ImportService {
                     case 'regions':
                         importRegions()
                         break
+                    case 'suggest-index':
+                        buildSuggestIndex(false)
+                        break
                     case 'taxonomy-all':
                         importAllDwcA()
                         break
                     case 'vernacular':
                         importVernacularSpeciesLists()
+                        break
+                    case 'weights':
+                        buildWeights(false)
                         break
                     case 'wordpress':
                         importWordPressPages()
@@ -235,11 +294,10 @@ class ImportService {
     def importLocalities() {
         log "Starting localities import"
         indexService.deleteFromIndex(IndexDocType.LOCALITY)
-        def uid = grailsApplication.config.layers.gazetteerId
-        if(uid) {
-            log("Starting indexing ${uid}")
-            log("Getting metadata for layer: ${uid}")
-            def layer = layerService.get(uid)
+        if(gazetteerId) {
+            log("Starting indexing ${gazetteerId}")
+            log("Getting metadata for layer: ${gazetteerId}")
+            def layer = layerService.get(gazetteerId)
             log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
             importLayer(layer)
             log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
@@ -271,11 +329,6 @@ class ImportService {
      */
     private def importLayer(layer) {
         log("Loading regions from layer " + layer.name)
-        def keywords = []
-
-        if (grailsApplication.config.localityKeywordsUrl) {
-            keywords = this.getConfigFile(grailsApplication.config.localityKeywordsUrl)
-        }
 
         def file = layerService.getRegions(layer.id)
 
@@ -318,7 +371,7 @@ class ImportService {
 
                     doc["distribution"] = "N/A"
 
-                    keywords.each {
+                    localityKeywords.each {
                         if(doc["description"].contains(it)){
                             doc["distribution"] = it
                         }
@@ -434,14 +487,10 @@ class ImportService {
         log "Starting wordpress import"
         // clear the existing WP index
         indexService.deleteFromIndex(IndexDocType.WORDPRESS)
-        if (!grailsApplication.config.wordPress.sitemap) {
+        if (wordPressSitemap) {
             return
         }
 
-        // WordPress variables
-        String wordPressBaseUrl = grailsApplication.config.wordPress.base
-        String pageFormat = grailsApplication.config.wordPress.page
-        List excludedCategories = grailsApplication.config.wordPress.excludedCategories
         // get List of WordPress document URLs (each page's URL)
         def pages = wordpressService.pages()
         def documentCount = 0
@@ -460,7 +509,7 @@ class ImportService {
                 String shortlink = document.select("head > link[rel=shortlink]").attr("href");
                 String bodyText = document.body().text();
                 Elements postCategories = document.select("ul[class=post-categories]");
-                boolean excludePost = document.categories.any { excludedCategories.contains(it) }
+                boolean excludePost = document.categories.any { wordPressExcludedCategories.contains(it) }
                 if (excludePost) {
                     log("Excluding post (id: ${doucment.id} with categories: ${document.categories}")
                     return
@@ -475,7 +524,7 @@ class ImportService {
                 if (StringUtils.isNotBlank(document.shortlink)) {
                     doc["guid"] = document.shortlink
                 } else if (StringUtils.isNotEmpty(document.id)) {
-                    doc["guid"] = Encoder.buildServiceUrl(wordPressBaseUrl, pageFormat, document.id).toExternalForm()
+                    doc["guid"] = Encoder.buildServiceUrl(wordPressBaseUrl, wordPressPageFormat, document.id).toExternalForm()
                 } else {
                     // fallback
                     doc["guid"] = pageUrl
@@ -542,7 +591,7 @@ class ImportService {
     }
 
     def importVernacularSpeciesLists() throws Exception {
-        def config = this.getConfigFile(grailsApplication.config.vernacularListsUrl)
+        def config = this.getConfigFile(vernacularListsUrl)
         def lists = config.lists
         Integer listNum = 0
 
@@ -582,7 +631,6 @@ class ImportService {
      * Pagination via cursor: https://cwiki.apache.org/confluence/display/solr/Pagination+of+Results
      **/
     def importOccurrenceData() throws Exception {
-        Set<String> nationalSpeciesDatasets = grailsApplication.config.collectory.nationalSpeciesDatasets as Set
         def pageSize = BATCH_SIZE
         def paramsMap = [
                 q: "idxtype:${ IndexDocType.TAXON.name() } AND (${ACCEPTED_STATUS})",
@@ -747,7 +795,7 @@ class ImportService {
                 int end = (start + batchSize < guids.size()) ? start + batchSize - 1 : guids.size()
                 log.debug "paging biocache search - ${start} to ${end}"
                 def guidSubset = guids.subList(start, end)
-                def counts = biocacheService.counts(guidSubset, grailsApplication.config.biocache.occurrenceCount.filterQuery as List)
+                def counts = biocacheService.counts(guidSubset, occurrenceCountFilter)
                 counts?.each { guid, count ->
                     def docWithRecs = docs.find { it.guid == guid }
                     if (docWithRecs) {
@@ -779,8 +827,6 @@ class ImportService {
         if (list.size() > 0) {
             def totalDocs = list.size()
             def buffer = []
-            def statusMap = vernacularNameStatus()
-            def legistatedStatusType = statusMap.get("legislated")
             def unmatchedTaxaCount = 0
 
             updateProgressBar2(100, 0)
@@ -811,7 +857,7 @@ class ImportService {
                     buffer << doc
                 } else {
                     // No match so add it as a vernacular name
-                    def capitaliser = TitleCapitaliser.create(grailsApplication.config.commonNameDefaultLanguage)
+                    def capitaliser = TitleCapitaliser.create(commonNameDefaultLanguage)
                     def doc = [:]
                     doc["id"] = UUID.randomUUID().toString() // doc key
                     doc["idxtype"] = IndexDocType.TAXON.name() // required field
@@ -819,8 +865,8 @@ class ImportService {
                     doc["datasetID"] = drUid
                     doc["datasetName"] = "Conservation list for ${solrFieldName}"
                     doc["name"] = capitaliser.capitalise(item.name)
-                    doc["status"] = legistatedStatusType?.status ?: "legislated"
-                    doc["priority"] = legistatedStatusType?.priority ?: 500
+                    doc["status"] = legistatedStatus?.status ?: "legislated"
+                    doc["priority"] = legistated?.priority ?: 500
                     // set conservationStatus facet
                     def fieldValue = item[jsonFieldName]
                     doc[solrFieldName] = fieldValue
@@ -849,8 +895,6 @@ class ImportService {
         if (list.size() > 0) {
             def totalDocs = list.size()
             def buffer = []
-            def statusMap = vernacularNameStatus()
-            def commonStatus = statusMap.get("common")
             def unmatchedTaxaCount = 0
 
             updateProgressBar2(100, 0)
@@ -860,7 +904,7 @@ class ImportService {
                 def vernacularName = item[vernacularNameField]
                 def nameId = item[nameIdField]
                 def kingdom = kingdomField ? item[kingdomField] : null
-                def status = statusMap[item[statusField]]
+                def status = vernacularNameStatus[item[statusField]]
                 def language = item[languageField] ?: resourceLanguage
                 def source = item[sourceField]
 
@@ -893,11 +937,12 @@ class ImportService {
             log.warn("Can't find matching taxon document for ${taxonID} for ${vernacularName}, skipping")
             return false
         }
-        def capitaliser = TitleCapitaliser.create(language ?: grailsApplication.config.commonNameDefaultLanguage)
+        def capitaliser = TitleCapitaliser.create(language ?: commonNameDefaultLanguage)
         vernacularName = capitaliser.capitalise(vernacularName)
         def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
         def provenanceList = provenance?.split("\\|").collect({ it.trim()})
         def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
+        def priority = status?.priority ?: defaultStatus.priority
         if (vernacularDoc) {
             // do a SOLR doc (atomic) update
             def doc = [:]
@@ -912,7 +957,7 @@ class ImportService {
                 doc["nameID"] = ["set": nameId]
             if (status) {
                 doc["status"] = ["set": status.status]
-                doc["priority"] = ["set": status.priority]
+                doc["priority"] = ["set": priority]
             }
             if (source)
                 doc["source"] = ["set": source]
@@ -933,7 +978,7 @@ class ImportService {
             doc["datasetID"] = datasetID
             doc["name"] = vernacularName
             doc["status"] = status?.status ?: defaultStatus.status
-            doc["priority"] = status?.priority ?: defaultStatus.priority
+            doc["priority"] = priority
             doc["nameID"] = nameId
             doc["language"] = language
             if (source)
@@ -1063,7 +1108,7 @@ class ImportService {
             def acceptedNameUsageID = core.value(DwcTerm.acceptedNameUsageID)
             def synonym = taxonID != acceptedNameUsageID && acceptedNameUsageID != "" && acceptedNameUsageID != null
             def parentNameUsageID = core.value(DwcTerm.parentNameUsageID)
-            def defaultTaxonomicStatus = synonym ? "inferredSynonym" : "inferredAaccepted"
+            def defaultTaxonomicStatus = synonym ? "inferredSynonym" : "inferredAccepted"
 
             def doc = ["idxtype": IndexDocType.TAXON.name()]
             doc["id"] = UUID.randomUUID().toString()
@@ -1107,18 +1152,14 @@ class ImportService {
         if (archiveFile.rowType != GbifTerm.VernacularName)
             throw new IllegalArgumentException("Vernacular import only works for files of type " + GbifTerm.VernacularName + " got " + archiveFile.rowType)
         log("Importing vernacular names")
-        def statusMap = vernacularNameStatus()
-        def defaultStatus = statusMap.get("common")
-        def preferredStatus = statusMap.get('preferred')
-        String defaultLanguage = grailsApplication.config.commonNameDefaultLanguage
         def buffer = []
         def count = 0
         for (Record record: archiveFile) {
             String taxonID = record.id()
             String vernacularName = record.value(DwcTerm.vernacularName)
             String nameID = record.value(ALATerm.nameID)
-            Object status = statusMap.get(record.value(ALATerm.status))
-            String language = record.value(DcTerm.language) ?: defaultLanguage
+            Object status = vernacularNameStatus.get(record.value(ALATerm.status))
+            String language = record.value(DcTerm.language) ?: commonNameDefaultLanguage
             String source = record.value(DcTerm.source)
             String datasetID = record.value(DwcTerm.datasetID)
             String temporal = record.value(DcTerm.temporal)
@@ -1137,7 +1178,8 @@ class ImportService {
             String provenance = record.value(DcTerm.provenance)
             def provenanceList = provenance?.split("\\|").collect({ it.trim() })
             String labels = record.value(ALATerm.labels)
-            def capitaliser = TitleCapitaliser.create(language ?: defaultLanguage)
+            def priority = status?.priority ?: commonStatus.priority
+            def capitaliser = TitleCapitaliser.create(language ?: commonNameDefaultLanguage)
             vernacularName = capitaliser.capitalise(vernacularName)
             def doc = [:]
             doc["id"] = UUID.randomUUID().toString() // doc key
@@ -1146,10 +1188,10 @@ class ImportService {
             doc["taxonGuid"] = taxonID
             doc["datasetID"] = datasetID
             doc["name"] = vernacularName
-            doc["status"] = status?.status ?: defaultStatus.status
-            doc["priority"] = status?.priority ?: defaultStatus.priority
+            doc["status"] = status?.status ?: commonStatus.status
+            doc["priority"] = priority
             doc["nameID"] = nameID
-            doc["language"] = language ?: defaultLanguage
+            doc["language"] = language ?: commonNameDefaultLanguage
             doc["source"] = source
             doc["temporal"] = temporal
             doc["locationID"] = locationID
@@ -1281,10 +1323,12 @@ class ImportService {
         def nameFormatted = record.value(ALATerm.nameFormatted)
         def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
         def taxonomicStatus = record.value(DwcTerm.taxonomicStatus) ?: defaultTaxonomicStatus
+        def nameType = record.value(GbifTerm.nameType)
         String taxonRemarks = record.value(DwcTerm.taxonRemarks)
         String provenance = record.value(DcTerm.provenance)
         def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
         def provenanceList = provenance?.split("\\|").collect({ it.trim() })
+
 
         doc["datasetID"] = datasetID
         doc["parentGuid"] = parentNameUsageID
@@ -1298,8 +1342,24 @@ class ImportService {
         doc["nameComplete"] = buildNameComplete(nameComplete, scientificName, scientificNameAuthorship)
         doc["nameFormatted"] = buildNameFormatted(nameFormatted, nameComplete, scientificName, scientificNameAuthorship, taxonRank, taxonRanks)
         doc["taxonomicStatus"] = taxonomicStatus
-        doc["taxonRemarks"] = taxonRemarks
+        doc["taxonRemarks"] = remarksList
         doc["provenance"] = provenanceList
+
+        // See if we can get a name type
+        if (!nameType) {
+            try {
+                def parseRank = taxonRankID > 0 ? RankType.getForId(taxonRankID)?.cbRank : null
+                def pn = nameParser.parse(scientificName, parseRank)
+                nameType = pn?.type?.name()?.toLowerCase()
+                if (pn in ALAParsedName && pn.phraseVoucher)
+                    nameType = 'phraseName'
+            } catch (UnparsableException ex) {
+                nameType = ex.type?.name()?.toLowerCase() ?: 'unknown'
+            } catch (Exception ex) {
+                nameType = 'unknown'
+            }
+        }
+        doc["nameType"] = nameType
 
         //index additional fields that are supplied in the record
         record.terms().each { term ->
@@ -1423,7 +1483,7 @@ class ImportService {
         def typeQuery = "idxtype:\"${IndexDocType.TAXON.name()}\" AND (${ACCEPTED_STATUS})"
         def prevCursor = ""
         def cursor = CursorMarkParams.CURSOR_MARK_START
-        def listConfig = this.getConfigFile(grailsApplication.config.images.config)
+        def listConfig = this.getConfigFile(imageConfiguration)
         def imageMap = collectImageLists(listConfig.lists)
         def rankMap = listConfig.ranks.collectEntries { r -> [(r.rank): r] }
         def biocacheFilters = listConfig.filters
@@ -1498,8 +1558,8 @@ class ImportService {
                 }
                 if (!buffer.isEmpty())
                     indexService.indexBatch(buffer, online)
-                def percentage = Math.round(processed * 100 / total)
-                def speed = Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime))
+                def percentage = total ? Math.round(processed * 100 / total) : 100
+                def speed = total ? Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime)) : 0
                 log("Processed ${processed} names (${percentage}%), added ${added} images, ${speed} taxa per second. Last image ${lastImage.imageId} for ${lastImage.name}, ${lastImage.taxonID}")
                 prevCursor = cursor
                 cursor = response.nextCursorMark
@@ -1615,7 +1675,7 @@ class ImportService {
     def loadPreferredImages(online) {
         def updatedTaxa = []
         Integer batchSize = 20
-        Map listConfig = this.getConfigFile(grailsApplication.config.images.config) // config defined JSON file
+        Map listConfig = this.getConfigFile(imageConfiguration) // config defined JSON file
         Map imagesMap = collectImageLists(listConfig.lists) // reads preferred images list via WS
         List guidList = []
 
@@ -1699,7 +1759,6 @@ class ImportService {
         def cursor = CursorMarkParams.CURSOR_MARK_START
         def startTime, endTime
         def capitalisers = [:]
-        Set autoLanguages = grailsApplication.config.autocomplete.languages ? grailsApplication.config.autocomplete.languages.split(',') as Set : null
 
         log("Starting dernomalisation")
         js.setType(JsonParserType.INDEX_OVERLAY)
@@ -1762,7 +1821,7 @@ class ImportService {
                 log "1. Paging over ${total} docs - page ${pages}"
 
                 response.results.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages, capitalisers)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autocompleteLanguages, capitalisers)
                     processed++
                 }
                 if (!buffer.isEmpty())
@@ -1795,7 +1854,7 @@ class ImportService {
                 log "2. Paging over ${total} docs - page ${pages}"
 
                 response.results.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autoLanguages, capitalisers)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autocompleteLanguages, capitalisers)
                     processed++
                 }
                 if (!buffer.isEmpty())
@@ -1899,36 +1958,11 @@ class ImportService {
             update["speciesGroup"] = [set: speciesGroups]
             update["speciesSubgroup"] = [set: speciesSubGroups]
         }
-        def commonNames = searchService.lookupVernacular(guid, !online)
-        if (commonNames && !commonNames.isEmpty()) {
-            commonNames = commonNames.sort { n1, n2 ->
-                n2.priority - n1.priority
-            }
-
-            //only index valid languages
-            if (autoLanguages)
-                commonNames = commonNames.findAll { autoLanguages.contains(it.language) }
-
-            def names = new LinkedHashSet(commonNames.collect { it.name })
-            if(commonNames) {
-                update["commonName"] = [set: names]
-                update["commonNameExact"] = [set: names]
-                update["commonNameSingle"] = [set: names.first() ]
-            }
-        }
-        def identifiers = searchService.lookupIdentifier(guid, !online)
-        if (identifiers) {
-            update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
-        }
+        double priority = weightNorm;
         def variants = searchService.lookupVariant(guid, !online)
         if (variants) {
-            float min = grailsApplication.config.getProperty("import.priority.min", Float, 0.25)
-            float max = grailsApplication.config.getProperty("import.priority.max", Float, 5.0)
-            float norm = grailsApplication.config.getProperty("import.priority.norm", Float, 4000.0)
-            float boost = variants.collect({
-                def priority = it.priority ?: norm
-                Math.min(max, Math.max(min, priority / norm))
-            }).max()
+            priority = variants.collect({ (double) it.priority ?: weightNorm }).max()
+            double boost = Math.min(weightMax, Math.max(weightMin, priority))
             def names = (variants.collect { it.scientificName }) as Set
             names.addAll(variants.collect { it.nameComplete })
             names.remove(null)
@@ -1940,7 +1974,26 @@ class ImportService {
             if (nameComplete)
                 update["nameComplete"] = [boost: boost, set: nameComplete]
         }
+        update['priority'] = [set: (int) Math.round(priority)]
+        def commonNames = searchService.lookupVernacular(guid, !online)
+        if (commonNames && !commonNames.isEmpty()) {
+            commonNames = commonNames.sort { n1, n2 ->
+                n2.priority - n1.priority
+            }
 
+            //only index valid languages
+            if (autocompleteLanguages)
+                commonNames = commonNames.findAll { autocompleteLanguages.contains(it.language) }
+
+            def names = new LinkedHashSet(commonNames.collect { it.name })
+            update["commonName"] = [set: names]
+            update["commonNameExact"] = [set: names]
+            update["commonNameSingle"] = [set: names.first() ]
+        }
+        def identifiers = searchService.lookupIdentifier(guid, !online)
+        if (identifiers) {
+            update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
+        }
         def prevCursor = ""
         def cursor = CursorMarkParams.CURSOR_MARK_START
         while (cursor != prevCursor) {
@@ -1966,6 +2019,88 @@ class ImportService {
     }
 
     /**
+     * Build (or rebuild) the weights assigned to various entities.
+     *
+     * @param online Use the online index
+     */
+    def buildWeights(boolean online) {
+        int pageSize = BATCH_SIZE
+        int bufferLimit = BUFFER_SIZE
+        int pages = 0
+        int processed = 0
+        def js = new JsonSlurper()
+        def prevCursor = ""
+        def cursor = CursorMarkParams.CURSOR_MARK_START
+        def startTime, endTime
+
+        log("Building search weights")
+        try {
+            startTime = System.currentTimeMillis()
+            def response = indexService.query(online, "idxtype:*", [], 1)
+            int total = response.results.numFound
+            while (total > 0 && prevCursor != cursor) {
+                response = indexService.query(online, "idxtype:*", [], pageSize, null, null, "id", "asc", cursor)
+                def buffer = []
+
+                response.results.each { doc ->
+                    def update = [:]
+                    def weight = 1.0
+                    update["id"] = doc.id // doc key
+                    update["idxtype"] = [set: doc.idxtype] // required field
+                    update["guid"] = [set: doc.guid] // required field
+                    switch (IndexDocType.valueOf(doc.idxtype)) {
+                        case IndexDocType.TAXON:
+                            if (doc.priority)
+                                weight = Math.max(weightMin, Math.min(weightMax, ((double) doc.priority) / weightNorm))
+                            break;
+                        case IndexDocType.COMMON:
+                            if (doc.priority)
+                                weight = ((double) doc.priority) / commonStatus.priority;
+                            break;
+                        default:
+                            weight = 1.0;
+                    }
+                    def weights = weightBuilder.apply(weight, doc)
+                    weights.each { k, v -> update[k] = [set: v]}
+                    processed++
+                    buffer << update
+                }
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                if (total > 0) {
+                    def percentage = Math.round((processed / total) * 100 )
+                    log("Weighted ${processed} items (${percentage}%)")
+                }
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+        } catch (Exception ex) {
+            log("Exception weighting entries: ${ex.getMessage()}")
+            log.error("Unable to weight entries", ex)
+        }
+        log("Finished building search weights, ${processed} items")
+
+    }
+
+    /**
+     * Build (or rebuild) the suggestion index
+     *
+     * @param online Use the online index
+     */
+    def buildSuggestIndex(boolean online) {
+         log("Building suggestion index")
+        try {
+            def response = indexService.buildSuggestIndex(online)
+            log.info(response.toString())
+        } catch (Exception ex) {
+            log("Exception building suggestion index: ${ex.getMessage()}")
+            log.error("Unable to build suggestion index", ex)
+        }
+        log("Finished building suggestion index")
+
+    }
+
+    /**
      * Get the taxon rank structure
      *
      * @return
@@ -1978,21 +2113,6 @@ class ImportService {
         while (iter.hasNext()) {
             def entry = iter.next()
             idMap.put(entry.rank, entry)
-        }
-        idMap
-    }
-
-    /**
-     * Get vernacular name information
-     */
-    def vernacularNameStatus() {
-        JsonSlurper slurper = new JsonSlurper()
-        def ranks = slurper.parse(this.class.getResource("/vernacularNameStatus.json"))
-        def idMap = [:]
-        def iter = ranks.iterator()
-        while (iter.hasNext()) {
-            def entry = iter.next()
-            idMap.put(entry.status, entry)
         }
         idMap
     }

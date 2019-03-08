@@ -1,8 +1,11 @@
 package au.org.ala.bie.search
 
+import groovy.transform.AutoClone
+
 /**
  * Created by mar759 on 21/07/15.
  */
+@AutoClone
 class AutoCompleteDTO {
     String guid
     String name
