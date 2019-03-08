@@ -1,6 +1,7 @@
 package au.org.ala.bie
 
 import grails.converters.JSON
+import org.apache.solr.common.SolrException
 
 /**
  * A set of JSON based search web services.
@@ -202,21 +203,24 @@ class SearchController {
      */
     // Documented in openapi.yml
     def auto(){
-        def fq = []
         def limit = params.limit
         def idxType = params.idxType
         def geoOnly = params.geoOnly
-
-        if (idxType) {
-            fq << "idxtype:${idxType.toUpperCase()}"
-        }
+        def kingdom = params.kingdom
+        def payload
 
         if (geoOnly) {
             // TODO needs WS lookup to biocache-service (?)
         }
 
-        def autoCompleteList = autoCompleteService.auto(params.q, fq, limit)
-        def payload = [autoCompleteList:autoCompleteList]
+        try {
+            if (limit)
+                limit = limit as Integer
+            def autoCompleteList = autoCompleteService.auto(params.q, idxType, kingdom, limit)
+            payload = [autoCompleteList: autoCompleteList]
+        } catch (SolrException ex) { // Can be caused by list not being ready
+            payload = [autoCompleteList: [], error: ex.getMessage()]
+        }
         asJson payload
     }
 

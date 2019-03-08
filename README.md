@@ -269,3 +269,95 @@ The `term` supplies the name of the status field.
 `label` gives the label to apply to the conservation status.
 `sourceField` gives the name of the field that contains the conservation status.
 `kingdomField` gives the name of the field that contains the kingdom -- handy for name lookups, if available.
+
+## Weighting Rules
+
+Calculating weights for search and autosuggest operations gets rather complicated,
+sopre-calculated weights for seach operations are built into each document
+during the import process.
+
+Anything with an idxtype field is annotated with weights.
+
+The weighting rules come from a configuration file, which defaults to
+[default-weights.json](grails-app/conf/default-weights.json).
+An example set of weighting rules is
+
+```
+{
+  "script": "nashorn",
+  "global": {
+    "rules": [
+      {
+        "term": "taxonomicStatus",
+        "exists": true,
+        "rules": [
+          {
+            "value": "accepted",
+            "weight": 2.0
+          },
+          {
+            "value": "misapplied",
+            "weight": 0.5
+          }
+        ]
+      },
+    ]
+  },
+  "weights": [
+    {
+      "field": "searchWeight",
+      "rules": []
+    },
+    {
+      "field": "suggestWeight",
+      "rules": [
+        {
+          "term": "scientificName",
+          "exists": true,
+          "condition": "_value.length() > 4",
+          "weightExpression": "_weight * 1.0 / (1.0 + Math.log(_value.length() * 0.01 + 1.0))",
+          "comment": "The longer the name, the less it should be suggested. Mean name length is 16"
+        }
+      ]
+    }
+  ]
+}
+```
+
+The top level contains the following fields:
+
+* **script** The name of the script engine for evaluating *condition* and *weightExpression* rules.
+  By default, this is the *nashorn* javascript engine.
+* **global** Rules to apply to all weights.
+* **weights** Specific weight fields. These have their own field names and rules
+  that are applied after the global rules.
+
+Rules consist of the following entries:
+
+* **term** The term this rule applies to. The term may be absent, unless the *exists* field is set to true.
+* **exists** Ensures that the term either exists or does not exist. 
+  If absent, then the rule applies wether the term exists or not, although most rules will not trigger on an empty value.
+* **value** The value required for the rule to trigger. (case sensitive for string values)
+* **match** A regular expression to match the term against. 
+* **condition** A script expression to test. The script is in whatever scripting language
+  is used and must return a boolean value. Any term from the input document
+  can be used in the expression (eg. `kinmgdom == 'Plantae'`).
+  If there is a *term* supplied then the value is supplied to the script as
+  `_value`
+* **weight** The weight to multiply the existing weight by.
+* **weightExpression** A script expression to calculate the weight, in
+  a similar manner to *condition* The returned value does not necessarily
+  multiply the existing weight, it needs to be explicitly included, as `_weight`
+  so that you can do clever things with the weight value.
+* **rules** Sub-rules. These inherit things like *term* from their parent
+  and only trigger if the parent conditions are true. The weight adjustments
+  occur after the application of any parent adjustment.
+* **comment** If you want to document something.
+
+As an example, the above rules, applied to the input
+`[idxtype:'TAXON', taxonomicStatus:'misapplied', scientificName:'Atrobucca brevis']` 
+and with a start value of 1.0 would give.
+
+* Global rules weight = 1.0 * 0.5 = 0.5 for a taxonomicStatus of misapplied.
+* searchWeight = 0.5
+* suggestWeight = 0.5 * (1 / (1 + ln(0.15 + 1))) = 0.4387, since the length of the scientificName is greater than 4.

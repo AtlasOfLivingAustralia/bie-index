@@ -3,11 +3,14 @@ package au.org.ala.bie
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.search.IndexFieldDTO
 import au.org.ala.bie.util.Encoder
+import grails.config.Config
+import grails.core.support.GrailsConfigurationAware
 import groovy.json.JsonSlurper
 import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.SolrResponse
 import org.apache.solr.client.solrj.response.QueryResponse
 import org.apache.solr.client.solrj.response.SuggesterResponse
+import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.SolrInputDocument
 import org.apache.solr.common.params.CursorMarkParams
 import org.apache.solr.common.params.ModifiableSolrParams
@@ -16,11 +19,37 @@ import org.apache.solr.common.params.SolrParams
 /**
  * The interface to SOLR based logic.
  */
-class IndexService {
+class IndexService implements GrailsConfigurationAware {
     def grailsApplication
     def liveSolrClient
     def offlineSolrClient
     def updatingLiveSolrClient
+
+    // Configuration
+    SolrQuery searchTemplate
+    SolrQuery suggestTemplate
+    List<String> searchFq
+    String searchDefType
+    List<String> searchQf
+
+    @Override
+    void setConfiguration(Config config) {
+        def search = config.solr.search
+        searchTemplate = new SolrQuery()
+        search.fq.each { searchTemplate.addFilterQuery(it) }
+        searchTemplate.set('defType', search.defType)
+        searchTemplate.set('qf', search.qf.join(' '))
+        search.bq.each { searchTemplate.add('bq', it) }
+        searchTemplate.set('q.alt', search.qAlt)
+        searchTemplate.set('boost', search.boost)
+        if (search.hl.hl as Boolean) {
+            searchTemplate.highlightFields = (search.hl.fl as String).split(',')
+            searchTemplate.highlightSimplePre = search.hl.simple.pre
+            searchTemplate.highlightSimplePost = search.hl.simple.post
+        }
+        def suggest = config.solr.suggest
+        suggestTemplate = new SolrQuery()
+    }
 
     def deleteFromIndexByQuery(query){
         log.info("Deleting from index: " + query + "....")
@@ -61,10 +90,10 @@ class IndexService {
                 }
                 if(isList(fieldValue)){
                     fieldValue.each {
-                        solrDoc.addField(fieldName, it, boost)
+                        solrDoc.addField(fieldName, it, (float) boost)
                     }
                 } else {
-                    solrDoc.addField(fieldName, fieldValue, boost)
+                    solrDoc.addField(fieldName, fieldValue, (float) boost)
                 }
             }
             buffer << solrDoc
@@ -92,6 +121,24 @@ class IndexService {
         QueryResponse response = liveSolrClient.query(params)
         Set<IndexFieldDTO> results = lukeResponseToIndexFieldDTOs(response, fields != null)
         return results
+    }
+
+    /**
+     * Get a document by guid.
+     *
+     * @param guid The document guid
+     * @param online True if using the online index
+     *
+     * @return The document or null for not found
+     */
+    SolrDocument getTaxonByGuid(String guid, boolean online) {
+        def query = new SolrQuery("guid:${ Encoder.escapeSolr(guid) }")
+
+        query.addFilterQuery("idxtype:${IndexDocType.TAXON.name()}")
+        query.setStart(0)
+        query.setRows(1)
+        def response = this.query(query, online)
+        return response.results.numFound == 0 ? null : response.results.get(0)
     }
 
     /**
@@ -175,23 +222,13 @@ class IndexService {
      * @return
      */
     QueryResponse search(boolean online, String q, List fqs = [], List facets = [], Integer start = 0, Integer rows = 10, sort = null, dir = SolrQuery.ORDER.asc) {
-        SolrQuery query = new SolrQuery(q)
+        SolrQuery query = searchTemplate.getCopy()
 
+        query.query = q
         if (!dir || !(dir instanceof SolrQuery.ORDER))
             dir = dir == 'desc' ? SolrQuery.ORDER.desc : SolrQuery.ORDER.asc
-        grailsApplication.config.solr.fq.each { query.addFilterQuery(it) }
         fqs.each { query.addFilterQuery(it) }
         // Add query parameters
-        query.set('defType', grailsApplication.config.solr.defType)
-        query.set('qf', grailsApplication.config.solr.qf.join(' '))
-        grailsApplication.config.solr.bq.each { query.add("bq", it) }
-        query.set("q.alt", grailsApplication.config.solr.qAlt)
-        if (grailsApplication.config.solr.hl.hl as Boolean) {
-            query.highlight = true
-            query.highlightFields = (grailsApplication.config.solr.hl.fl as String).split(',')
-            query.highlightSimplePre = grailsApplication.config.solr.hl.simple.pre
-            query.highlightSimplePost = grailsApplication.config.solr.hl.simple.post
-        }
         if (facets) {
             query.facet = true
             query.facetMinCount = 1
@@ -218,18 +255,34 @@ class IndexService {
      *
      * @return The suggestion response (results in groupResponse)
      */
-    QueryResponse suggest(boolean online, String q, List fq = [], Integer rows = 10, Integer start = 0, String context = null) {
-        def query = new SolrQuery(q)
+    QueryResponse suggest(boolean online, String q, String idxtype, Integer rows = 10, Integer start = 0, String context = null) {
+        def query = suggestTemplate.getCopy()
 
         query.setRequestHandler('/suggest')
+        query.set('suggest.q', q)
         if (context)
             query.add(context(context))
-        if (fq)
-            fq.each { query.addFilterQuery(it) }
+        if (idxtype)
+            query.set('suggest.cfq', idxtype)
         if (rows)
-            query.setRows(rows)
+            query.set('suggest.count', rows)
         if (start)
             query.setStart(start)
+        return this.query(query, online)
+    }
+
+    /**
+     * Build the suggestion index
+     *
+     * @param online Use the online index
+     *
+     * @return The build response
+     */
+    QueryResponse buildSuggestIndex(boolean online) {
+        def query = suggestTemplate.getCopy()
+
+        query.setRequestHandler('/suggest')
+        query.set('suggest.build', "true")
         return this.query(query, online)
     }
 

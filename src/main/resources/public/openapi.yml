@@ -991,6 +991,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobStatus'
+  /admin/import/buildSuggestIndex:
+    get:
+      summary: Build the suggestion index for autocomplete
+      description: >
+        Allow SOLR to build an internal index for autosuggest queries
+      tags:
+      - admin
+      parameters:
+      - name: online
+        in: query
+        description: Build using the online, rather than the offline, index
+        schema:
+          type: boolean
+        default: false
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/buildWeights:
+    get:
+      summary: Build search and suggest weights for the information in the BIE
+      description: >
+        Calculate weights for various solr functions, to be used as boosts during queries.
+        These calculations can get complicated and are pre-calculated and stored with the entries
+      tags:
+      - admin
+      parameters:
+      - name: online
+        in: query
+        description: Build using the online, rather than the offline, index
+        schema:
+          type: boolean
+        default: false
+      security:
+      - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
   /admin/import/denormaliseTaxa:
     get:
       summary: Add parent taxon information to each taxon
