@@ -116,10 +116,10 @@ In addition to indexing the content of the darwin core archive, the ingestion & 
 
 This application makes use of the following technologies
 
-- Apache SOLR 4.10.x
-- Grails 2.4.x
+- Apache SOLR 6.6.x
+- Grails 3.2.x
 - Tomcat 7 or higher
-- Java 7 or higher
+- Java 8 or higher
 
 ![Architecture image](architecture.jpg)
 

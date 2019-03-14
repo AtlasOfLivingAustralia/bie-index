@@ -833,17 +833,19 @@ class SearchService {
 
         //get parents
         def parentGuid = taxon.parentGuid
+        def seen = [] as Set
         def stop = false
 
         while(parentGuid && !stop){
             taxon = retrieveTaxon(parentGuid)
-            if(taxon) {
+            if(taxon && !seen.contains(taxon.guid)) {
                 classification.add(0, [
                         rank : taxon.rank,
                         rankID : taxon.rankID,
                         scientificName : taxon.scientificName,
                         guid : taxon.guid
                 ])
+                seen.add(taxon.guid)
                 parentGuid = taxon.parentGuid
             } else {
                 stop = true
