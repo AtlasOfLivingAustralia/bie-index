@@ -2028,6 +2028,7 @@ class ImportService implements GrailsConfigurationAware {
         int bufferLimit = BUFFER_SIZE
         int pages = 0
         int processed = 0
+        int lastReported = 0
         def js = new JsonSlurper()
         def prevCursor = ""
         def cursor = CursorMarkParams.CURSOR_MARK_START
@@ -2067,7 +2068,8 @@ class ImportService implements GrailsConfigurationAware {
                 }
                 if (!buffer.isEmpty())
                     indexService.indexBatch(buffer, online)
-                if (total > 0) {
+                if (total > 0 && (processed - lastReported) >= REPORT_INTERVAL) {
+                    lastReported = processed
                     def percentage = Math.round((processed / total) * 100 )
                     log("Weighted ${processed} items (${percentage}%)")
                 }

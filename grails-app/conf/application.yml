@@ -205,10 +205,6 @@ solr:
       threadCount: 4
     search:
       qf:
-        - scientificName^1000
-        - commonName^500
-        - exact_text^200
-        - doc_name^100
         - text
       bq:
       fq:
