@@ -865,8 +865,8 @@ class ImportService implements GrailsConfigurationAware {
                     doc["datasetID"] = drUid
                     doc["datasetName"] = "Conservation list for ${solrFieldName}"
                     doc["name"] = capitaliser.capitalise(item.name)
-                    doc["status"] = legistatedStatus?.status ?: "legislated"
-                    doc["priority"] = legistated?.priority ?: 500
+                    doc["status"] = legislatedStatus?.status ?: "legislated"
+                    doc["priority"] = legislatedStatus?.priority ?: 500
                     // set conservationStatus facet
                     def fieldValue = item[jsonFieldName]
                     doc[solrFieldName] = fieldValue
@@ -1481,12 +1481,14 @@ class ImportService implements GrailsConfigurationAware {
         int processed = 0
         int added = 0
         def typeQuery = "idxtype:\"${IndexDocType.TAXON.name()}\" AND (${ACCEPTED_STATUS})"
-        def prevCursor = ""
-        def cursor = CursorMarkParams.CURSOR_MARK_START
+        def clearQuery = "imageAvailable:true"
+        def prevCursor
+        def cursor
         def listConfig = this.getConfigFile(imageConfiguration)
         def imageMap = collectImageLists(listConfig.lists)
         def rankMap = listConfig.ranks.collectEntries { r -> [(r.rank): r] }
-        def biocacheFilters = listConfig.filters
+        def requiredFilters = listConfig.required ?: []
+        def preferredFilters = (listConfig.preferred ?: []) + requiredFilters
         def imageFields = Encoder.escapeQuery(listConfig.imageFields ?: IMAGE_FIELDS)
         log.debug "listConfig = ${listConfig} || imageFields = ${imageFields}"
         def lastImage = [imageId: "none", taxonID: "none", name: "none"]
@@ -1498,8 +1500,47 @@ class ImportService implements GrailsConfigurationAware {
             query
         }
 
+        log("Clearing images for ${online ? 'online' : 'offline'} index")
+        try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
+            while (cursor != prevCursor) {
+                SolrQuery query = new SolrQuery(clearQuery)
+                query.setParam('cursorMark', cursor)
+                query.setSort("id", SolrQuery.ORDER.asc)
+                query.setRows(pageSize)
+                def response = indexService.query(query, online)
+                def docs = response.results
+                def buffer = []
+
+                docs.each { doc ->
+                    def update = [:]
+                    update["id"] = doc.id // doc key
+                    update["idxtype"] = ["set": doc.idxtype] // required field
+                    update["guid"] = ["set": doc.guid] // required field
+                    update["image"] = ["set": null]
+                    update["imageAvailable"] = ["set": null]
+                    buffer << update
+                    processed++
+                }
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                log("Cleared ${processed} images")
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+        } catch (Exception ex) {
+            log.error("Unable to clear images", ex)
+            log("Error during image clear: " + ex.getMessage())
+        }
+        log("Loading preferred images")
+        updatePreferredImages(online, imageMap)
         log("Starting image load scan for ${online ? 'online' : 'offline'} index")
         try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
             while (prevCursor != cursor) {
                 def startTime = System.currentTimeMillis()
                 SolrQuery query = new SolrQuery(typeQuery)
@@ -1517,26 +1558,23 @@ class ImportService implements GrailsConfigurationAware {
                     def rank = rankMap[doc.rank]
                     def image = null
 
-                    if (rank != null) {
+                    if (rank != null && !imageMap[taxonID]) {
                         try {
-                            image = imageMap[taxonID] ?: imageMap[name]
-                            if (!image) {
-                                def biocacheQuery = null
-                                biocacheQuery = addImageSearch(biocacheQuery, "lsid", taxonID, 100)
-                                biocacheQuery = addImageSearch(biocacheQuery, rank.idField, taxonID, 20)
-                                if (biocacheQuery) {
-                                    biocacheQuery = "(${ biocacheQuery }) AND multimedia:Image"
-                                    def occurrences = biocacheService.search(biocacheQuery, biocacheFilters)
-                                    if (occurrences.totalRecords < 1 && biocacheFilters) {
-                                        // Try without filters
-                                        occurrences = biocacheService.search(biocacheQuery)
-                                    }
-                                    if (occurrences.totalRecords > 0) {
-                                        // Case does not necessarily match between bie and biocache
-                                        def occurrence = occurrences.occurrences[0]
-                                        if (occurrence)
-                                            image = [taxonID: taxonID, name: name, imageId: occurrence.image]
-                                    }
+                            def biocacheQuery = null
+                            biocacheQuery = addImageSearch(biocacheQuery, "lsid", taxonID, 100)
+                            biocacheQuery = addImageSearch(biocacheQuery, rank.idField, taxonID, 20)
+                            if (biocacheQuery) {
+                                biocacheQuery = "(${biocacheQuery}) AND multimedia:Image"
+                                def occurrences = biocacheService.search(biocacheQuery, preferredFilters)
+                                if (occurrences.totalRecords < 1 && preferredFilters) {
+                                    // Try without preferred filters
+                                    occurrences = biocacheService.search(biocacheQuery, requiredFilters)
+                                }
+                                if (occurrences.totalRecords > 0) {
+                                    // Case does not necessarily match between bie and biocache
+                                    def occurrence = occurrences.occurrences[0]
+                                    if (occurrence)
+                                        image = [taxonID: taxonID, name: name, imageId: occurrence.image]
                                 }
                             }
                         } catch (Exception ex) {
@@ -1624,6 +1662,7 @@ class ImportService implements GrailsConfigurationAware {
 
         def paramsMap = [
                 q: "guid:\"" + guids +"\"",
+                fq: "idxtype:${IndexDocType.TAXON.name()}",
                 wt: "json"
         ]
         def buffer = []
@@ -1673,51 +1712,65 @@ class ImportService implements GrailsConfigurationAware {
      * @param online
      */
     def loadPreferredImages(online) {
-        def updatedTaxa = []
-        Integer batchSize = 20
         Map listConfig = this.getConfigFile(imageConfiguration) // config defined JSON file
         Map imagesMap = collectImageLists(listConfig.lists) // reads preferred images list via WS
-        List guidList = []
 
-        imagesMap.each { k, v ->
-            guidList.add(v.taxonID)
-        }
+        log "Loadng preferred images"
+        return updatePreferredImages(online, imagesMap)
+    }
 
+    /**
+     * Triggered from admin -> links import page. Runs on separate thread and send async message back to page via log() method
+     *
+     * @param online Use online rather than offline store
+     * @param imagesMap The images to update
+     * @param guidList The list to update from the map
+     */
+    def updatePreferredImages(online, imagesMap) {
+        def updatedTaxa = []
+        Integer batchSize = 20
+
+        List guidList = imagesMap.values().collect { image -> image.taxonID }
         int totalDocs = guidList.size()
         int totalPages = ((totalDocs + batchSize - 1) / batchSize) - 1
         def totalDocumentsUpdated = 0
+        def lastTaxon = null
+        def lastImage = null
         def buffer = []
-        log "totalDocs = ${totalDocs} || totalPages = ${totalPages}"
+        log "${totalDocs} taxa to update in ${totalPages} pages"
 
         if (totalDocs > 0) {
             (0..totalPages).each { page ->
                 def startInd = page * batchSize
                 def endInd = (startInd + batchSize - 1) < totalDocs ? (startInd + batchSize - 1) : totalDocs - 1
-                log "GUID batch = ${startInd} to ${endInd}"
+                log.debug "GUID batch = ${startInd} to ${endInd}"
                 String guids = guidList[startInd..endInd].join("\",\"")
                 updateProgressBar(totalPages, page)
                 def paramsMap = [
                         q: "guid:\"" + guids +"\"",
+                        fq: "idxtype:${IndexDocType.TAXON.name()}",
                         rows: "${batchSize}",
                         wt: "json"
                 ]
                 MapSolrParams solrParams = new MapSolrParams(paramsMap)
                 def searchResults = searchService.getCursorSearchResults(solrParams, !online)
                 def resultsDocs = searchResults?.results ?: []
-                log "SOLR query returned ${resultsDocs.size()} docs"
+                log.debug( "SOLR query returned ${resultsDocs.size()} docs")
                 resultsDocs.each { Map doc ->
                     if (doc.containsKey("id") && doc.containsKey("guid") && doc.containsKey("idxtype")) {
                         //String imageId = getImageFromParamList(preferredImagesList, doc.guid)
                         def listEntry = imagesMap[doc.guid]
                         String imageId = listEntry?.imageId
                         if (!doc.containsKey("image") || (doc.containsKey("image") && doc.image != imageId)) {
+                            lastTaxon = doc.guid
+                            lastImage = imageId
                             Map updateDoc = [:]
                             updateDoc["id"] = doc.id // doc key
                             updateDoc["idxtype"] = ["set": doc.idxtype] // required field
                             updateDoc["guid"] = ["set": doc.guid] // required field
                             updateDoc["image"] = ["set": imageId]
                             updateDoc["imageAvailable"] = ["set": true]
-                            log "Updated doc: ${doc.id} with imageId: ${imageId}"
+                            log.debug( "Updated doc: ${doc.id} with imageId: ${imageId}")
                             totalDocumentsUpdated ++
                             buffer << updateDoc
                         }
@@ -1728,13 +1781,14 @@ class ImportService implements GrailsConfigurationAware {
             }
 
             if (buffer.size() > 0) {
-                log("Committing ${totalDocumentsUpdated} docs to SOLR...")
+                log "Updating ${buffer.size()} docs, last taxon ${lastTaxon} with image ${lastImage}"
                 indexService.indexBatch(buffer, true)
                 updatedTaxa = searchService.getTaxa(guidList)
             } else {
                 log "No documents to update"
             }
         }
+        log "Updated ${totalDocumentsUpdated} out of ${totalDocs} with images"
 
         updatedTaxa
 

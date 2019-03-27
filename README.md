@@ -177,6 +177,10 @@ hopes of finding something that doesn't look terribly dead. The `boosts` element
 (in the example, observations and images get a boost, preserved specimens are downgraded and images from dr130 are 
 preferred.
 
+The `required` and `preferred` elements contain lists of filter queries that are applied to the search.
+For example,`geospatial_kosher:true` restricts searches to occurrences that
+appear to be geospatially usable.
+
 Only certain ranks get images attached to them.
 The `ranks` element contains taxon ranks that should have images associated with them,
 along with the fields in the occurrence records that allow an occurrence to be found.

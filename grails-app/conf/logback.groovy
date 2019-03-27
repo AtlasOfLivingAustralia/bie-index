@@ -36,6 +36,7 @@ switch (Environment.current) {
             }
         }
         root(WARN, [TOMCAT_LOG])
+        logger('au.org.ala', INFO)
         break
     case Environment.TEST:
         appender(TOMCAT_LOG, RollingFileAppender) {
