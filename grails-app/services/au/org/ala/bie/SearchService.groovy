@@ -624,7 +624,7 @@ class SearchService {
 
         def taxon = lookupTaxon(taxonLookup)
         if(!taxon) {
-            taxon = lookupTaxonByName(taxonLookup)
+            taxon = lookupTaxonByName(taxonLookup, null)
         }
         if(!taxon) {
             taxon = lookupTaxonByPreviousIdentifier(taxonLookup)
