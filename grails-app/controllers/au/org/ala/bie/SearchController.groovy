@@ -42,7 +42,9 @@ class SearchController {
      */
     // Documented in openapi.yml
     def imageSearch(){
-        render ([searchResults:searchService.imageSearch(regularise(params.id), params.start, params.rows, params.qc)] as JSON)
+        def start = params.start as Integer
+        def rows = params.rows as Integer
+        render ([searchResults:searchService.imageSearch(regularise(params.id), start, rows, params.qc)] as JSON)
     }
 
     /**

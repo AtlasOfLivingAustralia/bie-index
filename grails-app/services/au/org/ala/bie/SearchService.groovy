@@ -44,7 +44,7 @@ class SearchService {
             if(!taxon){
                 return []
             }
-            def tid = Encoder.encodeQuery(taxon.guid)
+            def tid = Encoder.escapeSolr(taxon.guid)
             query = "(guid:\"${tid}\" OR rkid_${taxon.rank.toLowerCase().replaceAll('\\s', '_')}:\"${tid}\")"
         }
 
