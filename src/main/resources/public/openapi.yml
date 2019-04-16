@@ -969,6 +969,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobStatus'
+  /admin/import/buildFavourites:
+    get:
+      summary: Mark entries in the BIE with "favourite" status
+      description: >
+        Interrogate the lists of favourite species built in the list tool and
+        mark selected taxa and common names with a favourite status.
+        This can be used to selectively build weights for popular entries or mark
+        pages.
+      tags:
+        - admin
+      parameters:
+        - name: online
+          in: query
+          description: Build using the online, rather than the offline, index
+          schema:
+            type: boolean
+          default: false
+      security:
+        - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
   /admin/import/buildLinkIdentifiers:
     get:
       summary: Build link identifiers for unique taxa

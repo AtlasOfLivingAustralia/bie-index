@@ -68,7 +68,7 @@
         "rules": [
           {
             "value": 6000,
-            "weight": 2.0
+            "weight": 2.5
           },
           {
             "value": 7000,
@@ -95,7 +95,60 @@
   "weights": [
     {
       "field": "searchWeight",
-      "rules": []
+      "rules": [
+        {
+          "term": "idxtype",
+          "exists": true,
+          "value": "COMMON",
+          "rules": [
+            {
+              "term": "favourite",
+              "exists": true,
+              "comment": "Boosts common names for popular species",
+              "rules": [
+                {
+                  "value": "interest",
+                  "weight": 1.1
+                },
+                {
+                  "value": "preferred",
+                  "weight": 1.5
+                },
+                {
+                  "value": "favourite",
+                  "weight": 2.5
+                },
+                {
+                  "value": "iconic",
+                  "weight": 10.0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "term": "idxtype",
+          "exists": true,
+          "value": "TAXON",
+          "rules": [
+            {
+              "term": "favourite",
+              "exists": true,
+              "comment": "Favourite species slightly more likely to be on top",
+              "rules": [
+                {
+                  "value": "favourite",
+                  "weight": 1.1
+                },
+                {
+                  "value": "iconic",
+                  "weight": 1.5
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "field": "suggestWeight",

@@ -183,4 +183,30 @@ class WeightBuilderSpec extends Specification {
         0.75 closeTo(weights.suggestWeight, 0.01)
     }
 
+    def 'test common names 1'() {
+        setup:
+        def slurper = new JsonSlurper()
+        def model = slurper.parse(this.class.getResource('common-weights.json'))
+        builder = new WeightBuilder(model)
+        when:
+        def doc = [scientificName: 'Osphranter rufus', commonName: [ 'Red Kangaroo']]
+        def weights = builder.apply(1.0, doc)
+        then:
+        100.0 closeTo(weights.searchWeight, 0.01)
+        100.0 closeTo(weights.suggestWeight, 0.01)
+    }
+
+    def 'test common names 2'() {
+        setup:
+        def slurper = new JsonSlurper()
+        def model = slurper.parse(this.class.getResource('common-weights.json'))
+        builder = new WeightBuilder(model)
+        when:
+        def doc = [scientificName: 'Tachyglossus aculeatus', commonName: [ 'Short-Beaked Echidna', 'Echidna']]
+        def weights = builder.apply(1.0, doc)
+        then:
+        100.0 closeTo(weights.searchWeight, 0.01)
+        100.0 closeTo(weights.suggestWeight, 0.01)
+    }
+
 }

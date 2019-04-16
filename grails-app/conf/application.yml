@@ -205,6 +205,7 @@ solr:
       threadCount: 4
     search:
       qf:
+        - exact_text
         - text
       bq:
       fq:
@@ -226,7 +227,7 @@ skin:
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
 import:
-  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,weights,link-identifiers,images,occurrences,suggest-index
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,favourites,weights,link-identifiers,images,occurrences,suggest-index
   taxonomy:
     dir: /data/bie/import
   priority:
@@ -234,6 +235,7 @@ import:
     min: 0.25
     max: 5.0
   weightConfigUrl: /default-weights.json
+  favouritesConfigUrl: /default-favourites.json
   vernacularName:
     statusUrl: /default-vernacular-name-status.json
     common: common

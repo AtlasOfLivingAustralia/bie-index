@@ -132,6 +132,7 @@ class ImportService implements GrailsConfigurationAware {
     Object commonStatus
     Object legislatedStatus
     Object preferredStatus
+    Object favouritesConfiguration
 
 
     static {
@@ -169,6 +170,7 @@ class ImportService implements GrailsConfigurationAware {
         commonStatus = vernacularNameStatus.get(config.import.vernacularName.common)
         legislatedStatus = vernacularNameStatus.get(config.import.vernacularName.legislated)
         preferredStatus = vernacularNameStatus.get(config.import.vernacularName.preferred)
+        favouritesConfiguration = getConfigFile(config.import.favouritesConfigUrl)
     }
 
     /**
@@ -208,6 +210,9 @@ class ImportService implements GrailsConfigurationAware {
                     case 'denormalise':
                     case 'denormalize':
                         denormaliseTaxa(false)
+                        break
+                    case 'favourites':
+                        buildFavourites(false)
                         break
                     case 'images':
                         loadImages(false)
@@ -607,7 +612,7 @@ class ImportService implements GrailsConfigurationAware {
             String sourceField = resource.sourceField ?: config.defaultSourceField
             String resourceLanguage = resource.language ?: config.defaultLanguage
             if (uid && vernacularNameField) {
-                log("Loading list from: " + url)
+                log("Loading list from: " + uid)
                 try {
                     def list = listService.get(uid, [vernacularNameField, nameIdField, kingdomField, statusField, languageField, sourceField])
                     importAdditionalVernacularNames(list, vernacularNameField, nameIdField, kingdomField, statusField, languageField, sourceField, resourceLanguage, uid)
@@ -1582,14 +1587,8 @@ class ImportService implements GrailsConfigurationAware {
                         }
                     }
                     if (image) {
-                        def update = [:]
-                        update["id"] = doc.id // doc key
-                        update["idxtype"] = ["set": doc.idxtype] // required field
-                        update["guid"] = ["set": doc.guid] // required field
-                        update["image"] = ["set": image.imageId]
-                        update["imageAvailable"] = ["set": true]
+                        updateImage(doc, image.imageId, buffer, online)
                         added++
-                        buffer << update
                         lastImage = image
                     }
                     processed++
@@ -1675,14 +1674,8 @@ class ImportService implements GrailsConfigurationAware {
                 String imageId = getImageFromParamList(preferredImagesList, doc.guid)
                 log.info ("Updating: guid " + doc.guid + " with imageId " + imageId)
                 if (!doc.containsKey("image") || (doc.containsKey("image") && doc.image != imageId)) {
-                    Map updateDoc = [:]
-                    updateDoc["id"] = doc.id // doc key
-                    updateDoc["idxtype"] = ["set": doc.idxtype] // required field
-                    updateDoc["guid"] = ["set": doc.guid] // required field
-                    updateDoc["image"] = ["set": imageId]
-                    updateDoc["imageAvailable"] = ["set": true]
+                    updateImage(doc, imageId, buffer, online)
                     totalDocumentsUpdated ++
-                    buffer << updateDoc
                 }
             } else {
                 log.warn "Updating doc error: missing keys ${doc}"
@@ -1693,7 +1686,7 @@ class ImportService implements GrailsConfigurationAware {
 
         if (buffer.size() > 0) {
             log.info ("Committing to SOLR..." + guidList)
-            indexService.indexBatch(buffer, true)
+            indexService.indexBatch(buffer, online)
             updatedTaxa = searchService.getTaxa(guidList)
         } else {
             log.info "Nothing to update for guidList: " + guidList
@@ -1764,15 +1757,8 @@ class ImportService implements GrailsConfigurationAware {
                         if (!doc.containsKey("image") || (doc.containsKey("image") && doc.image != imageId)) {
                             lastTaxon = doc.guid
                             lastImage = imageId
-                            Map updateDoc = [:]
-                            updateDoc["id"] = doc.id // doc key
-                            updateDoc["idxtype"] = ["set": doc.idxtype] // required field
-                            updateDoc["guid"] = ["set": doc.guid] // required field
-                            updateDoc["image"] = ["set": imageId]
-                            updateDoc["imageAvailable"] = ["set": true]
-                            log.debug( "Updated doc: ${doc.id} with imageId: ${imageId}")
+                            updateImage(doc, buffer, online)
                             totalDocumentsUpdated ++
-                            buffer << updateDoc
                         }
                     } else {
                         log.warn "Updating doc error: missing keys ${doc}"
@@ -1782,7 +1768,7 @@ class ImportService implements GrailsConfigurationAware {
 
             if (buffer.size() > 0) {
                 log "Updating ${buffer.size()} docs, last taxon ${lastTaxon} with image ${lastImage}"
-                indexService.indexBatch(buffer, true)
+                indexService.indexBatch(buffer, online)
                 updatedTaxa = searchService.getTaxa(guidList)
             } else {
                 log "No documents to update"
@@ -1792,6 +1778,31 @@ class ImportService implements GrailsConfigurationAware {
 
         updatedTaxa
 
+    }
+
+    /**
+     * Update a taxon with an image, along with any common nmames
+     *
+     * @param doc The taxon document
+     * @param imageId The image identifier
+     * @param buffer The update buffer
+     * @param online True to use the online index
+     */
+    private updateImage(Map doc, String imageId, List buffer, boolean online) {
+        def update = { d ->
+            [
+                    id: d.id,
+                    idxtype: [set: d.idxtype],
+                    guid: [set: d.guid],
+                    image: ["set": imageId],
+                    imageAvailable: ["set": true]
+            ]
+        }
+        buffer << update(doc)
+        def commonNames = searchService.lookupVernacular(doc.guid, !online)
+        commonNames.each { common ->
+            buffer << update(common)
+        }
     }
 
     /**
@@ -1822,10 +1833,10 @@ class ImportService implements GrailsConfigurationAware {
         log("Clearing existing denormalisations")
         try {
             startTime = System.currentTimeMillis()
-            def response = indexService.query(online, "denormalised_b:true", [], 1)
+            def response = indexService.query(online, "denormalised:true", [], 1)
             int total = response.results.numFound
             while (total > 0 && prevCursor != cursor) {
-                response = indexService.query(online, "denormalised_b:true", [], pageSize, null, null, "id", "asc", cursor)
+                response = indexService.query(online, "denormalised:true", [], pageSize, null, null, "id", "asc", cursor)
                 def buffer = []
 
                 response.results.each { doc ->
@@ -1833,7 +1844,7 @@ class ImportService implements GrailsConfigurationAware {
                     update["id"] = doc.id // doc key
                     update["idxtype"] = [set: doc.idxtype] // required field
                     update["guid"] = [set: doc.guid] // required field
-                    update["denormalised_b"] = [set: false ]
+                    update["denormalised"] = [set: false ]
                     doc.each { k, v -> if (k.startsWith("rk_") || k.startsWith("rkid_")) update[k] = [set: null] }
                     doc.each { k, v -> if (k.startsWith("commonName")) update[k] = [set: null] }
                     update["nameVariant"] = [set: null]
@@ -1897,7 +1908,7 @@ class ImportService implements GrailsConfigurationAware {
             processed = 0
             prevCursor = ""
             cursor = CursorMarkParams.CURSOR_MARK_START
-            def danglingQuery = "idxtype:\"${IndexDocType.TAXON.name()}\" AND -acceptedConceptID:* AND -denormalised_b:true"
+            def danglingQuery = "idxtype:\"${IndexDocType.TAXON.name()}\" AND -acceptedConceptID:* AND -denormalised:true"
             def response = indexService.query(online, danglingQuery, [], 1)
             int total = response.results.numFound
             while (prevCursor != cursor) {
@@ -1967,7 +1978,53 @@ class ImportService implements GrailsConfigurationAware {
                 cursor = response.nextCursorMark
             }
         } catch (Exception ex) {
-            log("Exception denormalising dangling taxa: ${ex.getMessage()}")
+            log("Exception denormalising synonyms: ${ex.getMessage()}")
+            log.error("Unable to denormalise", ex)
+        }
+        log("Denormalising common names")
+        try {
+            pages = 0
+            processed = 0
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            def commonQuery = "idxtype:\"${IndexDocType.COMMON.name()}\""
+            def response = indexService.query(online, commonQuery, [], 1)
+            int total = response.results.numFound
+            while (prevCursor != cursor) {
+                //startTime = System.currentTimeMillis()
+                response = indexService.query(online, commonQuery, [], pageSize, null, null, 'id', 'asc', cursor)
+                def buffer = []
+                pages++
+                log "4. Paging over ${total} docs - page ${pages}"
+
+                response.results.each { doc ->
+                    def accepted = searchService.lookupTaxon(doc.taxonGuid, !online)
+                    if (accepted) {
+                        def update = [:]
+                        update["id"] = doc.id // doc key
+                        update["idxtype"] = [set: doc.idxtype] // required field
+                        update["guid"] = [set: doc.guid ] // required field
+                        update["acceptedConceptName"] = [set: accepted.scientificName ]
+
+                        buffer << update
+                    }
+                    processed++
+                    if (buffer.size() >= bufferLimit) {
+                        indexService.indexBatch(buffer, online)
+                        buffer.clear()
+                    }
+                    if (total > 0 && processed % BUFFER_SIZE == 0) {
+                        def percentage = Math.round(processed * 100 / total)
+                        log("Denormalised ${processed} common names (${percentage}%)")
+                    }
+                }
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+        } catch (Exception ex) {
+            log("Exception denormalising synonyms: ${ex.getMessage()}")
             log.error("Unable to denormalise", ex)
         }
         endTime = System.currentTimeMillis()
@@ -1976,7 +2033,7 @@ class ImportService implements GrailsConfigurationAware {
 
     private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages, Map capitalisers) {
         def currentDistribution = (doc['distribution'] ?: []) as Set
-        if (doc.denormalised_b)
+        if (doc.denormalised)
             return currentDistribution
         def update = [:]
         def distribution = [] as Set
@@ -1991,7 +2048,7 @@ class ImportService implements GrailsConfigurationAware {
         update["id"] = doc.id // doc key
         update["idxtype"] = [set: doc.idxtype] // required field
         update["guid"] = [set: guid] // required field
-        update["denormalised_b"] = [set: true ]
+        update["denormalised"] = [set: true ]
         update << trace
 
         if (doc.rank && doc.rankID && doc.rankID != 0) {
@@ -2071,6 +2128,66 @@ class ImportService implements GrailsConfigurationAware {
         distribution.addAll(currentDistribution)
         return distribution
     }
+
+    def buildFavourites(boolean online) throws Exception {
+        log("Clearing favourites")
+        this.clearField("favourite", null, online)
+        log("Finished clearing favourites")
+
+        log("Loading favourites")
+        favouritesConfiguration.lists.each { resource ->
+            String uid = resource.uid
+            String termField = resource.termField
+            String defaultTerm = resource.defaultTerm ?: favouritesConfiguration.defaultTerm
+            if (uid && defaultTerm) {
+                log("Loading list from: " + uid)
+                try {
+                    def list = listService.get(uid, termField ? [ termField ] : [])
+                    buildFavouritesList(list, termField, defaultTerm, online)
+                } catch (Exception ex) {
+                    def msg = "Error calling webservice: ${ex.message}"
+                    log(msg)
+                    log.warn(msg, ex) // send to user via http socket
+                }
+            }
+        }
+        log("Finished loading favourites")
+
+    }
+
+    private buildFavouritesList(List list, String termField, defaultTerm, online) throws Exception {
+        int bufferLimit = BUFFER_SIZE
+        int processed = 0
+        def buffer = []
+        def update
+
+        list.each { entry ->
+            def doc = searchService.lookupTaxon(entry.lsid, !online)
+            def term = (termField ? entry[termField] : defaultTerm) ?: defaultTerm
+            if (doc && term) {
+                update = [id: doc.id, idxtype: doc.idxtype, guid: doc.guid ]
+                update['favourite'] = ['set': term ]
+                buffer << update
+                processed++
+                searchService.lookupVernacular(entry.lsid, !online).each { vdoc ->
+                    update = [id: vdoc.id, idxtype: vdoc.idxtype, guid: vdoc.guid ]
+                    update['favourite'] = ['set': term ]
+                    buffer << update
+                    processed++
+                }
+            }
+            if (buffer.size() > bufferLimit) {
+                log "Updated ${processed} records"
+                indexService.indexBatch(buffer, online)
+                buffer = []
+            }
+        }
+        if (!buffer.isEmpty()) {
+            log "Updated ${processed} records"
+            indexService.indexBatch(buffer, online)
+        }
+    }
+
 
     /**
      * Build (or rebuild) the weights assigned to various entities.
@@ -2313,4 +2430,43 @@ class ImportService implements GrailsConfigurationAware {
         JsonSlurper slurper = new JsonSlurper()
         return slurper.parse(source)
      }
+
+    private clearField(String field, Object value, boolean online) {
+        int pageSize = BATCH_SIZE
+        int processed = 0
+        def prevCursor = ""
+        def cursor = CursorMarkParams.CURSOR_MARK_START
+
+        try {
+            def response = indexService.query(online, "${field}:*", [], 1)
+            int total = response.results.numFound
+            while (total > 0 && prevCursor != cursor) {
+                response = indexService.query(online, "${field}:*", [], pageSize, null, null, "id", "asc", cursor)
+                def buffer = []
+
+                response.results.each { doc ->
+                    def update = [:]
+                    update["id"] = doc.id // doc key
+                    update["idxtype"] = [set: doc.idxtype] // required field
+                    update["guid"] = [set: doc.guid] // required field
+                    update[field] = [set: value]
+                    processed++
+                    buffer << update
+                }
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                if (total > 0 && (processed - lastReported) >= REPORT_INTERVAL) {
+                    lastReported = processed
+                    def percentage = Math.round((processed / total) * 100 )
+                    log("Cleared ${processed} items (${percentage}%)")
+                }
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+            log("Cleared ${processed} items")
+        } catch (Exception ex) {
+            log("Exception setting ${field} to ${value}: ${ex.getMessage()}")
+            log.error("Unable to setting ${field} to ${value}", ex)
+        }
+    }
 }
