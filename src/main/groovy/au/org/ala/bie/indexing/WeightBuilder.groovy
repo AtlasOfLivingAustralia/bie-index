@@ -88,20 +88,8 @@ class WeightBuilder {
 
             if (this.term)
                 val = bindings.get(this.term)
-            if (this.exists != null && (this.exists && val == null || !this.exists && val != null))
+            if (!test(val, bindings))
                 return weight
-            if (this.value && this.value != val)
-                return weight
-            if (this.match && (!(val in String) || !this.match.matcher(val).matches()))
-                return weight
-            if (this.condition) {
-                if (this.term)
-                    bindings.put("_value", val)
-                def result = this.condition.eval(bindings)
-                bindings.remove('_value')
-                if (!(result in Boolean) || !result)
-                    return weight
-            }
             weight = weight * this.weight
             if (this.weightExpession) {
                 if (this.term)
@@ -116,6 +104,29 @@ class WeightBuilder {
                 weight = this.rules.inject(weight, { w, r -> r.apply(w, bindings) })
             }
             return weight
+        }
+
+        boolean test(Object val, Bindings bindings) {
+            if (val != null && val in Collection) {
+                if (this.exists != null && (this.exists && val.isEmpty()  || !this.exists && !val.isEmpty()))
+                    return false
+                return val.any { test(it, bindings) }
+            }
+            if (this.exists != null && (this.exists && val == null  || !this.exists && val != null))
+                return false
+            if (this.value && this.value != val)
+                return false
+            if (this.match && (!(val in String) || !this.match.matcher(val).matches()))
+                return false
+            if (this.condition) {
+                if (this.term)
+                    bindings.put("_value", val)
+                def result = this.condition.eval(bindings)
+                bindings.remove('_value')
+                if (!(result in Boolean) || !result)
+                    return false
+            }
+            return true
         }
     }
 }

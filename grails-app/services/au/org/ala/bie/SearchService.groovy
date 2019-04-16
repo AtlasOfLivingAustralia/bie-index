@@ -689,6 +689,7 @@ class SearchService {
                         namePublishedInID: taxon.namePublishedInID,
                         taxonRemarks: taxon.taxonRemarks,
                         provenance: taxon.provenance,
+                        favourite: taxon.favourite,
                         infoSourceURL: taxon.source ?: taxonDatasetURL,
                         datasetURL: taxonDatasetURL
                 ],
@@ -929,6 +930,7 @@ class SearchService {
                         "commonNameSingle"        : commonNameSingle,
                         "occurrenceCount"         : it.occurrenceCount,
                         "conservationStatus"      : it.conservationStatus,
+                        "favourite"               : it.favourite,
                         "infoSourceName"          : it.datasetName,
                         "infoSourceURL"           : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}"
                 ]
@@ -948,13 +950,6 @@ class SearchService {
                     doc.put("smallImageUrl", MessageFormat.format(grailsApplication.config.images.service.small, it.image))
                     doc.put("largeImageUrl", MessageFormat.format(grailsApplication.config.images.service.large, it.image))
                 }
-
-                if (getAdditionalResultFields()) {
-                    getAdditionalResultFields().each { field ->
-                        doc.put(field, it."${field}")
-                    }
-                }
-
                 //add de-normalised fields
                 def map = extractClassification(it)
 
@@ -978,8 +973,28 @@ class SearchService {
                         "rank": it.rank,
                         "rankID": it.rankID ?: -1,
                         "infoSourceName" : it.datasetName,
-                        "infoSourceURL" : "${grailsApplication.config.collectoryBaseUrl}/public/show/${it.datasetID}"
+                        "infoSourceURL" : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}"
                 ]
+            } else if (it.idxtype == IndexDocType.COMMON.name()){
+                doc = [
+                        "id" : it.id, // needed for highlighting
+                        "guid" : it.guid,
+                        "taxonGuid" : it.taxonGuid,
+                        "linkIdentifier" : it.linkIdentifier,
+                        "idxtype": it.idxtype,
+                        "name" : it.name,
+                        "acceptedConceptName": it.acceptedConceptName,
+                        "favourite": it.favourite,
+                        "infoSourceName" : it.datasetName,
+                        "infoSourceURL" : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}"
+                ]
+                if (it.image) {
+                    doc.put("image", it.image)
+                    doc.put("imageUrl", MessageFormat.format(grailsApplication.config.images.service.small, it.image))
+                    doc.put("thumbnailUrl", MessageFormat.format(grailsApplication.config.images.service.thumbnail, it.image))
+                    doc.put("smallImageUrl", MessageFormat.format(grailsApplication.config.images.service.small, it.image))
+                    doc.put("largeImageUrl", MessageFormat.format(grailsApplication.config.images.service.large, it.image))
+                }
             } else {
                 doc = [
                         id : it.id,
@@ -995,7 +1010,11 @@ class SearchService {
                 if(it.centroid){
                     doc.put("centroid", it.centroid)
                 }
-
+                if(it.favourite){
+                    doc.put("favourite", it.favourite)
+                }
+            }
+            if (doc) {
                 if(getAdditionalResultFields()){
                     getAdditionalResultFields().each { field ->
                         if(it."${field}") {
@@ -1003,8 +1022,6 @@ class SearchService {
                         }
                     }
                 }
-            }
-            if (doc) {
                 if (fields)
                     doc = doc.subMap(fields)
                 formatted << doc

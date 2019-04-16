@@ -49,6 +49,9 @@
         <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary import-button"><g:message code="admin.button.removeorphans"/></button>
     </div>
     <div>
+        <button id="build-favourites" onclick="javascript:buildFavourites()" class="btn btn-primary import-button"><g:message code="admin.button.buildfavourites"/></button>
+    </div>
+    <div>
         <button id="build-weights" onclick="javascript:buildWeights()" class="btn btn-primary import-button"><g:message code="admin.button.buildweights"/></button>
     </div>
     <div>
@@ -63,6 +66,9 @@
     <asset:script type="text/javascript">
         function buildSuggestIndex(){
             loadInfo("${createLink(controller:'import', action:'buildSuggestIndex')}?online=" + $('#use-online').is(':checked'));
+        }
+        function buildFavourites(){
+            loadInfo("${createLink(controller:'import', action:'buildFavourites')}?online=" + $('#use-online').is(':checked'));
         }
         function buildWeights(){
             loadInfo("${createLink(controller:'import', action:'buildWeights')}?online=" + $('#use-online').is(':checked'));

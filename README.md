@@ -277,13 +277,14 @@ The `term` supplies the name of the status field.
 ## Weighting Rules
 
 Calculating weights for search and autosuggest operations gets rather complicated,
-sopre-calculated weights for seach operations are built into each document
+score-calculated weights for seach operations are built into each document
 during the import process.
 
 Anything with an idxtype field is annotated with weights.
 
 The weighting rules come from a configuration file, which defaults to
-[default-weights.json](grails-app/conf/default-weights.json).
+[default-weights.json](grails-app/conf/default-weights.json) and which can be
+set by `import.weightConfigUrl` in the configuration.
 An example set of weighting rules is
 
 ```
@@ -341,13 +342,15 @@ Rules consist of the following entries:
 * **term** The term this rule applies to. The term may be absent, unless the *exists* field is set to true.
 * **exists** Ensures that the term either exists or does not exist. 
   If absent, then the rule applies wether the term exists or not, although most rules will not trigger on an empty value.
-* **value** The value required for the rule to trigger. (case sensitive for string values)
-* **match** A regular expression to match the term against. 
+* **value** The value required for the rule to trigger (case sensitive for string values).
+  If the value is a list, then any matching term will trigger the rule.
+* **match** A regular expression to match the term against.
+    If the value is a list, then any matching term will trigger the rule.
 * **condition** A script expression to test. The script is in whatever scripting language
   is used and must return a boolean value. Any term from the input document
   can be used in the expression (eg. `kinmgdom == 'Plantae'`).
-  If there is a *term* supplied then the value is supplied to the script as
-  `_value`
+  If there is a *term* supplied then the value is supplied to the script as `_value`.
+  If the value is a list, then any matching term will trigger the rule.
 * **weight** The weight to multiply the existing weight by.
 * **weightExpression** A script expression to calculate the weight, in
   a similar manner to *condition* The returned value does not necessarily
@@ -356,6 +359,7 @@ Rules consist of the following entries:
 * **rules** Sub-rules. These inherit things like *term* from their parent
   and only trigger if the parent conditions are true. The weight adjustments
   occur after the application of any parent adjustment.
+  Note that sub-rules can refer to different terms, creating and and-condition.
 * **comment** If you want to document something.
 
 As an example, the above rules, applied to the input
@@ -365,3 +369,45 @@ and with a start value of 1.0 would give.
 * Global rules weight = 1.0 * 0.5 = 0.5 for a taxonomicStatus of misapplied.
 * searchWeight = 0.5
 * suggestWeight = 0.5 * (1 / (1 + ln(0.15 + 1))) = 0.4387, since the length of the scientificName is greater than 4.
+
+## Favourites
+
+The favourites function allows lists from the lists tool to be used to mark taxa or 
+common names as having a "favourite" status.
+The favourite status is a term, such as `preferred` or `iconic` that can be used to
+mark entries for faceting and weight calculation.
+
+The favourites configuation comes from a configuration file, which defaults to [default-favourites.json](grails-app/config/default-favourites.json) and which
+can be set by `import.favouritesConfigUrl` in the configuration.
+An example favourites configuration is:
+
+```
+{
+  "defaultTerm": "favourite",
+  "lists": [
+    {
+      "uid": "dr4778",
+      "termField": "favourite",
+      "defaultTerm": "interest"
+    },
+    {
+      "uid": "dr781",
+      "defaultTerm": "iconic"
+    }
+  ]
+}
+```
+
+The top level contains the following entries:
+
+* **defaultTerm** The term to use by default for any list where the favourite term is not specified.
+* **lists** The lists, in the lists tool, that contain favourite lists.
+
+Each list can contain
+
+* **uid** (required) The UID of the list
+* **termField** If the list contains per-entry terms, the field which contains the term. Defaults to none.
+* **defaultTerm** The term to use if one is not specified for the entry. Defaults to the global default term.
+
+Favourites only mark selected taxa and their associated common names with favourite terms.
+Once marked, it is up to the bie-plugin otr weighting rules to make use of these terms.

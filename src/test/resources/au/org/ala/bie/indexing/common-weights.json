@@ -1,0 +1,40 @@
+{
+  "script": "nashorn",
+  "global": {
+    "rules": [
+      {
+        "term": "scientificName",
+        "exists": true,
+        "value": "Osphranter rufus",
+        "rules": [
+          {
+            "term": "commonName",
+            "exists": true,
+            "value": "Red Kangaroo",
+            "weight": 100.0
+          }
+        ]
+      },
+      {
+        "term": "commonName",
+        "exists": true,
+        "rules": [
+          {
+            "value": "Short-Beaked Echidna",
+            "weight": 100.0
+          }
+        ]
+      }
+    ]
+  },
+  "weights": [
+    {
+      "field": "searchWeight",
+      "rules": []
+    },
+    {
+      "field": "suggestWeight",
+      "rules": []
+    }
+  ]
+}

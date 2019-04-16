@@ -245,6 +245,14 @@ class ImportController {
     }
 
     // Documented in openapi.yml
+    def buildFavourites() {
+        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def job = execute("buildFavourites", "admin.button.buildfavourites", { importService.buildFavourites(online) })
+        asJson (job.status())
+
+    }
+
+    // Documented in openapi.yml
     def buildWeights() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
         def job = execute("buildWeights", "admin.button.buildweights", { importService.buildWeights(online) })
@@ -276,7 +284,7 @@ class ImportController {
     // Documented in openapi.yml
     def loadImages() {
         def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        def job = execute("loadImages", "admin.bitton.loadimagesall", { importService.loadImages(online) })
+        def job = execute("loadImages", "admin.button.loadimagesall", { importService.loadImages(online) })
         asJson (job.status())
     }
 
