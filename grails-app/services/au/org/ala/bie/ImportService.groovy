@@ -1425,8 +1425,10 @@ class ImportService implements GrailsConfigurationAware {
         int added = 0
         def cursor = CursorMarkParams.CURSOR_MARK_START
         def prevCursor = ""
-        def typeQuery = "idxtype:\"${ IndexDocType.TAXON.name() }\" OR idxtype:\"${ IndexDocType.COMMON.name() }\""
+        def typeQuery = "idxtype:\"${ IndexDocType.TAXON.name() }\""
 
+        log("Clearing link identifiers")
+        clearField("linkIdentifier", null, online)
         log("Starting link identifier scan")
         try {
             while (cursor != prevCursor) {
@@ -1737,10 +1739,10 @@ class ImportService implements GrailsConfigurationAware {
                 def startInd = page * batchSize
                 def endInd = (startInd + batchSize - 1) < totalDocs ? (startInd + batchSize - 1) : totalDocs - 1
                 log.debug "GUID batch = ${startInd} to ${endInd}"
-                String guids = guidList[startInd..endInd].join("\",\"")
+                String guids = '"' + guidList[startInd..endInd].join('" "') + '"'
                 updateProgressBar(totalPages, page)
                 def paramsMap = [
-                        q: "guid:\"" + guids +"\"",
+                        q: "guid:(" + guids + ")",
                         fq: "idxtype:${IndexDocType.TAXON.name()}",
                         rows: "${batchSize}",
                         wt: "json"
@@ -1757,7 +1759,7 @@ class ImportService implements GrailsConfigurationAware {
                         if (!doc.containsKey("image") || (doc.containsKey("image") && doc.image != imageId)) {
                             lastTaxon = doc.guid
                             lastImage = imageId
-                            updateImage(doc, buffer, online)
+                            updateImage(doc, imageId, buffer, online)
                             totalDocumentsUpdated ++
                         }
                     } else {
@@ -2431,9 +2433,17 @@ class ImportService implements GrailsConfigurationAware {
         return slurper.parse(source)
      }
 
+    /**
+     * Clear a field in the index.
+     *
+     * @param field The field name
+     * @param value The value to set it to (usually null)
+     * @param online True if the online index is to be used
+     */
     private clearField(String field, Object value, boolean online) {
         int pageSize = BATCH_SIZE
         int processed = 0
+        int lastReported = 0
         def prevCursor = ""
         def cursor = CursorMarkParams.CURSOR_MARK_START
 
