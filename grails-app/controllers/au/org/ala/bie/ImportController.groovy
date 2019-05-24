@@ -194,6 +194,16 @@ class ImportController {
     }
 
     /**
+     * Import/index KB (Fresh Desk) pages
+     *
+     * @return
+     */
+    def importKnowledgeBase(){
+        def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages() })
+        asJson(job.status())
+    }
+
+    /**
      * Index occurrence data
      *
      * @return
