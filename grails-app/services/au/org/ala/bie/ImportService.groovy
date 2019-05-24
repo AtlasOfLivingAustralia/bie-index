@@ -586,7 +586,7 @@ class ImportService implements GrailsConfigurationAware {
                     log(documentCount + ". Indexing KB page - id: " + docMap.id + " | title: " + docMap.title + " | text: " + StringUtils.substring(docMap.body, 0, 100) + "... ");
                     def doc = [:]
                     doc["idxtype"] = IndexDocType.KNOWLEDGEBASE.name()
-                    doc["id"] = "kb" + docMap.id // probably not needed but safer to leave in
+                    doc["id"] = "kb" + docMap.id // probably not needed but good practice to have a guid
                     doc["name"] = docMap.title
                     doc["content"] = docMap.body
                     doc["linkIdentifier"] = pageUrl
@@ -606,7 +606,7 @@ class ImportService implements GrailsConfigurationAware {
             }
         }
         log("Committing to SOLR...")
-        //indexService.indexBatch(buffer)
+        indexService.indexBatch(buffer)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished knowledge base import"
     }

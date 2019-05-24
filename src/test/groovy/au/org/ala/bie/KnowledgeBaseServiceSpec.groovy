@@ -1,14 +1,11 @@
 package au.org.ala.bie
 
-import grails.converters.JSON
 import grails.test.mixin.TestFor
-import grails.test.mixin.integration.Integration
 import spock.lang.Specification
 
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
  */
-@Integration
 @TestFor(KnowledgeBaseService)
 class KnowledgeBaseServiceSpec extends Specification {
 
@@ -36,29 +33,21 @@ class KnowledgeBaseServiceSpec extends Specification {
     }
 
     void "test resources should not be empty"() {
-//        given:
-//            setupData()
         expect:
             pages.size() > 1
     }
 
     void "test first page has expected domain"() {
-//        given:
-//            setupData()
         expect:
             firstPageUrl?.startsWith("https://support.ala.org.au")
     }
 
     void "test random page has expected domain"() {
-//        given:
-//            setupData()
         expect:
             randomPageUrl?.startsWith("https://support.ala.org.au")
     }
 
     void "test random page has body text"() {
-//        given:
-//            setupData()
         expect:
             randomPageMap.containsKey("id")
             randomPageMap.containsKey("title")

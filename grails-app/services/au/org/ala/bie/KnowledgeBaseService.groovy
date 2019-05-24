@@ -33,17 +33,18 @@ class KnowledgeBaseService implements IndexingInterface {
      * @return
      */
     List resources(String type) throws IOException {
-        // note type is not used here - implemented only due to interface requirements
-        def url = Encoder.buildServiceUrl(grailsApplication.config.getProperty('knowledgeBase.service'), grailsApplication.config.getProperty('knowledgeBase.sitemap'), type)
+        // note type is not currently used here - implemented only due to interface requirements
+        def url = Encoder.buildServiceUrl(grailsApplication.config.getProperty('knowledgeBase.service'),
+                grailsApplication.config.getProperty('knowledgeBase.sitemap'), type)
         return crawlKnowledgeBaseSite(url)
     }
 
     /**
      * Scraping the FD KB site requires navigating 2 levels of pages in order to get a full list of pages.
-     * This is because only the first 5 articles are listed under each section.
+     * This is because only the first 5 articles are listed under each section on starting page.
      *
      * @param url
-     * @return
+     * @return List the list of URLs to scrape and index
      */
     private List crawlKnowledgeBaseSite(url) throws IOException {
         List pages = []
@@ -106,6 +107,7 @@ class KnowledgeBaseService implements IndexingInterface {
             doc["title"] = page.select(".content h2.heading").text()
             doc["body"] = page.select("article.article-body").text()
         } else {
+            // unlikely to trigger as IOException should be thrown back up stack
             log.warn "No document detected for ${url}"
         }
 
