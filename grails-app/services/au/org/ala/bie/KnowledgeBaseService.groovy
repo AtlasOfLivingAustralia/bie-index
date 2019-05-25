@@ -27,16 +27,35 @@ class KnowledgeBaseService implements IndexingInterface {
     def grailsApplication
 
     /**
-     * Get a full ist of KB pages, to be used to index SOLR
+     * Get a full list of KB pages, to be used to index SOLR
+     * Note "type" is not currently used here - implemented only due to interface requirements
      *
      * @param type
      * @return
      */
     List resources(String type) throws IOException {
-        // note type is not currently used here - implemented only due to interface requirements
-        def url = Encoder.buildServiceUrl(grailsApplication.config.getProperty('knowledgeBase.service'),
+        crawlKnowledgeBaseSite(getEncodedUrl(type))
+    }
+
+    /**
+     * Used for unit test so we don't crawl all 120+ pages
+     *
+     * @param max
+     * @return
+     */
+    List resources(Integer max) throws IOException {
+        crawlKnowledgeBaseSite(getEncodedUrl(""), max)
+    }
+
+    /**
+     * Get the encoded URL of the starting page for crawling the site
+     *
+     * @param type
+     * @return
+     */
+    private String getEncodedUrl(String type) {
+        Encoder.buildServiceUrl(grailsApplication.config.getProperty('knowledgeBase.service'),
                 grailsApplication.config.getProperty('knowledgeBase.sitemap'), type)
-        return crawlKnowledgeBaseSite(url)
     }
 
     /**
@@ -46,7 +65,7 @@ class KnowledgeBaseService implements IndexingInterface {
      * @param url
      * @return List the list of URLs to scrape and index
      */
-    private List crawlKnowledgeBaseSite(url) throws IOException {
+    private List crawlKnowledgeBaseSite(String url, Integer max = -1) throws IOException {
         List pages = []
         String baseUrl = grailsApplication.config.getProperty('knowledgeBase.service')
         String sectionCssSelector = grailsApplication.config.getProperty('knowledgeBase.sectionSelector')
@@ -67,9 +86,14 @@ class KnowledgeBaseService implements IndexingInterface {
                     Elements articles = sectionDoc.select(articleCssSelector) // link to KB pages
 
                     if (articles.size() > 0) {
-                        // we're on a page with sub-albums (e.g. family or subfamily) so need to go one level deeper
                         for (Element article : articles) {
                             String articleUrl = article.attr("href")
+                            int count = pages.size()
+
+                            // exit if max is set
+                            if (max > 0 && count >= max) {
+                                break
+                            }
 
                             if (articleUrl) {
                                 String fullUrl = baseUrl + articleUrl

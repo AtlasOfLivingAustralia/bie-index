@@ -15,14 +15,15 @@ class KnowledgeBaseServiceSpec extends Specification {
     static Map firstPageMap = [:]
     static Map randomPageMap = [:]
     static int randomNum
+    static Integer max = 10
 
     def setupSpec() {
         // call web service once only and store results in static vars
-        pages = service.resources("")
+        pages = service.resources(max)
         firstPageUrl = pages.get(0)
         firstPageMap = service.getResource(firstPageUrl)
         Random rand = new Random()
-        randomNum = rand.nextInt(101)
+        randomNum = rand.nextInt(11)
         randomPageUrl = pages.get(randomNum)
         randomPageMap = service.getResource(randomPageUrl)
 
@@ -37,7 +38,7 @@ class KnowledgeBaseServiceSpec extends Specification {
 
     void "test resources (List) should not be empty"() {
         expect:
-            pages.size() > 1
+            pages.size() > 9
     }
 
     void "test first page URL has expected domain"() {
