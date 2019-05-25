@@ -504,25 +504,22 @@ class ImportService implements GrailsConfigurationAware {
         log("WordPress pages found: ${totalDocs}") // update user via socket
 
         // slurp and build each SOLR doc (add to buffer)
-        pages.each { pageUrl ->
+        pages.any { pageUrl ->
             log "indexing url: ${pageUrl}"
             try {
                 // Extract text from WP pages
                 def document = wordpressService.getResource(pageUrl)
-                String title = document.select("head > title").text();
-                String id = document.select("head > meta[name=id]").attr("content");
-                String shortlink = document.select("head > link[rel=shortlink]").attr("href");
-                String bodyText = document.body().text();
-                Elements postCategories = document.select("ul[class=post-categories]");
                 boolean excludePost = document.categories.any { wordPressExcludedCategories.contains(it) }
-                if (excludePost) {
-                    log("Excluding post (id: ${doucment.id} with categories: ${document.categories}")
+
+                if (!document || excludePost) {
+                    log("Excluding post (id: ${document.id} with categories: ${document.categories}")
                     return
                 }
+
                 def categories = document.categories.findAll({ it != null} ).collect( { it.replaceAll('\\s+', '_') })
-                documentCount++;
+                documentCount++
                 // create SOLR doc
-                log(documentCount + ". Indexing WP page - id: " + id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ");
+                log(documentCount + ". Indexing WP page - id: " + document.id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ");
                 def doc = [:]
                 doc["idxtype"] = IndexDocType.WORDPRESS.name()
 

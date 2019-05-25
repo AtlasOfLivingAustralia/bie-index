@@ -33,18 +33,8 @@ class KnowledgeBaseService implements IndexingInterface {
      * @param type
      * @return
      */
-    List resources(String type) throws IOException {
-        crawlKnowledgeBaseSite(getEncodedUrl(type))
-    }
-
-    /**
-     * Used for unit test so we don't crawl all 120+ pages
-     *
-     * @param max
-     * @return
-     */
-    List resources(Integer max) throws IOException {
-        crawlKnowledgeBaseSite(getEncodedUrl(""), max)
+    List resources(String type, Integer max = -1) throws IOException {
+        crawlKnowledgeBaseSite(getEncodedUrl(type), max)
     }
 
     /**
@@ -88,10 +78,9 @@ class KnowledgeBaseService implements IndexingInterface {
                     if (articles.size() > 0) {
                         for (Element article : articles) {
                             String articleUrl = article.attr("href")
-                            int count = pages.size()
 
-                            // exit if max is set
-                            if (max > 0 && count >= max) {
+                            // exit inner loop if max is set
+                            if (max > 0 && pages.size() >= max) {
                                 break
                             }
 
@@ -106,6 +95,11 @@ class KnowledgeBaseService implements IndexingInterface {
                     }
                 } else {
                     log.warn "No links found for ${sectionCssSelector} selector on ${url}"
+                }
+
+                // exit outer loop if max is set
+                if (max > 0 && pages.size() >= max) {
+                    break
                 }
             }
         } else {

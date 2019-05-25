@@ -31,7 +31,7 @@ class WordpressService implements IndexingInterface {
      *
      * @return The list of available pages
      */
-    List resources(String type) {
+    List resources(String type = "") {
         def url = Encoder.buildServiceUrl(grailsApplication.config.wordPress.service, grailsApplication.config.wordPress.sitemap, type)
         return crawlWordPressSite(url)
     }
@@ -60,13 +60,27 @@ class WordpressService implements IndexingInterface {
      * @return The a summary of the page contents
      */
     Map getResource(String url) {
-        Document document = Jsoup.connect(url + grailsApplication.config.wordPress.contentOnlyParams).get()
+        String fullUrl = url + grailsApplication.config.wordPress.contentOnlyParams
+        log.info "GETing url: ${fullUrl}"
+        Document document = Jsoup.connect(fullUrl).get()
+
+        // some summary/landing pages do not work with `content-only=1`, so we don't want to index them
+        if (document.select("body.ala-content") || !document.body().text()) {
+            return [:]
+        }
+
         def id = document.select("head > meta[name=id]").attr("content")
         def shortlink = document.select("head > link[rel=shortlink]").attr("href")
+
         if (StringUtils.isEmpty(id) && StringUtils.isNotBlank(shortlink)) {
+            // should NOT be triggered with `&content-only=1`
             // e.g. http://www.ala.org.au/?p=24241
             id = StringUtils.split(shortlink, "=")[1];
         }
+
+        log.info "title = ${document.select("head > title").text()}"
+        log.info "body = ${document.body().text()}"
+
         return [
                 title: document.select("head > title").text(),
                 id: id,

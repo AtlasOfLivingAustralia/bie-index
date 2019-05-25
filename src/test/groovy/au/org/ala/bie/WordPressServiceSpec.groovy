@@ -1,3 +1,16 @@
+/*
+ * Copyright (C) 2019 Atlas of Living Australia
+ * All Rights Reserved.
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ */
+
 package au.org.ala.bie
 
 import grails.test.mixin.TestFor
@@ -6,8 +19,8 @@ import spock.lang.Specification
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
  */
-@TestFor(KnowledgeBaseService)
-class KnowledgeBaseServiceSpec extends Specification {
+@TestFor(WordpressService)
+class WordPressServiceSpec extends Specification {
 
     static List pages = []
     static String firstPageUrl = ""
@@ -19,13 +32,23 @@ class KnowledgeBaseServiceSpec extends Specification {
 
     def setupSpec() {
         // call web service once only and store results in static vars
-        pages = service.resources("", max)
-        firstPageUrl = pages.get(0)
+        pages = service.resources("")
+        firstPageUrl = pages.get(1) // homepage has no body so use second page for testing
         firstPageMap = service.getResource(firstPageUrl)
         Random rand = new Random()
-        randomNum = rand.nextInt(10)
-        randomPageUrl = pages.get(randomNum)
-        randomPageMap = service.getResource(randomPageUrl)
+        int count = 0
+
+        while (count < pages.size()) {
+            randomNum = rand.nextInt(pages.size())
+            randomPageUrl = pages.get(randomNum)
+            randomPageMap = service.getResource(randomPageUrl)
+            // some pages have no body so we want to skip them
+            if (randomPageMap && randomPageMap.body) {
+                break
+            }
+
+            count++
+        }
 
         log.info "resources is ${pages.size()} in size"
         log.info "first page URL = ${firstPageUrl}"
@@ -43,12 +66,12 @@ class KnowledgeBaseServiceSpec extends Specification {
 
     void "test first page URL has expected domain"() {
         expect:
-            firstPageUrl?.startsWith("https://support.ala.org.au")
+            firstPageUrl?.contains("www.ala.org.au")
     }
 
     void "test random page URL has expected domain"() {
         expect:
-            randomPageUrl?.startsWith("https://support.ala.org.au")
+            randomPageUrl?.contains("www.ala.org.au")
     }
 
     void "test first page has body text"() {
@@ -56,7 +79,7 @@ class KnowledgeBaseServiceSpec extends Specification {
             firstPageMap.containsKey("id")
             firstPageMap.containsKey("title")
             firstPageMap.containsKey("body")
-            firstPageMap.get("body").size() > 100
+            firstPageMap.get("body").size() > 50
     }
 
     void "test random page has body text"() {
@@ -64,7 +87,7 @@ class KnowledgeBaseServiceSpec extends Specification {
             randomPageMap.containsKey("id")
             randomPageMap.containsKey("title")
             randomPageMap.containsKey("body")
-            randomPageMap.get("body").size() > 100
+            randomPageMap.get("body").size() > 50
     }
 
 }
