@@ -23,7 +23,7 @@ class KnowledgeBaseServiceSpec extends Specification {
         firstPageUrl = pages.get(0)
         firstPageMap = service.getResource(firstPageUrl)
         Random rand = new Random()
-        randomNum = rand.nextInt(11)
+        randomNum = rand.nextInt(10)
         randomPageUrl = pages.get(randomNum)
         randomPageMap = service.getResource(randomPageUrl)
 
