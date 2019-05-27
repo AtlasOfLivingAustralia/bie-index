@@ -51,6 +51,8 @@ class ImportController {
 
     def wordpress(){}
 
+    def knowledgebase(){}
+
     def links(){}
 
     def occurrences(){}
