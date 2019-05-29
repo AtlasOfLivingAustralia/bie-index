@@ -247,6 +247,9 @@ class ImportService implements GrailsConfigurationAware {
                     case 'wordpress':
                         importWordPressPages()
                         break
+                    case 'knowledgebase':
+                        importKnowledgeBasePages()
+                        break
                     default:
                         log("Unknown step ${step}")
                         log.error("Unknown step ${step}")
@@ -504,7 +507,7 @@ class ImportService implements GrailsConfigurationAware {
         log("WordPress pages found: ${totalDocs}") // update user via socket
 
         // slurp and build each SOLR doc (add to buffer)
-        pages.any { pageUrl ->
+        pages.each { pageUrl ->
             log "indexing url: ${pageUrl}"
             try {
                 // Extract text from WP pages

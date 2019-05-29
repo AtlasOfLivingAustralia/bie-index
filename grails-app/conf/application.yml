@@ -232,7 +232,7 @@ skin:
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
 import:
-  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,favourites,weights,link-identifiers,images,occurrences,suggest-index
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,suggest-index
   taxonomy:
     dir: /data/bie/import
   priority:
