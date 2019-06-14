@@ -1,17 +1,29 @@
+/*
+ * Copyright (C) 2019 Atlas of Living Australia
+ * All Rights Reserved.
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of
+ * the License at http://www.mozilla.org/MPL/
+ * Software distributed under the License is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * rights and limitations under the License.
+ */
+
 package au.org.ala.bie
 
+import au.org.ala.bie.indexing.IndexingInterface
 import au.org.ala.bie.util.Encoder
-import groovy.json.JsonSlurper
 import org.apache.commons.lang.StringUtils
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 
 /**
- * Interface to the collectory
+ * Service for accessing Word Press pages
  */
-class WordpressService {
+class WordpressService implements IndexingInterface {
     def grailsApplication
 
     /**
@@ -19,8 +31,8 @@ class WordpressService {
      *
      * @return The list of available pages
      */
-    def pages() {
-        def url = Encoder.buildServiceUrl(grailsApplication.config.wordPress.service, grailsApplication.config.wordPress.sitemap)
+    List resources(String type = "") {
+        def url = Encoder.buildServiceUrl(grailsApplication.config.wordPress.service, grailsApplication.config.wordPress.sitemap, type)
         return crawlWordPressSite(url)
     }
 
@@ -47,14 +59,28 @@ class WordpressService {
      *
      * @return The a summary of the page contents
      */
-    def get(String url) {
-        Document document = Jsoup.connect(url + grailsApplication.config.wordPress.contentOnlyParams).get()
+    Map getResource(String url) {
+        String fullUrl = url + grailsApplication.config.wordPress.contentOnlyParams
+        log.info "GETing url: ${fullUrl}"
+        Document document = Jsoup.connect(fullUrl).get()
+
+        // some summary/landing pages do not work with `content-only=1`, so we don't want to index them
+        if (document.select("body.ala-content") || !document.body().text()) {
+            return [:]
+        }
+
         def id = document.select("head > meta[name=id]").attr("content")
         def shortlink = document.select("head > link[rel=shortlink]").attr("href")
+
         if (StringUtils.isEmpty(id) && StringUtils.isNotBlank(shortlink)) {
+            // should NOT be triggered with `&content-only=1`
             // e.g. http://www.ala.org.au/?p=24241
             id = StringUtils.split(shortlink, "=")[1];
         }
+
+        log.info "title = ${document.select("head > title").text()}"
+        log.info "body = ${document.body().text()}"
+
         return [
                 title: document.select("head > title").text(),
                 id: id,

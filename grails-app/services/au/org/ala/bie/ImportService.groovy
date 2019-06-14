@@ -95,7 +95,7 @@ class ImportService implements GrailsConfigurationAware {
 
 
     def indexService, searchService, biocacheService
-    def listService, layerService, collectoryService, wordpressService
+    def listService, layerService, collectoryService, wordpressService, knowledgeBaseService
 
     def speciesGroupService
     def conservationListsSource
@@ -246,6 +246,9 @@ class ImportService implements GrailsConfigurationAware {
                         break
                     case 'wordpress':
                         importWordPressPages()
+                        break
+                    case 'knowledgebase':
+                        importKnowledgeBasePages()
                         break
                     default:
                         log("Unknown step ${step}")
@@ -497,7 +500,7 @@ class ImportService implements GrailsConfigurationAware {
         }
 
         // get List of WordPress document URLs (each page's URL)
-        def pages = wordpressService.pages()
+        def pages = wordpressService.resources()
         def documentCount = 0
         def totalDocs = pages.size()
         def buffer = []
@@ -508,21 +511,18 @@ class ImportService implements GrailsConfigurationAware {
             log "indexing url: ${pageUrl}"
             try {
                 // Extract text from WP pages
-                def document = wordpressService.get(pageUrl)
-                String title = document.select("head > title").text();
-                String id = document.select("head > meta[name=id]").attr("content");
-                String shortlink = document.select("head > link[rel=shortlink]").attr("href");
-                String bodyText = document.body().text();
-                Elements postCategories = document.select("ul[class=post-categories]");
+                def document = wordpressService.getResource(pageUrl)
                 boolean excludePost = document.categories.any { wordPressExcludedCategories.contains(it) }
-                if (excludePost) {
-                    log("Excluding post (id: ${doucment.id} with categories: ${document.categories}")
+
+                if (!document || excludePost) {
+                    log("Excluding post (id: ${document.id} with categories: ${document.categories}")
                     return
                 }
+
                 def categories = document.categories.findAll({ it != null} ).collect( { it.replaceAll('\\s+', '_') })
-                documentCount++;
+                documentCount++
                 // create SOLR doc
-                log(documentCount + ". Indexing WP page - id: " + id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ");
+                log(documentCount + ". Indexing WP page - id: " + document.id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ");
                 def doc = [:]
                 doc["idxtype"] = IndexDocType.WORDPRESS.name()
 
@@ -558,6 +558,59 @@ class ImportService implements GrailsConfigurationAware {
         updateProgressBar(100, 100) // complete progress bar
         log "Finished wordpress import"
     }
+
+    /**
+     * Index Knowledge Base pages.
+     */
+    def importKnowledgeBasePages() throws Exception {
+        log "Starting knowledge base import"
+        // clear the existing WP index
+        indexService.deleteFromIndex(IndexDocType.KNOWLEDGEBASE)
+
+        // get List of Knowledge Base document URLs (each page's URL)
+        def pages = knowledgeBaseService.resources()
+        def documentCount = 0
+        def totalDocs = pages.size()
+        def buffer = []
+        log("Knowledge base pages found: ${totalDocs}") // update user via socket
+
+        // slurp and build each SOLR doc (add to buffer)
+        pages.each { pageUrl ->
+            log "indexing url: ${pageUrl}"
+            try {
+                Map docMap = knowledgeBaseService.getResource(pageUrl)
+
+                if (docMap) {
+                    documentCount++
+                    // create SOLR doc
+                    log(documentCount + ". Indexing KB page - id: " + docMap.id + " | title: " + docMap.title + " | text: " + StringUtils.substring(docMap.body, 0, 100) + "... ");
+                    def doc = [:]
+                    doc["idxtype"] = IndexDocType.KNOWLEDGEBASE.name()
+                    doc["id"] = "kb" + docMap.id // probably not needed but good practice to have a guid
+                    doc["name"] = docMap.title
+                    doc["content"] = docMap.body
+                    doc["linkIdentifier"] = pageUrl
+                    // add to doc to buffer (List)
+                    buffer << doc
+                    // update progress bar (number output only)
+                    if (documentCount > 0) {
+                        updateProgressBar(totalDocs, documentCount)
+                    }
+                } else {
+                    log.warn("No page data retrieved for ${pageUrl}")
+                }
+            } catch (IOException ex) {
+                // catch it so we don't stop indexing other pages
+                log("Problem accessing/reading KB page <${pageUrl}>: " + ex.getMessage() + " - document skipped")
+                log.warn(ex.getMessage(), ex)
+            }
+        }
+        log("Committing to SOLR...")
+        indexService.indexBatch(buffer)
+        updateProgressBar(100, 100) // complete progress bar
+        log "Finished knowledge base import"
+    }
+
 
     /**
      * Import and index species lists for:
