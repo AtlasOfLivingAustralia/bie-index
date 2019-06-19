@@ -75,7 +75,7 @@ class SearchController {
     def childConcepts(){
         def taxonID = params.id
         if(!taxonID){
-            response.sendError(404, "Please provide a GUID")
+            response.sendError(400, "Please provide a GUID")
             return null
         }
         def within = params.within && params.within.isInteger() ? params.within as Integer : 2000
@@ -87,7 +87,7 @@ class SearchController {
     def guid(){
         if(params.name == 'favicon') return; //not sure why this is happening....
         if(!params.name){
-            response.sendError(404, "Please provide a name for lookups")
+            response.sendError(400, "Please provide a name for lookups")
             return null
         }
         def model = searchService.getProfileForName(params.name)
@@ -104,7 +104,7 @@ class SearchController {
         def guid = regularise(params.id)
         if(guid == 'favicon') return; //not sure why this is happening....
         if(!guid){
-            response.sendError(404, "Please provide a GUID")
+            response.sendError(400, "Please provide a GUID")
             return null
         }
         def model = searchService.getShortProfile(guid)
@@ -128,14 +128,15 @@ class SearchController {
     // Documented in openapi.yml
     def bulkGuidLookup(){
         def guidList = request.JSON
-        def results = searchService.getTaxa(guidList)
-        if(!results){
-            response.sendError(404,"GUID not recognised ${guidList}")
+        if(!(guidList in List) || guidList == null){
+            response.sendError(400, "Please provide a GUID list")
             return null
-        } else {
-            def dto = [searchDTOList: results]
-            asJson dto
         }
+        def results = searchService.getTaxa(guidList)
+        if (results == null)
+            results = []
+        def dto = [searchDTOList: results]
+        asJson dto
     }
 
     /**
@@ -148,7 +149,7 @@ class SearchController {
         def guid = regularise(params.id)
         if(guid == 'favicon') return; //not sure why this is happening....
         if(!guid){
-            response.sendError(404, "Please provide a GUID")
+            response.sendError(400, "Please provide a GUID")
             return null
         }
         def model = searchService.getTaxon(guid)

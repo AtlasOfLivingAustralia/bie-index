@@ -153,7 +153,7 @@ class ImportService implements GrailsConfigurationAware {
         gazetteerId = config.layers.gazetteerId
         localityKeywords = getConfigFile(config.localityKeywordsUrl)
         wordPressSitemap = config.wordPress.sitemap
-        wordPressBaseUrl = config.wordPress.base
+        wordPressBaseUrl = config.wordPress.service
         wordPressPageFormat = config.wordPress.page
         wordPressExcludedCategories = config.wordPress.excludedCategories
         vernacularListsUrl = config.vernacularListsUrl
@@ -492,7 +492,7 @@ class ImportService implements GrailsConfigurationAware {
         log "Starting wordpress import"
         // clear the existing WP index
         indexService.deleteFromIndex(IndexDocType.WORDPRESS)
-        if (wordPressSitemap) {
+        if (!wordPressSitemap) {
             return
         }
 
@@ -509,43 +509,39 @@ class ImportService implements GrailsConfigurationAware {
             try {
                 // Extract text from WP pages
                 def document = wordpressService.get(pageUrl)
-                String title = document.select("head > title").text();
-                String id = document.select("head > meta[name=id]").attr("content");
-                String shortlink = document.select("head > link[rel=shortlink]").attr("href");
-                String bodyText = document.body().text();
-                Elements postCategories = document.select("ul[class=post-categories]");
-                boolean excludePost = document.categories.any { wordPressExcludedCategories.contains(it) }
+                List<String> categories = document.categories;
+                boolean excludePost = categories.any { wordPressExcludedCategories.contains(it) }
                 if (excludePost) {
-                    log("Excluding post (id: ${doucment.id} with categories: ${document.categories}")
-                    return
-                }
-                def categories = document.categories.findAll({ it != null} ).collect( { it.replaceAll('\\s+', '_') })
-                documentCount++;
-                // create SOLR doc
-                log(documentCount + ". Indexing WP page - id: " + id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ");
-                def doc = [:]
-                doc["idxtype"] = IndexDocType.WORDPRESS.name()
-
-                if (StringUtils.isNotBlank(document.shortlink)) {
-                    doc["guid"] = document.shortlink
-                } else if (StringUtils.isNotEmpty(document.id)) {
-                    doc["guid"] = Encoder.buildServiceUrl(wordPressBaseUrl, wordPressPageFormat, document.id).toExternalForm()
+                    log("Excluding post (id: ${document.id} with categories: ${categories}")
                 } else {
-                    // fallback
-                    doc["guid"] = pageUrl
-                }
+                    categories = categories.findAll({ it != null }).collect({ it.replaceAll('\\s+', '_') })
+                    documentCount++;
+                    // create SOLR doc
+                    log(documentCount + ". Indexing WP page - id: " + document.id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ");
+                    def doc = [:]
+                    doc["idxtype"] = IndexDocType.WORDPRESS.name()
 
-                doc["id"] = "wp" + document.id // probably not needed but safer to leave in
-                doc["name"] = document.title // , 1.2f
-                doc["content"] = document.body
-                doc["linkIdentifier"] = pageUrl
-                //doc["australian_s"] = "recorded" // so they appear in default QF search
-                doc["categories"] = categories
-                // add to doc to buffer (List)
-                buffer << doc
-                // update progress bar (number output only)
-                if (documentCount > 0) {
-                    updateProgressBar(totalDocs, documentCount)
+                    if (StringUtils.isNotBlank(document.shortlink)) {
+                        doc["guid"] = document.shortlink
+                    } else if (StringUtils.isNotEmpty(document.id)) {
+                        doc["guid"] = Encoder.buildServiceUrl(wordPressBaseUrl, wordPressPageFormat, document.id).toExternalForm()
+                    } else {
+                        // fallback
+                        doc["guid"] = pageUrl
+                    }
+
+                    doc["id"] = "wp" + document.id // probably not needed but safer to leave in
+                    doc["name"] = document.title // , 1.2f
+                    doc["content"] = document.body
+                    doc["linkIdentifier"] = pageUrl
+                    //doc["australian_s"] = "recorded" // so they appear in default QF search
+                    doc["categories"] = categories
+                    // add to doc to buffer (List)
+                    buffer << doc
+                    // update progress bar (number output only)
+                    if (documentCount > 0) {
+                        updateProgressBar(totalDocs, documentCount)
+                    }
                 }
             } catch (IOException ex) {
                 // catch it so we don't stop indexing other pages
