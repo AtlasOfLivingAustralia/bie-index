@@ -230,7 +230,7 @@ An example vernacular name list configuration is
 
 The default entries provide useful defaults for things like the list fields that hold various pieces of information.
 These can be overridden at the list level.
-Languages should be ISO-639 two- or three-letter codes; the bie-plugin can expand these out.
+Languages should be ISO-639 two- or three-letter codes or AIATSIS codes; the bie-plugin can expand these out.
 The `uid` holds the list identifier to load.
 
 **Avoid using vernacularName or commonName as the vernacular name field** 

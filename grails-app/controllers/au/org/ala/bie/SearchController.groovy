@@ -1,18 +1,28 @@
 package au.org.ala.bie
 
+import grails.config.Config
 import grails.converters.JSON
+import grails.core.support.GrailsConfigurationAware
 import org.apache.solr.common.SolrException
 
 /**
  * A set of JSON based search web services.
  */
-class SearchController {
+class SearchController implements GrailsConfigurationAware {
     def searchService, solrSearchService, autoCompleteService, downloadService
 
     static defaultAction = "search"
 
     // Caused by the grails structure eliminating the // from http://x.y.z type URLs
     static BROKEN_URLPATTERN = /^[a-z]+:\/[^\/].*/
+
+    /** The default locale to use when choosing common names */
+    Locale defaultLocale
+
+    @Override
+    void setConfiguration(Config config) {
+        defaultLocale = Locale.forLanguageTag(config.commonName.defaultLanguage)
+    }
 
     /**
      * Retrieve a classification for the supplied taxon.
@@ -147,12 +157,13 @@ class SearchController {
     // Documented in openapi.yml
     def taxon(){
         def guid = regularise(params.id)
+        def locales = [request.locale, defaultLocale]
         if(guid == 'favicon') return; //not sure why this is happening....
         if(!guid){
             response.sendError(400, "Please provide a GUID")
             return null
         }
-        def model = searchService.getTaxon(guid)
+        def model = searchService.getTaxon(guid, locales)
         log.debug "taxon model = ${model}"
 
         if(!model) {
@@ -206,10 +217,11 @@ class SearchController {
      */
     // Documented in openapi.yml
     def auto(){
-        def limit = params.limit
+        def limit = params.limit?.toInteger()
         def idxType = params.idxType
         def geoOnly = params.geoOnly
         def kingdom = params.kingdom
+        def locales = [request.locale, defaultLocale]
         def payload
 
         if (geoOnly) {
@@ -217,9 +229,7 @@ class SearchController {
         }
 
         try {
-            if (limit)
-                limit = limit as Integer
-            def autoCompleteList = autoCompleteService.auto(params.q, idxType, kingdom, limit)
+            def autoCompleteList = autoCompleteService.auto(params.q, idxType, kingdom, limit, locales)
             payload = [autoCompleteList: autoCompleteList]
         } catch (SolrException ex) { // Can be caused by list not being ready
             payload = [autoCompleteList: [], error: ex.getMessage()]
@@ -237,12 +247,13 @@ class SearchController {
         try {
             def facets = []
             def requestFacets = params.getList("facets")
+            def locales = [request.locale, defaultLocale]
             if(requestFacets){
                 requestFacets.each {
                     it.split(",").each { facet -> facets << facet }
                 }
             }
-            def results = searchService.search(params.q, params, facets)
+            def results = searchService.search(params.q, params, facets, locales)
             asJson([searchResults: results])
         } catch (Exception e){
             log.error(e.getMessage(), e)

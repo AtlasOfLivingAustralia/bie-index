@@ -21,7 +21,7 @@ class AutoCompleteService {
 
     def serviceMethod() {}
 
-    List auto(String q, String idxtype, String kingdom, Integer rows){
+    List auto(String q, String idxtype, String kingdom, Integer rows, List<Locale> locales){
         Boolean useLegacyAuto = grailsApplication.config.autocomplete.legacy as Boolean
         List results
 
@@ -29,7 +29,7 @@ class AutoCompleteService {
             def fq = idxtype ? ["idxtype:${idxtype}"] : [p]
             results = autoLegacy(q, idxtype, rows)
         } else {
-            results = autoSuggest(q, idxtype, kingdom, rows)
+            results = autoSuggest(q, idxtype, kingdom, rows, locales)
         }
 
         results
@@ -42,10 +42,11 @@ class AutoCompleteService {
      * @param q The query
      * @param idxtype A restriction on the type of result
      * @param rows The number of rows to retrieve
+     * @param locales The prefrred locales to use for matching common names
      *
      * @return
      */
-    List autoSuggest(String q, String idxtype, String kingdom, Integer rows){
+    List autoSuggest(String q, String idxtype, String kingdom, Integer rows, List<Locale> locales){
         log.debug("auto called with q = " + q)
 
         if (!q)

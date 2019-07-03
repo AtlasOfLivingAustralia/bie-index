@@ -51,6 +51,8 @@ class ImportController {
 
     def wordpress(){}
 
+    def knowledgebase(){}
+
     def links(){}
 
     def occurrences(){}
@@ -84,7 +86,7 @@ class ImportController {
         def job = execute(
                 "importDwca,importCollectory,deleteDanglingSynonyms,importLayers,importLocalities,importRegions,importHabitats,importHabitats," +
                     "importWordPressPages,importOccurrences,importConsevationSpeciesLists,buildVernacularSpeciesLists,buildLinkIdentifiers" +
-                    "denormaliseTaxa,loadImages,",
+                    "denormaliseTaxa,loadImages,importKnowledgeBase",
                 "admin.button.importall",
                 { importService.importAll() })
         asJson(job.status())
@@ -190,6 +192,16 @@ class ImportController {
     // Documented in openapi.yml
     def importWordPress(){
         def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages() })
+        asJson(job.status())
+    }
+
+    /**
+     * Import/index KB (Fresh Desk) pages
+     *
+     * @return
+     */
+    def importKnowledgeBase(){
+        def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages() })
         asJson(job.status())
     }
 

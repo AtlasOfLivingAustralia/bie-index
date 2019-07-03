@@ -15,6 +15,7 @@ enum IndexDocType {
     SPECIESLIST,
     HABITAT,
     WORDPRESS,
+    KNOWLEDGEBASE,
     COMMON,
     IDENTIFIER,
     TAXONVARIANT
