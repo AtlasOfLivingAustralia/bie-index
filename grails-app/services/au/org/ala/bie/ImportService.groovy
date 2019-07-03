@@ -123,7 +123,7 @@ class ImportService implements GrailsConfigurationAware {
     List<String> occurrenceCountFilter
     String commonNameDefaultLanguage
     String imageConfiguration
-    Set<String> autocompleteLanguages
+    Set<String> commonNameLanguages
     double weightMin
     double weightMax
     double weightNorm
@@ -153,15 +153,15 @@ class ImportService implements GrailsConfigurationAware {
         gazetteerId = config.layers.gazetteerId
         localityKeywords = getConfigFile(config.localityKeywordsUrl)
         wordPressSitemap = config.wordPress.sitemap
-        wordPressBaseUrl = config.wordPress.base
+        wordPressBaseUrl = config.wordPress.service
         wordPressPageFormat = config.wordPress.page
         wordPressExcludedCategories = config.wordPress.excludedCategories
         vernacularListsUrl = config.vernacularListsUrl
         nationalSpeciesDatasets = config.collectory.nationalSpeciesDatasets as Set
         occurrenceCountFilter = config.biocache.occurrenceCount.filterQuery as List
-        commonNameDefaultLanguage = config.commonNameDefaultLanguage
+        commonNameDefaultLanguage = config.commonName.defaultLanguage
         imageConfiguration =  config.images.config
-        autocompleteLanguages =  config.autocomplete.languages ? config.autocomplete.languages.split(',') as Set : null
+        commonNameLanguages =  config.commonName.languages ? config.commonName.languages.split(',') as Set : null
         weightMin = config.getProperty("import.priority.min", Double, 0.25)
         weightMax = config.getProperty("import.priority.max", Double, 5.0)
         weightNorm = config.getProperty("import.priority.norm", Double, 4000.0)
@@ -495,7 +495,7 @@ class ImportService implements GrailsConfigurationAware {
         log "Starting wordpress import"
         // clear the existing WP index
         indexService.deleteFromIndex(IndexDocType.WORDPRESS)
-        if (wordPressSitemap) {
+        if (!wordPressSitemap) {
             return
         }
 
@@ -512,40 +512,39 @@ class ImportService implements GrailsConfigurationAware {
             try {
                 // Extract text from WP pages
                 def document = wordpressService.getResource(pageUrl)
-                boolean excludePost = document.categories.any { wordPressExcludedCategories.contains(it) }
-
-                if (!document || excludePost) {
-                    log("Excluding post (id: ${document.id} with categories: ${document.categories}")
-                    return
-                }
-
-                def categories = document.categories.findAll({ it != null} ).collect( { it.replaceAll('\\s+', '_') })
-                documentCount++
-                // create SOLR doc
-                log(documentCount + ". Indexing WP page - id: " + document.id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ");
-                def doc = [:]
-                doc["idxtype"] = IndexDocType.WORDPRESS.name()
-
-                if (StringUtils.isNotBlank(document.shortlink)) {
-                    doc["guid"] = document.shortlink
-                } else if (StringUtils.isNotEmpty(document.id)) {
-                    doc["guid"] = Encoder.buildServiceUrl(wordPressBaseUrl, wordPressPageFormat, document.id).toExternalForm()
+                List<String> categories = document.categories;
+                boolean excludePost = categories.any { wordPressExcludedCategories.contains(it) }
+                if (excludePost) {
+                    log("Excluding post (id: ${document.id} with categories: ${categories}")
                 } else {
-                    // fallback
-                    doc["guid"] = pageUrl
-                }
+                    categories = categories.findAll({ it != null }).collect({ it.replaceAll('\\s+', '_') })
+                    documentCount++;
+                    // create SOLR doc
+                    log.debug documentCount + ". Indexing WP page - id: " + document.id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ";
+                    def doc = [:]
+                    doc["idxtype"] = IndexDocType.WORDPRESS.name()
 
-                doc["id"] = "wp" + document.id // probably not needed but safer to leave in
-                doc["name"] = document.title // , 1.2f
-                doc["content"] = document.body
-                doc["linkIdentifier"] = pageUrl
-                //doc["australian_s"] = "recorded" // so they appear in default QF search
-                doc["categories"] = categories
-                // add to doc to buffer (List)
-                buffer << doc
-                // update progress bar (number output only)
-                if (documentCount > 0) {
-                    updateProgressBar(totalDocs, documentCount)
+                    if (StringUtils.isNotBlank(document.shortlink)) {
+                        doc["guid"] = document.shortlink
+                    } else if (StringUtils.isNotEmpty(document.id)) {
+                        doc["guid"] = Encoder.buildServiceUrl(wordPressBaseUrl, wordPressPageFormat, document.id).toExternalForm()
+                    } else {
+                        // fallback
+                        doc["guid"] = pageUrl
+                    }
+
+                    doc["id"] = "wp" + document.id // probably not needed but safer to leave in
+                    doc["name"] = document.title // , 1.2f
+                    doc["content"] = document.body
+                    doc["linkIdentifier"] = pageUrl
+                    //doc["australian_s"] = "recorded" // so they appear in default QF search
+                    doc["categories"] = categories
+                    // add to doc to buffer (List)
+                    buffer << doc
+                    // update progress bar (number output only)
+                    if (documentCount > 0) {
+                        updateProgressBar(totalDocs, documentCount)
+                    }
                 }
             } catch (IOException ex) {
                 // catch it so we don't stop indexing other pages
@@ -553,7 +552,7 @@ class ImportService implements GrailsConfigurationAware {
                 log.warn(ex.getMessage(), ex);
             }
         }
-        log("Committing to SOLR...")
+        log("Committing to ${buffer.size()} documents to SOLR...")
         indexService.indexBatch(buffer)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished wordpress import"
@@ -583,10 +582,11 @@ class ImportService implements GrailsConfigurationAware {
                 if (docMap) {
                     documentCount++
                     // create SOLR doc
-                    log(documentCount + ". Indexing KB page - id: " + docMap.id + " | title: " + docMap.title + " | text: " + StringUtils.substring(docMap.body, 0, 100) + "... ");
+                    log.debug documentCount + ". Indexing KB page - id: " + docMap.id + " | title: " + docMap.title + " | text: " + StringUtils.substring(docMap.body, 0, 100) + "... ";
                     def doc = [:]
                     doc["idxtype"] = IndexDocType.KNOWLEDGEBASE.name()
-                    doc["id"] = "kb" + docMap.id // probably not needed but good practice to have a guid
+                    doc["guid"] = pageUrl
+                    doc["id"] = "kb" + docMap.id // guid required
                     doc["name"] = docMap.title
                     doc["content"] = docMap.body
                     doc["linkIdentifier"] = pageUrl
@@ -605,7 +605,7 @@ class ImportService implements GrailsConfigurationAware {
                 log.warn(ex.getMessage(), ex)
             }
         }
-        log("Committing to SOLR...")
+        log("Committing to ${buffer.size()} documents to SOLR...")
         indexService.indexBatch(buffer)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished knowledge base import"
@@ -1894,14 +1894,17 @@ class ImportService implements GrailsConfigurationAware {
                 response = indexService.query(online, "denormalised:true", [], pageSize, null, null, "id", "asc", cursor)
                 def buffer = []
 
-                response.results.each { doc ->
+                response.results.each { Map doc ->
                     def update = [:]
                     update["id"] = doc.id // doc key
                     update["idxtype"] = [set: doc.idxtype] // required field
                     update["guid"] = [set: doc.guid] // required field
                     update["denormalised"] = [set: false ]
-                    doc.each { k, v -> if (k.startsWith("rk_") || k.startsWith("rkid_")) update[k] = [set: null] }
-                    doc.each { k, v -> if (k.startsWith("commonName")) update[k] = [set: null] }
+                    doc.each { entry ->
+                        def key = entry.key
+                        if (key.startsWith("rk_") || key.startsWith("rkid_") || key.startsWith("commonName"))
+                            update[key] = [set: null]
+                    }
                     update["nameVariant"] = [set: null]
                     update["commonName"] = [set: null]
                     update["commonNameExact"] = [set: null]
@@ -1941,7 +1944,7 @@ class ImportService implements GrailsConfigurationAware {
                 log "1. Paging over ${total} docs - page ${pages}"
 
                 response.results.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autocompleteLanguages, capitalisers)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, commonNameLanguages, capitalisers)
                     processed++
                 }
                 if (!buffer.isEmpty())
@@ -1974,7 +1977,7 @@ class ImportService implements GrailsConfigurationAware {
                 log "2. Paging over ${total} docs - page ${pages}"
 
                 response.results.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, autocompleteLanguages, capitalisers)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, commonLanguages, capitalisers)
                     processed++
                 }
                 if (!buffer.isEmpty())
@@ -2086,7 +2089,7 @@ class ImportService implements GrailsConfigurationAware {
         log("Finished taxon denormalisaion. Duration: ${(new SimpleDateFormat("mm:ss:SSS")).format(new Date(endTime - startTime))}")
     }
 
-    private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set autoLanguages, Map capitalisers) {
+    private denormaliseEntry(doc, Map trace, List stack, List speciesGroups, List speciesSubGroups, List buffer, int bufferLimit, int pageSize, boolean online, JsonSlurper js, Map speciesGroupMapping, Set commonLanguages, Map capitalisers) {
         def currentDistribution = (doc['distribution'] ?: []) as Set
         if (doc.denormalised)
             return currentDistribution
@@ -2144,17 +2147,19 @@ class ImportService implements GrailsConfigurationAware {
         def commonNames = searchService.lookupVernacular(guid, !online)
         if (commonNames && !commonNames.isEmpty()) {
             commonNames = commonNames.sort { n1, n2 ->
-                n2.priority - n1.priority
+                def s = n2.priority - n1.priority
+                if (s == 0 && commonLanguages) {
+                    def s1 = commonLanguages.contains(n1.language) ? 1 : 0
+                    def s2 = commonLanguages.contains(n2.language) ? 1 : 0
+                    s = s2 - s1
+                }
+                s
             }
-
-            //only index valid languages
-            if (autocompleteLanguages)
-                commonNames = commonNames.findAll { autocompleteLanguages.contains(it.language) }
-
+            def single = commonNames.find({ !commonLanguages || commonLanguages.contains(it.language)})?.name
             def names = new LinkedHashSet(commonNames.collect { it.name })
             update["commonName"] = [set: names]
             update["commonNameExact"] = [set: names]
-            update["commonNameSingle"] = [set: names.first() ]
+            update["commonNameSingle"] = [set: single ]
         }
         def identifiers = searchService.lookupIdentifier(guid, !online)
         if (identifiers) {
@@ -2165,7 +2170,7 @@ class ImportService implements GrailsConfigurationAware {
         while (cursor != prevCursor) {
             def response = indexService.query(online, "parentGuid:\"${doc.guid}\"", [ "idxtype:\"${IndexDocType.TAXON.name()}\"", ACCEPTED_STATUS ], pageSize, null, null, "id", "asc", cursor)
             response.results.each { child ->
-                distribution.addAll(denormaliseEntry(child, trace, stack, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, autoLanguages, capitalisers))
+                distribution.addAll(denormaliseEntry(child, trace, stack, speciesGroups, speciesSubGroups, buffer, bufferLimit, pageSize, online, js, speciesGroupMapping, commonLanguages, capitalisers))
             }
             prevCursor = cursor
             cursor = response.nextCursorMark

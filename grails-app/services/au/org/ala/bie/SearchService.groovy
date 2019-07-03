@@ -90,10 +90,14 @@ class SearchService {
     /**
      * General search service.
      *
-     * @param requestedFacets
+     * @param q The search query
+     * @param params The request parameters
+     * @param requestedFacets The facets to use
+     * @param locale The preferred locale for common names
+     *
      * @return
      */
-    def search(String q, GrailsParameterMap params, List requestedFacets) {
+    def search(String q, GrailsParameterMap params, List requestedFacets, List<Locale> locales) {
         params.remove("controller") // remove Grails stuff from query
         params.remove("action") // remove Grails stuff from query
         log.debug "params = ${params.toMapString()}"
@@ -169,7 +173,7 @@ class SearchService {
         [
             totalRecords: response.results.numFound,
             facetResults: formatFacets(response.facetFields, requestedFacets),
-            results     : formatDocs(response.results, response.highlighting, params),
+            results     : formatDocs(response.results, response.highlighting, params, locales),
             queryTitle  : queryTitle
         ]
     }
@@ -620,7 +624,7 @@ class SearchService {
         }
     }
 
-    def getTaxon(taxonLookup){
+    def getTaxon(taxonLookup, List<Locale> locales){
 
         def taxon = lookupTaxon(taxonLookup)
         if(!taxon) {
@@ -640,9 +644,23 @@ class SearchService {
 
         def classification = extractClassification(taxon)
 
-        //retrieve any common names
+        //retrieve any common names, ordered by priority and then language
         response = indexService.query(true, "taxonGuid:\"${encGuid}\"", [ "idxtype:${IndexDocType.COMMON.name()}"], GET_ALL_SIZE)
-        def commonNames = response.results.sort { n1, n2 -> n2.priority - n1.priority }
+        def languages = Encoder.buildLanguageList(locales)
+        def commonNames = response.results.sort { n1, n2 ->
+            def s = n2.priority - n1.priority
+            if (s == 0) {
+                def s1 = languages.findIndexOf { it == n1.language }
+                if (s1 < 0) s1 = languages.size()
+                def s2 = languages.findIndexOf { it == n2.language }
+                if (s2 < 0) s2 = languages.size()
+                s = s1 - s2
+            }
+            if (s == 0) {
+                s = n1.name.compareTo(n2.name)
+            }
+            s
+        }
 
 
         //retrieve any additional identifiers
@@ -725,7 +743,7 @@ class SearchService {
                             nameString: commonName.name,
                             status: commonName.status,
                             priority: commonName.priority,
-                            language: commonName.language ?: grailsApplication.config.commonNameDefaultLanguage,
+                            language: commonName.language ?: grailsApplication.config.commonName.defaultLanguage,
                             temporal: commonName.temporal,
                             locationID: commonName.locationID,
                             locality: commonName.locality,
@@ -884,7 +902,7 @@ class SearchService {
      * @param highlighting
      * @return
      */
-    private List formatDocs(List<SolrDocument> docs, highlighting, params) {
+    private List formatDocs(List<SolrDocument> docs, highlighting, params, List<Locale> locales) {
 
         def formatted = []
         def fields = params?.fields?.split(",")?.collect({ String f -> f.trim() }) as Set
@@ -904,8 +922,6 @@ class SearchService {
                     commonNameSingle = it.commonNameSingle
                 if (it.commonName) {
                     commonNames = it.commonName.join(", ")
-                    if (commonNameSingle.isEmpty())
-                        commonNameSingle = it.commonName.first()
                 }
 
                 doc = [
@@ -983,6 +999,7 @@ class SearchService {
                         "linkIdentifier" : it.linkIdentifier,
                         "idxtype": it.idxtype,
                         "name" : it.name,
+                        "language" : it.language,
                         "acceptedConceptName": it.acceptedConceptName,
                         "favourite": it.favourite,
                         "infoSourceName" : it.datasetName,

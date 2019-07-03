@@ -101,4 +101,25 @@ class Encoder {
         return new URL(buffer.toString())
     }
 
+
+    /**
+     * Construct a list of language tags to try, based on a list of locales.
+     * <p>
+     * For example, [en-US, en-GB, fr] would produce ["en-US", "en", "eng" "en-GB", "fr", "fra"] as a set of languages
+     *
+     * @param locales The locale list.
+     *
+     * @return The language list
+     */
+    static List<String> buildLanguageList(List<Locale> locales) {
+        def langs = new LinkedHashSet<String>()
+        for (Locale locale: locales) {
+            langs.add(locale.toLanguageTag())
+            langs.add(locale.language)
+            langs.add(locale.getISO3Language())
+        }
+        return langs.toList()
+    }
+
+
 }

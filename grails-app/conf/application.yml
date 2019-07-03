@@ -103,7 +103,6 @@ search:
     join: <br>
 autocomplete:
   legacy: false
-  languages:
 biocache:
   base: https://biocache.ala.org.au
   service: https://biocache.ala.org.au/ws
@@ -166,7 +165,10 @@ attribution:
   common:
   identifier:
   synonym:
-commonNameDefaultLanguage: en-AU
+commonName:
+  # Acceptable vernacular names to appear in autocomplete and primary name eg en,en-AU,en-CA,en-GB,en-US (leave empty for any language)
+  languages:
+  defaultLanguage: en
 security:
   apikey:
     serviceUrl: 'https://auth.ala.org.au/apikey/ws/check?apikey='
@@ -174,10 +176,6 @@ security:
     appServerName: https://bie.ala.org.au/ws
     uriFilterPattern: "/admin.*,/alaAdmin.*"
     uriExclusionFilterPattern: "/images.*,/css.*,/js.*,.*json,/help/.*"
-# Acceptable vernacular names to appear in autocomplete
-#autoComplete.languages = 'en,en-AU,en-CA,en-GB,en-US'
-autoComplete:
-  languages:
 # Location of conservation lists
 conservationListsUrl: /default-conservation-lists.json
 # Location of vernacular name lists (null for default)

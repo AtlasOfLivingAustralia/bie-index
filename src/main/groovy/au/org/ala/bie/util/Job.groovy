@@ -133,16 +133,23 @@ class Job implements Comparable<Job> {
     }
 
     enum Lifecycle {
-        STARTING(active: true, success: true, completed: false, order: 10),
-        RUNNING(active: true, success: true, completed: false, order: 20),
-        FINISHED(active: false, success: true, completed: true, order: 30),
-        CANCELLING(active: false, success: false, completed: false, order: 40),
-        CANCELLED(active: false, success: false, completed: true, order: 50),
-        ERROR(active: false, success: false, completed: true, order: 0)
+        STARTING(true, true, false, 10),
+        RUNNING(true, true, false, 20),
+        FINISHED(false, true, true, 30),
+        CANCELLING(false, false, false, 40),
+        CANCELLED(false, false, true, 50),
+        ERROR(false, false, true, 0)
 
         int order
         boolean active
         boolean completed
         boolean success
+        
+        Lifecycle(boolean active, boolean success, boolean completed, int order) {
+            this.active = active
+            this.success = success
+            this.completed = completed
+            this.order = order
+        }
      }
 }

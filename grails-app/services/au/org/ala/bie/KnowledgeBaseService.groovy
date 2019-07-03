@@ -33,7 +33,7 @@ class KnowledgeBaseService implements IndexingInterface {
      * @param type
      * @return
      */
-    List resources(String type, Integer max = -1) throws IOException {
+    List resources(String type = "", Integer max = -1) throws IOException {
         crawlKnowledgeBaseSite(getEncodedUrl(type), max)
     }
 
