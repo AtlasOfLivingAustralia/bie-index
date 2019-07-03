@@ -922,8 +922,6 @@ class SearchService {
                     commonNameSingle = it.commonNameSingle
                 if (it.commonName) {
                     commonNames = it.commonName.join(", ")
-                    if (commonNameSingle.isEmpty())
-                        commonNameSingle = it.commonName.first()
                 }
 
                 doc = [
