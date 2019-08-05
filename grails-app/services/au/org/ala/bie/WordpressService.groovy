@@ -33,7 +33,7 @@ class WordpressService implements IndexingInterface {
      */
     List resources(String type = "") {
         def url = Encoder.buildServiceUrl(grailsApplication.config.wordPress.service, grailsApplication.config.wordPress.sitemap, type)
-        return crawlWordPressSite(url)
+        return crawlWordPressSite([url] as Queue)
     }
 
     /**
@@ -42,13 +42,38 @@ class WordpressService implements IndexingInterface {
      * @param url The site map url
      * @return
      */
-    private List crawlWordPressSite(URL url) throws Exception {
+    private List crawlWordPressSite(Queue<URL> queue) throws Exception {
+        Set locations = [] as Set
+        Set<URL> seen = [] as Set
         // get list of pages to crawl via Google sitemap xml file
         // Note: sitemap.xml files can be nested, so code may need to read multiple files in the future (recursive function needed)
-        Document doc = Jsoup.connect(url.toExternalForm()).get()
-        Elements pages = doc.select("loc")
-        log.info("Sitemap file lists " + pages.size() + " pages.")
-        return pages.collect { it.text() }
+        while (!queue.isEmpty()) {
+            URL map = queue.remove()
+            if (seen.contains(map))
+                continue
+            seen << map
+            try {
+                Document doc = Jsoup.connect(map.toExternalForm()).timeout(10000).validateTLSCertificates(false).get()
+                Elements sitemaps = doc.select("sitemapindex sitemap loc")
+                sitemaps.each { loc ->
+                    try {
+                        URL url = new URL(loc.text())
+                        queue << url
+                    } catch (MalformedURLException mex) {
+                        log.warn "Site map URL ${loc.text()} is malformed"
+                    }
+                }
+                Elements pages = doc.select("urlset url loc")
+                pages.each { loc ->
+                    locations << loc.text()
+                }
+            } catch (IOException ex) {
+                log.warn "Unable to retrieve ${map}: ${ex.message}, ignoring"
+            }
+
+        }
+        log.info("Sitemap contains" + locations.size() + " pages.")
+        return locations.toList()
     }
 
 
@@ -62,7 +87,7 @@ class WordpressService implements IndexingInterface {
     Map getResource(String url) {
         String fullUrl = url + grailsApplication.config.wordPress.contentOnlyParams
         log.info "GETing url: ${fullUrl}"
-        Document document = Jsoup.connect(fullUrl).get()
+        Document document = Jsoup.connect(fullUrl).timeout(10000).validateTLSCertificates(false).get()
 
         // some summary/landing pages do not work with `content-only=1`, so we don't want to index them
         if (document.select("body.ala-content") || !document.body().text()) {
@@ -72,20 +97,26 @@ class WordpressService implements IndexingInterface {
         def id = document.select("head > meta[name=id]").attr("content")
         def shortlink = document.select("head > link[rel=shortlink]").attr("href")
 
-        if (StringUtils.isEmpty(id) && StringUtils.isNotBlank(shortlink)) {
-            // should NOT be triggered with `&content-only=1`
-            // e.g. http://www.ala.org.au/?p=24241
+        if (StringUtils.isEmpty(id) && StringUtils.isNotBlank(shortlink) && shortlink.contains("=")) {
+            // Look for a secondary id source
             id = StringUtils.split(shortlink, "=")[1];
         }
 
-        log.info "title = ${document.select("head > title").text()}"
-        log.info "body = ${document.body().text()}"
+        if (!id) {
+            // If no embedded id can be found
+            id = UUID.randomUUID().toString()
+        }
+
+        def title = document.select("head > title").text()
+        def main = document.select("body main").text()
+
+        log.info "title = ${title} main = ${main.length() > 200 ? main.substring(0, 198) + " ..." : main}"
 
         return [
-                title: document.select("head > title").text(),
+                title: title,
                 id: id,
                 shortlink: shortlink,
-                body: document.body().text(),
+                body: main,
                 categories: document.select("ul[class=post-categories] li > a").collect { it.text() }
         ]
     }
