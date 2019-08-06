@@ -1977,7 +1977,7 @@ class ImportService implements GrailsConfigurationAware {
                 log "2. Paging over ${total} docs - page ${pages}"
 
                 response.results.each { doc ->
-                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, commonLanguages, capitalisers)
+                    denormaliseEntry(doc, [:], [], [], [], buffer, bufferLimit, pageSize, online, js, speciesGroupMapper, commonNameLanguages, capitalisers)
                     processed++
                 }
                 if (!buffer.isEmpty())
