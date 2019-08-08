@@ -5,6 +5,7 @@ sudo: false
 branches:
   only:
   - master
+  - develop
   - 1.4.2.1
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
