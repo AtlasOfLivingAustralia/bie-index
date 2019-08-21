@@ -212,16 +212,31 @@ An example vernacular name list configuration is
   "defaultStatusField": "status",
   "defaultLanguageField": "language",
   "defaultsourceField": "source",
+  "defaultTemporalField": "temporal",
+  "defaultLocationIdField": "locationID",
+  "defaultLocalityField": "locality",
+  "defaultCountryCodeField": "countryCode",
+  "defaultSexField": "sex",
+  "defaultLifeStageField": "lifeStage",
+  "defaultIsPluralField": "isPlural",
+  "defaultIsPreferredField": "isPreferred",
+  "defaultOrganismPartField": "organismPart",
+  "defaultLabelsField": "labels",
+  "defaultTaxonRemarksField": "taxonRemarks",
+  "defaultProvenanceField": "provenance",
   "defaultStatus": "common",
-  "defaultLanguage": "en",
+  "defaultLanguage": "en",  
   "lists": [
     {
       "uid": "drt1464664375273",
-      "language": "xul"
+      "taxonRemarksField": "Notes",
+      "defaultLanguage": "xul"
+      "defaultStatus": "traditionalKnowledge"
+      
     },
     {
       "uid": "drt1464664375274",
-      "language": "fr",
+      "defaultLanguage": "fr",
       "statusField": "priority"
     }
   ]
@@ -230,6 +245,8 @@ An example vernacular name list configuration is
 
 The default entries provide useful defaults for things like the list fields that hold various pieces of information.
 These can be overridden at the list level.
+The various fields refer to the fields that can be part of the GBIF vernacular names extension.
+The `defaultLanguage` and `defaultStatus` entries provide per-list defaults for language and status entries.
 Languages should be ISO-639 two- or three-letter codes or AIATSIS codes; the bie-plugin can expand these out.
 The `uid` holds the list identifier to load.
 
