@@ -54,7 +54,8 @@ class SearchController implements GrailsConfigurationAware {
     def imageSearch(){
         def start = params.start as Integer
         def rows = params.rows as Integer
-        render ([searchResults:searchService.imageSearch(regularise(params.id), start, rows, params.qc)] as JSON)
+        def locales = [request.locale, defaultLocale]
+        render ([searchResults:searchService.imageSearch(regularise(params.id), start, rows, params.qc, locales)] as JSON)
     }
 
     /**
@@ -64,7 +65,8 @@ class SearchController implements GrailsConfigurationAware {
     def imageLinkSearch() {
         def showNoImage = params.containsKey("showNoImage") ? params.boolean("showNoImage") : true
         def guid = regularise(params.id)
-        def url = searchService.imageLinkSearch(guid, params.imageType, params.qc)
+        def locales = [request.locale, defaultLocale]
+        def url = searchService.imageLinkSearch(guid, params.imageType, params.qc, locales)
 
         if (!url && showNoImage) {
             url = resource(dir: "images", file: "noImage85.jpg", absolute: true)

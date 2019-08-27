@@ -34,7 +34,7 @@ class SearchService {
      * @param rows
      * @return
      */
-    def imageSearch(taxonID, start, rows, queryContext){
+    def imageSearch(taxonID, start, rows, queryContext, List<Locale> locales){
 
         def query = "q=*:*"
 
@@ -50,11 +50,10 @@ class SearchService {
 
         def response = indexService.query(true, query, ["rankID:[7000 TO *]", "imageAvailable:true"], rows, start, queryContext)
         log.debug "imageSearch response json = ${response}"
-
         [
                 totalRecords: response.results.numFound,
                 facetResults: formatFacets(response.facetFields),
-                results: formatDocs(response.results, null, null)
+                results: formatDocs(response.results, null, null, locales)
         ]
     }
 
@@ -66,8 +65,8 @@ class SearchService {
      * @param rows
      * @return
      */
-    def imageLinkSearch(taxonID, type, queryContext){
-        def result = imageSearch(taxonID, 0, 1, queryContext)
+    def imageLinkSearch(taxonID, type, queryContext, List<Locale> locales){
+        def result = imageSearch(taxonID, 0, 1, queryContext, locales)
         if (!result || result.isEmpty() || result.totalRecords == 0) {
             return null
         }
