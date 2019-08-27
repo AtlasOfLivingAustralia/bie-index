@@ -82,6 +82,18 @@ class ImportService implements GrailsConfigurationAware {
             DcTerm.provenance,
             GbifTerm.nameType
     ] as Set
+    // Terms that get special treatment in vernacular additions
+    static VERNACULAR_ALLREADY_INDEXED = [
+            DwcTerm.vernacularName,
+            ALATerm.nameID,
+            DwcTerm.kingdom,
+            ALATerm.status,
+            DcTerm.language,
+            DcTerm.source,
+            DwcTerm.taxonRemarks,
+            DcTerm.provenance
+    ] as Set
+
     // Count report interval
     static REPORT_INTERVAL = 100000
     // Batch size for solr queries/commits and page sizes
@@ -663,12 +675,47 @@ class ImportService implements GrailsConfigurationAware {
             String statusField = resource.statusField ?: config.defaultStatusField
             String languageField = resource.languageField ?: config.defaultLanguageField
             String sourceField = resource.sourceField ?: config.defaultSourceField
-            String resourceLanguage = resource.language ?: config.defaultLanguage
+            String temporalField = resource.temporalField ?: config.defaultTemporalField
+            String locationIdField = resource.locationIdField ?: config.defaultLocationIdField
+            String localityField = resource.localityField ?: config.defaultLocalitylField
+            String countryCodeField = resource.countryCodeField ?: config.defaultCountryCodeField
+            String sexField = resource.sexField ?: config.defaultSexField
+            String lifeStageField = resource.lifeStageField ?: config.defaultLifeStageField
+            String isPluralField = resource.isPluralField ?: config.defaultIsPluralField
+            String isPreferredNameField = resource.isPreferredNameField ?: config.defaultIsPreferredNameField
+            String organismPartField = resource.organismPartField ?: config.defaultOrganismPartField
+            String labelsField = resource.labelsField ?: config.defaultLabelsField
+            String taxonRemarksField = resource.taxonRemarksField ?: config.defaultTaxonRemarksField
+            String provenanceField = resource.provenanceField ?: config.defaultProvenanceField
+            String defaultLanguage = resource.defaultLanguage ?: config.defaultLanguage
+            String defaultStatus = resource.defaultStatus ?: config.defaultStatus
+            Map<String, Term> mapping = [
+                    (vernacularNameField): DwcTerm.vernacularName,
+                    (nameIdField): ALATerm.nameID,
+                    (kingdomField): DwcTerm.kingdom,
+                    (statusField): ALATerm.status,
+                    (languageField): DcTerm.language,
+                    (sourceField): DcTerm.source,
+                    (temporalField): DcTerm.temporal,
+                    (locationIdField): DwcTerm.locationID,
+                    (localityField): DwcTerm.locality,
+                    (countryCodeField): DwcTerm.countryCode,
+                    (sexField): DwcTerm.sex,
+                    (lifeStageField): DwcTerm.lifeStage,
+                    (isPluralField): GbifTerm.isPlural,
+                    (isPreferredNameField): GbifTerm.isPreferredName,
+                    (organismPartField): GbifTerm.organismPart,
+                    (labelsField): ALATerm.labels,
+                    (taxonRemarksField): DwcTerm.taxonRemarks,
+                    (provenanceField): DcTerm.provenance
+            ]
             if (uid && vernacularNameField) {
+                log("Deleting entries for: " + uid)
+                indexService.deleteFromIndexByQuery("idxtype:\"${IndexDocType.COMMON.name()}\" AND datasetID:\"${uid}\"")
                 log("Loading list from: " + uid)
                 try {
-                    def list = listService.get(uid, [vernacularNameField, nameIdField, kingdomField, statusField, languageField, sourceField])
-                    importAdditionalVernacularNames(list, vernacularNameField, nameIdField, kingdomField, statusField, languageField, sourceField, resourceLanguage, uid)
+                    def list = listService.get(uid, mapping.keySet() as List)
+                    importAdditionalVernacularNames(list, mapping, defaultLanguage, defaultStatus, uid)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -949,7 +996,7 @@ class ImportService implements GrailsConfigurationAware {
         }
     }
 
-    private void importAdditionalVernacularNames(List list, String vernacularNameField, String nameIdField, String kingdomField, String statusField, String languageField, String sourceField, String resourceLanguage, String uid) {
+    private void importAdditionalVernacularNames(List list, Map<String, Term> mapping, String defaultLanguage, String defaultStatus, String uid) {
         if (list.size() > 0) {
             def totalDocs = list.size()
             def buffer = []
@@ -957,16 +1004,36 @@ class ImportService implements GrailsConfigurationAware {
 
             updateProgressBar2(100, 0)
             log("Updating vernacular names from ${uid}")
+            def getField = { Map<String, Term> m, Term t -> m.find({ it.value == t })?.key }
+            def vernacularNameField = getField(mapping, DwcTerm.vernacularName)
+            def nameIdField = getField(mapping, ALATerm.nameID)
+            def kingdomField = getField(mapping, DwcTerm.kingdom)
+            def statusField = getField(mapping, ALATerm.status)
+            def languageField = getField(mapping, DcTerm.language)
+            def sourceField = getField(mapping, DcTerm.source)
+            def taxonRemarksField = getField(mapping, DwcTerm.taxonRemarks)
+            def provenanceField = getField(mapping, DcTerm.provenance)
+
             list.eachWithIndex { item, i ->
                 log.debug "item = ${item}"
                 def vernacularName = item[vernacularNameField]
                 def nameId = item[nameIdField]
                 def kingdom = kingdomField ? item[kingdomField] : null
-                def status = vernacularNameStatus[item[statusField]]
-                def language = item[languageField] ?: resourceLanguage
+                def status = vernacularNameStatus[item[statusField] ?: defaultStatus]
+                def language = item[languageField] ?: defaultLanguage
                 def source = item[sourceField]
+                def taxonRemarks = item[taxonRemarksField]
+                def provenance = item[provenanceField]
+                def additional = mapping.inject([:], { a, t ->
+                    if (t.key && !VERNACULAR_ALLREADY_INDEXED.contains(t.value)) {
+                        def v = item[t.key]
+                        if (v)
+                            a[t.value.simpleName()] = v
+                    }
+                    a
+                })
 
-                if (!addVernacularName(item.lsid, item.name, kingdom, vernacularName, nameId, status, language, source, uid, null, null, [:], buffer, commonStatus))
+                if (!addVernacularName(item.lsid, item.name, kingdom, vernacularName, nameId, status, language, source, uid, taxonRemarks, provenance, additional, buffer, commonStatus))
                     unmatchedTaxaCount++
 
                 if (i > 0) {
