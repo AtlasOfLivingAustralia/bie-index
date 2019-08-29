@@ -11,7 +11,7 @@ buildscript {
     }
 }
 
-version "1.4.8-SNAPSHOT"
+version "1.4.8"
 group "au.org.ala"
 
 apply plugin:"eclipse"
