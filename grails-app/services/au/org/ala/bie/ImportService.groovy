@@ -1796,7 +1796,7 @@ class ImportService implements GrailsConfigurationAware {
                 String imageId = getImageFromParamList(preferredImagesList, doc.guid)
                 log.info ("Updating: guid " + doc.guid + " with imageId " + imageId)
                 if (!doc.containsKey("image") || (doc.containsKey("image") && doc.image != imageId)) {
-                    updateImage(doc, imageId, buffer, online)
+                    updateImage(doc, imageId, buffer, true)
                     totalDocumentsUpdated ++
                 }
             } else {
@@ -1808,7 +1808,7 @@ class ImportService implements GrailsConfigurationAware {
 
         if (buffer.size() > 0) {
             log.info ("Committing to SOLR..." + guidList)
-            indexService.indexBatch(buffer, online)
+            indexService.indexBatch(buffer, true)
             updatedTaxa = searchService.getTaxa(guidList)
         } else {
             log.info "Nothing to update for guidList: " + guidList
