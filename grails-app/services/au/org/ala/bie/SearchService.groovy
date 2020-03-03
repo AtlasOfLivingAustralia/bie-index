@@ -75,13 +75,13 @@ class SearchService {
             return null
         }
         if (type == 'thumbnail') {
-            return MessageFormat.format(grailsApplication.config.images.image.thumbnail, taxon.image)
+            return MessageFormat.format(grailsApplication.config.images.service.thumbnail, taxon.image)
         } else if (type == 'small') {
-            return MessageFormat.format(grailsApplication.config.images.image.small, taxon.image)
+            return MessageFormat.format(grailsApplication.config.images.service.small, taxon.image)
         } else if (type == 'large') {
-            return MessageFormat.format(grailsApplication.config.images.image.large, taxon.image)
+            return MessageFormat.format(grailsApplication.config.images.service.large, taxon.image)
         } else {
-            return MessageFormat.format(grailsApplication.config.images.image.large, taxon.image)
+            return MessageFormat.format(grailsApplication.config.images.service.large, taxon.image)
         }
     }
 
