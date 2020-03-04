@@ -8,6 +8,7 @@ import java.nio.charset.Charset
 def loggingDir = (System.getProperty('catalina.base') ? System.getProperty('catalina.base') + '/logs' : './logs')
 def appName = 'bie-index'
 final TOMCAT_LOG = 'TOMCAT_LOG'
+final IMPORT_LOG = 'IMPORT_LOG'
 final FULL_STACKTRACE = 'FULL_STACKTRACE'
 final STDOUT = 'STDOUT'
 
@@ -35,8 +36,30 @@ switch (Environment.current) {
                 maxFileSize = FileSize.valueOf('10MB')
             }
         }
+        appender(IMPORT_LOG, RollingFileAppender) {
+            file = "${loggingDir}/${appName}-import.log"
+            encoder(PatternLayoutEncoder) {
+                pattern =
+                        '%d{yyyy-MM-dd HH:mm:ss.SSS} ' + // Date
+                                '%5p ' + // Log level
+                                '--- [%15.15t] ' + // Thread
+                                '%-40.40logger{39} : ' + // Logger
+                                '%m%n%wex' // Message
+            }
+            rollingPolicy(FixedWindowRollingPolicy) {
+                fileNamePattern = "${loggingDir}/${appName}.%i.log.gz"
+                minIndex = 1
+                maxIndex = 4
+            }
+            triggeringPolicy(SizeBasedTriggeringPolicy) {
+                maxFileSize = FileSize.valueOf('10MB')
+            }
+        }
         root(WARN, [TOMCAT_LOG])
         logger('au.org.ala', INFO)
+        logger('grails.app.controllers.au.org.ala', INFO)
+        logger('grails.app.services.au.org.ala', INFO)
+        logger('grails.app.services.au.org.ala.bie.ImportService', INFO, [IMPORT_LOG], false)
         break
     case Environment.TEST:
         appender(TOMCAT_LOG, RollingFileAppender) {

@@ -205,11 +205,15 @@ class SearchController implements GrailsConfigurationAware {
      */
     // Documented in openapi.yml
     def download(){
-        response.setHeader("Cache-Control", "must-revalidate");
-        response.setHeader("Pragma", "must-revalidate");
-        response.setHeader("Content-Disposition", "attachment;filename=${params.file?:'species.csv'}");
-        response.setContentType("text/csv");
-        downloadService.download(params, response.outputStream, request.locale)
+        if (!params.q?.trim()) {
+            response.sendError(400, "A q parameter is required")
+        } else {
+            response.setHeader("Cache-Control", "must-revalidate");
+            response.setHeader("Pragma", "must-revalidate");
+            response.setHeader("Content-Disposition", "attachment;filename=${params.file ?: 'species.csv'}");
+            response.setContentType("text/csv");
+            downloadService.download(params, response.outputStream, request.locale)
+        }
     }
 
     /**

@@ -101,9 +101,9 @@ class ImportService implements GrailsConfigurationAware {
     // Buffer size for commits
     static BUFFER_SIZE = 1000
     // Accepted status
-    static ACCEPTED_STATUS = TaxonomicType.values().findAll({ it.accepted }).collect({"taxonomicStatus:${it.term}"}).join(' OR ')
+    static ACCEPTED_STATUS = TaxonomicType.values().findAll({ it.accepted }).collect({ "taxonomicStatus:${it.term}" }).join(' OR ')
     // Synonym status
-    static SYNONYM_STATUS = TaxonomicType.values().findAll({ it.synonym }).collect({"taxonomicStatus:${it.term}"}).join(' OR ')
+    static SYNONYM_STATUS = TaxonomicType.values().findAll({ it.synonym }).collect({ "taxonomicStatus:${it.term}" }).join(' OR ')
 
 
     def indexService, searchService, biocacheService
@@ -149,7 +149,7 @@ class ImportService implements GrailsConfigurationAware {
 
     static {
         TermFactory tf = TermFactory.instance()
-        for (Term term: ALATerm.values())
+        for (Term term : ALATerm.values())
             tf.addTerm(term.qualifiedName(), term)
     }
 
@@ -172,13 +172,13 @@ class ImportService implements GrailsConfigurationAware {
         nationalSpeciesDatasets = config.collectory.nationalSpeciesDatasets as Set
         occurrenceCountFilter = config.biocache.occurrenceCount.filterQuery as List
         commonNameDefaultLanguage = config.commonName.defaultLanguage
-        imageConfiguration =  config.images.config
-        commonNameLanguages =  config.commonName.languages ? config.commonName.languages.split(',') as Set : null
+        imageConfiguration = config.images.config
+        commonNameLanguages = config.commonName.languages ? config.commonName.languages.split(',') as Set : null
         weightMin = config.getProperty("import.priority.min", Double, 0.25)
         weightMax = config.getProperty("import.priority.max", Double, 5.0)
         weightNorm = config.getProperty("import.priority.norm", Double, 4000.0)
         weightBuilder = new WeightBuilder(getConfigFile(config.import.weightConfigUrl))
-        vernacularNameStatus = getConfigFile(config.import.vernacularName.statusUrl).collectEntries {e -> [(e.status): e]}
+        vernacularNameStatus = getConfigFile(config.import.vernacularName.statusUrl).collectEntries { e -> [(e.status): e] }
         commonStatus = vernacularNameStatus.get(config.import.vernacularName.common)
         legislatedStatus = vernacularNameStatus.get(config.import.vernacularName.legislated)
         preferredStatus = vernacularNameStatus.get(config.import.vernacularName.preferred)
@@ -204,7 +204,7 @@ class ImportService implements GrailsConfigurationAware {
 
     def importAll() {
         log "Starting import of all data"
-        for (String step: importSequence) {
+        for (String step : importSequence) {
             if (!jobService.current || jobService.current.cancelled) {
                 log "Cancelled"
                 return
@@ -272,7 +272,7 @@ class ImportService implements GrailsConfigurationAware {
                 log.error(message, ex)
             }
         }
-         log "Finished import of all data"
+        log "Finished import of all data"
     }
 
     def importAllDwcA() {
@@ -307,14 +307,14 @@ class ImportService implements GrailsConfigurationAware {
             batch << doc
         }
         indexService.indexBatch(batch)
-        log"Finished indexing ${layers.size()} layers"
+        log "Finished indexing ${layers.size()} layers"
         log "Finsihed layer import"
     }
 
     def importLocalities() {
         log "Starting localities import"
         indexService.deleteFromIndex(IndexDocType.LOCALITY)
-        if(gazetteerId) {
+        if (gazetteerId) {
             log("Starting indexing ${gazetteerId}")
             log("Getting metadata for layer: ${gazetteerId}")
             def layer = layerService.get(gazetteerId)
@@ -336,7 +336,7 @@ class ImportService implements GrailsConfigurationAware {
                 importLayer(layer)
             }
         }
-        log"Finished indexing ${layers.size()} region layers"
+        log "Finished indexing ${layers.size()} region layers"
         log "Finished regions import"
 
     }
@@ -392,7 +392,7 @@ class ImportService implements GrailsConfigurationAware {
                     doc["distribution"] = "N/A"
 
                     localityKeywords.each {
-                        if(doc["description"].contains(it)){
+                        if (doc["description"].contains(it)) {
                             doc["distribution"] = it
                         }
                     }
@@ -690,24 +690,24 @@ class ImportService implements GrailsConfigurationAware {
             String defaultLanguage = resource.defaultLanguage ?: config.defaultLanguage
             String defaultStatus = resource.defaultStatus ?: config.defaultStatus
             Map<String, Term> mapping = [
-                    (vernacularNameField): DwcTerm.vernacularName,
-                    (nameIdField): ALATerm.nameID,
-                    (kingdomField): DwcTerm.kingdom,
-                    (statusField): ALATerm.status,
-                    (languageField): DcTerm.language,
-                    (sourceField): DcTerm.source,
-                    (temporalField): DcTerm.temporal,
-                    (locationIdField): DwcTerm.locationID,
-                    (localityField): DwcTerm.locality,
-                    (countryCodeField): DwcTerm.countryCode,
-                    (sexField): DwcTerm.sex,
-                    (lifeStageField): DwcTerm.lifeStage,
-                    (isPluralField): GbifTerm.isPlural,
+                    (vernacularNameField) : DwcTerm.vernacularName,
+                    (nameIdField)         : ALATerm.nameID,
+                    (kingdomField)        : DwcTerm.kingdom,
+                    (statusField)         : ALATerm.status,
+                    (languageField)       : DcTerm.language,
+                    (sourceField)         : DcTerm.source,
+                    (temporalField)       : DcTerm.temporal,
+                    (locationIdField)     : DwcTerm.locationID,
+                    (localityField)       : DwcTerm.locality,
+                    (countryCodeField)    : DwcTerm.countryCode,
+                    (sexField)            : DwcTerm.sex,
+                    (lifeStageField)      : DwcTerm.lifeStage,
+                    (isPluralField)       : GbifTerm.isPlural,
                     (isPreferredNameField): GbifTerm.isPreferredName,
-                    (organismPartField): GbifTerm.organismPart,
-                    (labelsField): ALATerm.labels,
-                    (taxonRemarksField): DwcTerm.taxonRemarks,
-                    (provenanceField): DcTerm.provenance
+                    (organismPartField)   : GbifTerm.organismPart,
+                    (labelsField)         : ALATerm.labels,
+                    (taxonRemarksField)   : DwcTerm.taxonRemarks,
+                    (provenanceField)     : DcTerm.provenance
             ]
             if (uid && vernacularNameField) {
                 log("Deleting entries for: " + uid)
@@ -738,20 +738,21 @@ class ImportService implements GrailsConfigurationAware {
     def importOccurrenceData() throws Exception {
         def pageSize = BATCH_SIZE
         def paramsMap = [
-                q: "idxtype:${ IndexDocType.TAXON.name() } AND (${ACCEPTED_STATUS})",
+                q         : "idxtype:${IndexDocType.TAXON.name()} AND (${ACCEPTED_STATUS})",
                 //fq: "datasetID:dr2699", // testing only with AFD
                 cursorMark: CursorMarkParams.CURSOR_MARK_START, // gets updated by subsequent searches
-                fl: "id,idxtype,guid,scientificName,datasetID", // will restrict results to dos with these fields (bit like fq)
-                rows: pageSize,
-                sort: "id asc" // needed for cursor searching
+                fl        : "id,idxtype,guid,scientificName,datasetID", // will restrict results to dos with these fields (bit like fq)
+                rows      : pageSize,
+                sort      : "id asc" // needed for cursor searching
         ]
 
         // first get a count of results so we can determine number of pages to process
         Map countMap = paramsMap.clone(); // shallow clone is OK
         countMap.rows = 0
         countMap.remove("cursorMark")
-        def searchCount = searchService.getCursorSearchResults(new MapSolrParams(countMap), true) // could throw exception
-        def totalDocs = searchCount?.results?.numFound?:0
+        def searchCount = searchService.getCursorSearchResults(new MapSolrParams(countMap), true)
+        // could throw exception
+        def totalDocs = searchCount?.results?.numFound ?: 0
         int totalPages = (totalDocs + pageSize - 1) / pageSize
         log.debug "totalDocs = ${totalDocs} || totalPages = ${totalPages}"
         log("Processing " + String.format("%,d", totalDocs) + " taxa (via ${paramsMap.q})...<br>") // send to browser
@@ -768,7 +769,8 @@ class ImportService implements GrailsConfigurationAware {
             try {
                 MapSolrParams solrParams = new MapSolrParams(paramsMap)
                 log.debug "${page}. paramsMap = ${paramsMap}"
-                def searchResults = searchService.getCursorSearchResults(solrParams, true) // use offline index to search
+                def searchResults = searchService.getCursorSearchResults(solrParams, true)
+                // use offline index to search
                 def resultsDocs = searchResults?.results ?: []
 
                 // buckets to group results into
@@ -778,9 +780,11 @@ class ImportService implements GrailsConfigurationAware {
                 // iterate over the result set
                 resultsDocs.each { doc ->
                     if (nationalSpeciesDatasets && nationalSpeciesDatasets.contains(doc.datasetID)) {
-                        taxaLocatedInHubCountry.add(doc) // in national list so _assume_ it is located in host/hub county
+                        taxaLocatedInHubCountry.add(doc)
+                        // in national list so _assume_ it is located in host/hub county
                     } else {
-                        taxaToSearchOccurrences.add(doc) // search occurrence records to determine if it is located in host/hub county
+                        taxaToSearchOccurrences.add(doc)
+                        // search occurrence records to determine if it is located in host/hub county
                     }
                 }
 
@@ -789,7 +793,7 @@ class ImportService implements GrailsConfigurationAware {
                 // update the rest via occurrence search (non blocking via promiseList)
                 promiseList << { searchOccurrencesWithGuids(resultsDocs, commitQueue) }
                 // update cursor
-                paramsMap.cursorMark = searchResults?.nextCursorMark?:""
+                paramsMap.cursorMark = searchResults?.nextCursorMark ?: ""
                 // update view via via JS
                 updateProgressBar(totalPages, page)
                 log("${page}. taxaLocatedInHubCountry = ${taxaLocatedInHubCountry.size()} | taxaToSearchOccurrences = ${taxaToSearchOccurrences.size()}")
@@ -829,7 +833,7 @@ class ImportService implements GrailsConfigurationAware {
                 updateDoc["idxtype"] = ["set": doc.idxtype] // required field
                 updateDoc["guid"] = ["set": doc.guid] // required field
                 updateDoc["locatedInHubCountry"] = ["set": true]
-                if(doc.containsKey("occurrenceCount")){
+                if (doc.containsKey("occurrenceCount")) {
                     updateDoc["occurrenceCount"] = ["set": doc["occurrenceCount"]]
                 }
                 commitQueue.offer(updateDoc) // throw it on the queue
@@ -966,7 +970,8 @@ class ImportService implements GrailsConfigurationAware {
                     def doc = [:]
                     doc["id"] = UUID.randomUUID().toString() // doc key
                     doc["idxtype"] = IndexDocType.TAXON.name() // required field
-                    doc["guid"] = "ALA_${item.name?.replaceAll("[^A-Za-z0-9]+", "_")}" // replace non alpha-numeric chars with '_' - required field
+                    doc["guid"] = "ALA_${item.name?.replaceAll("[^A-Za-z0-9]+", "_")}"
+                    // replace non alpha-numeric chars with '_' - required field
                     doc["datasetID"] = drUid
                     doc["datasetName"] = "Conservation list for ${solrFieldName}"
                     doc["name"] = capitaliser.capitalise(item.name)
@@ -1065,7 +1070,7 @@ class ImportService implements GrailsConfigurationAware {
         def capitaliser = TitleCapitaliser.create(language ?: commonNameDefaultLanguage)
         vernacularName = capitaliser.capitalise(vernacularName)
         def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
-        def provenanceList = provenance?.split("\\|").collect({ it.trim()})
+        def provenanceList = provenance?.split("\\|").collect({ it.trim() })
         def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
         def priority = status?.priority ?: defaultStatus.priority
         if (vernacularDoc) {
@@ -1119,7 +1124,7 @@ class ImportService implements GrailsConfigurationAware {
         return true
     }
 
-    def clearDanglingSynonyms(){
+    def clearDanglingSynonyms() {
         log("Starting clear dangling synonyms")
         indexService.deleteFromIndexByQuery("(${SYNONYM_STATUS}) AND -acceptedConceptName:*")
         log("Finished clear dangling synonyms")
@@ -1279,7 +1284,7 @@ class ImportService implements GrailsConfigurationAware {
         log("Importing vernacular names")
         def buffer = []
         def count = 0
-        for (Record record: archiveFile) {
+        for (Record record : archiveFile) {
             String taxonID = record.id()
             String vernacularName = record.value(DwcTerm.vernacularName)
             String nameID = record.value(ALATerm.nameID)
@@ -1361,7 +1366,7 @@ class ImportService implements GrailsConfigurationAware {
         def defaultStatus = statusMap.get("unknown")
         def buffer = []
         def count = 0
-        for (Record record: archiveFile) {
+        for (Record record : archiveFile) {
             def taxonID = record.id()
             def identifier = record.value(DcTerm.identifier)
             def title = record.value(DcTerm.title)
@@ -1416,7 +1421,7 @@ class ImportService implements GrailsConfigurationAware {
         def taxonRanks = ranks()
         def buffer = []
         def count = 0
-        for (Record record: archiveFile) {
+        for (Record record : archiveFile) {
             def doc = [:]
             doc["id"] = UUID.randomUUID().toString() // doc key
             doc["idxtype"] = IndexDocType.TAXONVARIANT.name() // required field
@@ -1459,7 +1464,7 @@ class ImportService implements GrailsConfigurationAware {
         doc["parentGuid"] = parentNameUsageID
         doc["rank"] = taxonRank
         //only add the ID if we have a recognised rank
-        if(taxonRankID > 0){
+        if (taxonRankID > 0) {
             doc["rankID"] = taxonRankID
         }
         doc["scientificName"] = scientificName
@@ -1541,16 +1546,18 @@ class ImportService implements GrailsConfigurationAware {
      */
     def buildLinkIdentifiers(online) {
         int pageSize = BUFFER_SIZE
-        int page = 0
-        int added = 0
-        def cursor = CursorMarkParams.CURSOR_MARK_START
-        def prevCursor = ""
-        def typeQuery = "idxtype:\"${ IndexDocType.TAXON.name() }\""
+        int page
+        def cursor
+        def prevCursor
+        def typeQuery = "idxtype:\"${IndexDocType.TAXON.name()}\""
 
-        log("Clearing link identifiers")
-        clearField("linkIdentifier", null, online)
-        log("Starting link identifier scan")
         try {
+            log("Clearing link identifiers")
+            clearField("linkIdentifier", null, online)
+            log("Making link text")
+            page = 0
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            prevCursor = ""
             while (cursor != prevCursor) {
                 def startTime = System.currentTimeMillis()
                 prevCursor = cursor
@@ -1562,22 +1569,57 @@ class ImportService implements GrailsConfigurationAware {
                     break
                 cursor = response.nextCursorMark
                 response.results.each { doc ->
-                    def name = doc.scientificName ?: doc.name
+                    def name = (doc.scientificName ?: doc.name)?.trim()
+                    if (name) {
+                        name = name.replaceAll(/[^\w\s]/, "")
+                        name = name.replaceAll(/\s+/, "_")
+                    }
+                    def update = [:]
+                    update["id"] = doc.id // doc key
+                    update["idxtype"] = ["set": doc.idxtype] // required field
+                    update["guid"] = ["set": doc.guid] // required field
+                    update["linkText"] = ["set": name]
+                    buffer << update
+                }
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                page++
+                if (page % 10 == 0) {
+                    def progress = page * pageSize
+                    def percentage = Math.round(progress * 100 / total)
+                    def speed = Math.round((page * 1000) / (System.currentTimeMillis() - startTime))
+                    log("Processed ${page * pageSize} names (${percentage}%), ${speed} names per second")
+                }
+            }
+            log("Starting link identifier scan")
+            int added = 0
+            page = 0
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            prevCursor = ""
+            while (cursor != prevCursor) {
+                def startTime = System.currentTimeMillis()
+                prevCursor = cursor
+                def response = indexService.query(online, "linkText:*", [], pageSize, null, null, 'id', 'asc', cursor)
+                int total = response.results.numFound
+                def buffer = []
+
+                if (response.results.isEmpty())
+                    break
+                cursor = response.nextCursorMark
+                response.results.each { doc ->
                     try {
-                        if (name) {
-                            def nameQuery = "exact_text:\"${ Encoder.escapeSolr(name)}\""
-                            def nameResponse = indexService.query(online, nameQuery, [ typeQuery ], 0)
-                            int found = nameResponse.results.numFound
-                            if (found == 1) {
-                                //log.debug("Adding link identifier for ${name} to ${doc.id}")
-                                def update = [:]
-                                update["id"] = doc.id // doc key
-                                update["idxtype"] = ["set": doc.idxtype] // required field
-                                update["guid"] = ["set": doc.guid] // required field
-                                update["linkIdentifier"] = ["set": name]
-                                buffer << update
-                                added++
-                            }
+                        def nameQuery = "linkText:\"${Encoder.escapeSolr(doc.linkText)}\""
+                        def nameResponse = indexService.query(online, nameQuery, [], 0)
+                        int found = nameResponse.results.numFound
+                        if (found == 1) {
+                            //log.debug("Adding link identifier for ${name} to ${doc.id}")
+                            def update = [:]
+                            update["id"] = doc.id // doc key
+                            update["idxtype"] = ["set": doc.idxtype] // required field
+                            update["guid"] = ["set": doc.guid] // required field
+                            update["linkIdentifier"] = ["set": doc.linkText]
+                            buffer << update
+                            added++
                         }
                     } catch (Exception ex) {
                         log.warn "Unable to search for name ${name}: ${ex.message}"
@@ -2510,7 +2552,6 @@ class ImportService implements GrailsConfigurationAware {
         }
         output
     }
-
 
     /**
      * Helper method to do a HTTP GET and return String content
