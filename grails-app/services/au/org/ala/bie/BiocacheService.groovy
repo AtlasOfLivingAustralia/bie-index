@@ -32,6 +32,8 @@ class BiocacheService {
      *
      */
     def counts(List guids, List fq = []) {
+        if (!guids)
+            return [:]
         def slurper = new JsonSlurper()
         def guidParam = guids.join(SEPARATOR)
         def url = Encoder.buildServiceUrl(grailsApplication.config.biocache.service, grailsApplication.config.biocache.occurrenceCount.path, guidParam, SEPARATOR, grailsApplication.config.biocache.occurrenceCount.filterQuery)
