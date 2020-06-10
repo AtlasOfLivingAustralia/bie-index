@@ -13,13 +13,11 @@
 
 package au.org.ala.bie
 
-import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
 
 class DownloadService {
 
     def grailsApplication
-    def indexService
     def messageSource
 
     /**
