@@ -100,6 +100,8 @@ class ImportService implements GrailsConfigurationAware {
     static BATCH_SIZE = 5000
     // Buffer size for commits
     static BUFFER_SIZE = 1000
+    // The count size for count requests
+    static COUNT_SIZE = 20
     // Accepted status
     static ACCEPTED_STATUS = TaxonomicType.values().findAll({ it.accepted }).collect({ "taxonomicStatus:${it.term}" }).join(' OR ')
     // Synonym status
@@ -239,7 +241,7 @@ class ImportService implements GrailsConfigurationAware {
                         importLocalities()
                         break
                     case 'occurrences':
-                        importOccurrenceData()
+                        importOccurrenceData(false)
                         break
                     case 'regions':
                         importRegions()
@@ -726,202 +728,86 @@ class ImportService implements GrailsConfigurationAware {
     }
 
     /**
-     * Paginate through taxon docs in SOLR and update their occurrence status via either:
-     * - checking against a list of datasetID codes (config)
-     * OR
-     * - searching for occurrence records with the (taxon concept) GUID
-     *
-     * Example cursor search
-     * http://bie-dev.ala.org.au/solr/bie/select?q=idxtype:TAXON+AND+taxonomicStatus:accepted&wt=json&rows=100&indent=true&sort=id+asc&cursorMark=*
-     * Pagination via cursor: https://cwiki.apache.org/confluence/display/solr/Pagination+of+Results
-     **/
-    def importOccurrenceData() throws Exception {
-        def pageSize = BATCH_SIZE
-        def paramsMap = [
-                q         : "idxtype:${IndexDocType.TAXON.name()} AND (${ACCEPTED_STATUS})",
-                //fq: "datasetID:dr2699", // testing only with AFD
-                cursorMark: CursorMarkParams.CURSOR_MARK_START, // gets updated by subsequent searches
-                fl        : "id,idxtype,guid,scientificName,datasetID", // will restrict results to dos with these fields (bit like fq)
-                rows      : pageSize,
-                sort      : "id asc" // needed for cursor searching
-        ]
+     * Go through the index and get occurrence counts for accepted taxa
+     */
+    def importOccurrenceData(online) {
+        int pageSize = BATCH_SIZE
+        int processed = 0
+        def typeQuery = "idxtype:\"${IndexDocType.TAXON.name()}\" AND (${ACCEPTED_STATUS})"
+        def prevCursor
+        def cursor
 
-        // first get a count of results so we can determine number of pages to process
-        Map countMap = paramsMap.clone(); // shallow clone is OK
-        countMap.rows = 0
-        countMap.remove("cursorMark")
-        def searchCount = searchService.getCursorSearchResults(new MapSolrParams(countMap), true)
-        // could throw exception
-        def totalDocs = searchCount?.results?.numFound ?: 0
-        int totalPages = (totalDocs + pageSize - 1) / pageSize
-        log.debug "totalDocs = ${totalDocs} || totalPages = ${totalPages}"
-        log("Processing " + String.format("%,d", totalDocs) + " taxa (via ${paramsMap.q})...<br>") // send to browser
+        log("Starting occurrence count scan for ${online ? 'online' : 'offline'} index")
+        try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
+            while (prevCursor != cursor) {
+                def startTime = System.currentTimeMillis()
+                SolrQuery query = new SolrQuery(typeQuery)
+                query.setParam('cursorMark', cursor)
+                query.setSort("id", SolrQuery.ORDER.asc)
+                query.setRows(pageSize)
+                def response = indexService.query(query, online)
+                def docs = response.results
+                int total = docs.numFound
+                def buffer = []
+                def guids = []
+                def updates = [:]
 
-        def promiseList = new PromiseList() // for biocache queries
-        Queue commitQueue = new ConcurrentLinkedQueue()  // queue to put docs to be indexes
-        ExecutorService executor = Executors.newSingleThreadExecutor() // consumer of queue - single blocking thread
-        executor.execute {
-            indexDocInQueue(commitQueue, "initialised") // will keep polling the queue until terminated via cancel()
-        }
-
-        // iterate over pages
-        (1..totalPages).each { page ->
-            try {
-                MapSolrParams solrParams = new MapSolrParams(paramsMap)
-                log.debug "${page}. paramsMap = ${paramsMap}"
-                def searchResults = searchService.getCursorSearchResults(solrParams, true)
-                // use offline index to search
-                def resultsDocs = searchResults?.results ?: []
-
-                // buckets to group results into
-                def taxaLocatedInHubCountry = []  // automatically get included
-                def taxaToSearchOccurrences = []  // need to search biocache to see if they are located in hub country
-
-                // iterate over the result set
-                resultsDocs.each { doc ->
+                docs.each { doc ->
+                    def taxonID = doc.guid
+                    def update = [id: doc.id, idxtype: [set: doc.idxtype], guid: [set: taxonID], occurrenceCount: [set: 0]]
                     if (nationalSpeciesDatasets && nationalSpeciesDatasets.contains(doc.datasetID)) {
-                        taxaLocatedInHubCountry.add(doc)
-                        // in national list so _assume_ it is located in host/hub county
-                    } else {
-                        taxaToSearchOccurrences.add(doc)
-                        // search occurrence records to determine if it is located in host/hub county
+                        update.locatedInHubCountry = ["set": true]
                     }
-                }
+                    guids << taxonID
+                    updates[taxonID] = update
 
-                // update national list without occurrence record lookup
-                updateTaxaWithLocationInfo(taxaLocatedInHubCountry, commitQueue)
-                // update the rest via occurrence search (non blocking via promiseList)
-                promiseList << { searchOccurrencesWithGuids(resultsDocs, commitQueue) }
-                // update cursor
-                paramsMap.cursorMark = searchResults?.nextCursorMark ?: ""
-                // update view via via JS
-                updateProgressBar(totalPages, page)
-                log("${page}. taxaLocatedInHubCountry = ${taxaLocatedInHubCountry.size()} | taxaToSearchOccurrences = ${taxaToSearchOccurrences.size()}")
-            } catch (Exception ex) {
-                log.warn "Error calling BIE SOLR: ${ex.message}", ex
-                log("ERROR calling SOLR: ${ex.message}")
-            }
-        }
-
-        log("Waiting for all occurrence searches and SOLR commits to finish (could take some time)")
-
-        //promiseList.get() // block until all promises are complete
-        promiseList.onComplete { List results ->
-            //executor.shutdownNow()
-            isKeepIndexing = false // stop indexing thread
-            executor.shutdown()
-            log("Total taxa found with occurrence records = ${results.sum()}")
-            log("waiting for indexing to finish...")
-        }
-    }
-
-    /**
-     * Batch update of SOLR docs for occurrence/location info
-     * TODO extract field name into config: "locatedInHubCountry"
-     *
-     * @param docs
-     * @param commitQueue
-     * @return
-     */
-    def updateTaxaWithLocationInfo(List docs, Queue commitQueue) {
-        def totalDocumentsUpdated = 0
-
-        docs.each { Map doc ->
-            if (doc.containsKey("id") && doc.containsKey("guid") && doc.containsKey("idxtype")) {
-                Map updateDoc = [:]
-                updateDoc["id"] = doc.id // doc key
-                updateDoc["idxtype"] = ["set": doc.idxtype] // required field
-                updateDoc["guid"] = ["set": doc.guid] // required field
-                updateDoc["locatedInHubCountry"] = ["set": true]
-                if (doc.containsKey("occurrenceCount")) {
-                    updateDoc["occurrenceCount"] = ["set": doc["occurrenceCount"]]
-                }
-                commitQueue.offer(updateDoc) // throw it on the queue
-                totalDocumentsUpdated++
-            } else {
-                log.warn "Updating doc error: missing keys ${doc}"
-            }
-        }
-
-        totalDocumentsUpdated
-    }
-
-    /**
-     * Poll the queue of docs and index in batches
-     *
-     * @param updateDocs
-     * @return
-     */
-    def indexDocInQueue(Queue updateDocs, msg) {
-        int batchSize = BUFFER_SIZE
-
-        while (isKeepIndexing || updateDocs.size() > 0) {
-            if (updateDocs.size() > 0) {
-                log.info "Starting indexing of ${updateDocs.size()} docs"
-                try {
-                    // batch index docs
-                    List batchDocs = []
-                    int end = (batchSize < updateDocs.size()) ? batchSize : updateDocs.size()
-
-                    (1..end).each {
-                        if (updateDocs.peek()) {
-                            batchDocs.add(updateDocs.poll())
+                    if (guids.size() >= COUNT_SIZE) {
+                        def cts = biocacheService.counts(guids, occurrenceCountFilter)
+                        guids.each { guid ->
+                            def val = cts[guid]
+                            def upd = updates[guid]
+                            if (val && upd)
+                                upd.occurrenceCount = [set: val]
+                            buffer << upd
                         }
+                        guids = []
+                        updates = [:]
                     }
-
-                    indexService.indexBatch(batchDocs) // index
-                } catch (Exception ex) {
-                    log.warn "Error batch indexing: ${ex.message}", ex
-                    log.warn "updateDocs = ${updateDocs}"
-                    log("ERROR batch indexing: ${ex.message} <br><code>${ex.stackTrace}</code>")
+                    if (buffer.size() >= BUFFER_SIZE) {
+                        indexService.indexBatch(buffer, online)
+                        buffer = []
+                    }
+                    processed++
                 }
-            } else {
-                sleep(500)
-            }
-        }
-
-        log("Indexing thread is done: ${msg}")
-    }
-
-    /**
-     * Extract a list of GUIDs from input list of docs and do paginated/batch search of occurrence records,
-     * updating index with occurrence status info (could be presence or record counts, etc)
-     *
-     * @param docs
-     * @return
-     */
-    def searchOccurrencesWithGuids(List docs, Queue commitQueue) {
-        int batchSize = 20 // even with POST SOLR throws 400 code is batchSize is more than 100
-        List guids = docs.collect { it.guid }
-        int totalPages = ((guids.size() + batchSize - 1) / batchSize) - 1
-        log.debug "total = ${guids.size()} || batchSize = ${batchSize} || totalPages = ${totalPages}"
-        List docsWithRecs = [] // docs to index
-        //log("Getting occurrence data for ${docs.size()} docs")
-
-        (0..totalPages).each { index ->
-            try {
-                int start = index * batchSize
-                int end = (start + batchSize < guids.size()) ? start + batchSize - 1 : guids.size()
-                log.debug "paging biocache search - ${start} to ${end}"
-                def guidSubset = guids.subList(start, end)
-                def counts = biocacheService.counts(guidSubset, occurrenceCountFilter)
-                counts?.each { guid, count ->
-                    def docWithRecs = docs.find { it.guid == guid }
-                    if (docWithRecs) {
-                        docWithRecs["occurrenceCount"] = count
-                        docsWithRecs.add(docWithRecs)
+                if (guids.size() > 0) {
+                    def cts = biocacheService.counts(guids, occurrenceCountFilter)
+                    guids.each { guid ->
+                        def val = cts[guid]
+                        def update = updates[guid]
+                        if (val && update)
+                            update.occurrenceCount = [set: val]
+                        buffer.addAll(updates.values())
                     }
                 }
-            } catch (Exception ex) {
-                log.warn "Error calling biocache SOLR: ${ex.message}", ex
-                log("ERROR calling biocache SOLR: ${ex.message}")
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                def percentage = total ? Math.round(processed * 100 / total) : 100
+                def speed = total ? Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime)) : 0
+                log("Processed ${processed} taxa (${percentage}%) speed ${speed} records per second")
+                if (total > 0) {
+                    updateProgressBar(total, processed)
+                }
+                prevCursor = cursor
+                cursor = response.nextCursorMark
             }
+            log("Finished scan")
+        } catch (Exception ex) {
+            log.error("Unable to perform occurrence scan", ex)
+            log("Error during scan: " + ex.getMessage())
         }
-        if (docsWithRecs.size() > 0) {
-            log.debug "docsWithRecs size = ${docsWithRecs.size()} vs docs size = ${docs.size()}"
-            updateTaxaWithLocationInfo(docsWithRecs, commitQueue)
-        }
-
     }
 
     /**
