@@ -18,7 +18,6 @@ import au.org.ala.bie.util.Encoder
 class DownloadService {
 
     def grailsApplication
-    def indexService
     def messageSource
 
     /**
@@ -31,10 +30,11 @@ class DownloadService {
      */
     def download(params, OutputStream outputStream, Locale locale){
         def q = Encoder.escapeQuery(params.q ?: "*:*")
-        def fq = params.list('fq')
-        def fields = params.fields ?: grailsApplication.config.defaultDownloadFields ?: "guid,rank,scientificName,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
+        def fq = new ArrayList<>(params.list('fq')) // Make modifiable
+        def fields = params.fields ?: grailsApplication.getRequiredProperty('defaultDownloadFields')
         def fqs = ''
 
+        grailsApplication.config.solr.search.fq.each { fq << it }
         if (fq) {
             fqs = '&fq=' + fq.collect({ Encoder.escapeQuery(it) }).join("&fq=")
         }
