@@ -31,7 +31,7 @@ class DownloadService {
     def download(params, OutputStream outputStream, Locale locale){
         def q = Encoder.escapeQuery(params.q ?: "*:*")
         def fq = new ArrayList<>(params.list('fq')) // Make modifiable
-        def fields = params.fields ?: grailsApplication.config.defaultDownloadFields
+        def fields = params.fields ?: grailsApplication.getRequiredProperty('defaultDownloadFields')
         def fqs = ''
 
         grailsApplication.config.solr.search.fq.each { fq << it }
