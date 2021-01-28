@@ -505,22 +505,16 @@ class ImportService implements GrailsConfigurationAware {
     /**
      * Index WordPress pages
      */
-    def importWordPressPages() throws Exception {
+    def importWordPressPages(boolean online) throws Exception {
         log "Starting wordpress import"
-        // clear the existing WP index
-        indexService.deleteFromIndex(IndexDocType.WORDPRESS)
-        if (!wordPressSitemap) {
-            return
-        }
-
-        // get List of WordPress document URLs (each page's URL)
-        def pages = wordpressService.resources()
+        def buffer = []
+        def pages = wordPressSitemap ? wordpressService.resources() : []
         def documentCount = 0
         def totalDocs = pages.size()
-        def buffer = []
         log("WordPress pages found: ${totalDocs}") // update user via socket
 
         // slurp and build each SOLR doc (add to buffer)
+        // We're expecting less than 1000 documents here so we can delete and update in one batch
         pages.each { pageUrl ->
             log "indexing url: ${pageUrl}"
             try {
@@ -567,7 +561,11 @@ class ImportService implements GrailsConfigurationAware {
             }
         }
         log("Committing to ${buffer.size()} documents to SOLR...")
-        indexService.indexBatch(buffer)
+        if (online) {
+            log "Search for wordpress pages may be temporarily unavailable"
+        }
+        indexService.deleteFromIndex(IndexDocType.WORDPRESS, online)
+        indexService.indexBatch(buffer, online)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished wordpress import"
     }
@@ -575,10 +573,8 @@ class ImportService implements GrailsConfigurationAware {
     /**
      * Index Knowledge Base pages.
      */
-    def importKnowledgeBasePages() throws Exception {
-        log "Starting knowledge base import"
-        // clear the existing WP index
-        indexService.deleteFromIndex(IndexDocType.KNOWLEDGEBASE)
+    def importKnowledgeBasePages(boolean online) throws Exception {
+        log "Starting knowledge base import."
 
         // get List of Knowledge Base document URLs (each page's URL)
         def pages = knowledgeBaseService.resources()
@@ -620,7 +616,11 @@ class ImportService implements GrailsConfigurationAware {
             }
         }
         log("Committing to ${buffer.size()} documents to SOLR...")
-        indexService.indexBatch(buffer)
+        if (online) {
+            log "Search for wordpress pages may be temporarily unavailable"
+        }
+        indexService.deleteFromIndex(IndexDocType.KNOWLEDGEBASE, online)
+        indexService.indexBatch(buffer, online)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished knowledge base import"
     }

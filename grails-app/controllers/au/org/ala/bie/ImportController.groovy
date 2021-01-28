@@ -190,7 +190,8 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importWordPress(){
-        def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages() })
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages(online) })
         asJson(job.status())
     }
 
@@ -200,7 +201,8 @@ class ImportController {
      * @return
      */
     def importKnowledgeBase(){
-        def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages() })
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages(online) })
         asJson(job.status())
     }
 

@@ -912,11 +912,40 @@ paths:
     get:
       summary: Import workpress pages
       description: >
-        Imports wordpress pages into the offline index
+        Imports wordpress pages into the offline (defauult) or online index
       tags:
       - admin
+      parameters:
+        - name: online
+          in: query
+          description: Build using the online, rather than the offline, index
+          schema:
+            type: boolean
+          default: false
       security:
       - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importKnowledgebase:
+    get:
+      summary: Import knowledgebase pages
+      description: >
+        Imports knowledgebase pages into the offline (default) or online index
+      tags:
+        - admin
+      parameters:
+        - name: online
+          in: query
+          description: Build using the online, rather than the offline, index
+          schema:
+            type: boolean
+          default: false
+      security:
+        - cas: []
       responses:
         200:
           content:
