@@ -292,11 +292,14 @@ class ImportService implements GrailsConfigurationAware {
      *
      * @return
      */
-    def importLayers() {
+    def importLayers(boolean online) {
         log "Starting layer import"
+        if (online) {
+            log "Layers may be temporarily unavailable"
+        }
         def layers = layerService.layers()
         def batch = []
-        indexService.deleteFromIndex(IndexDocType.LAYER)
+        indexService.deleteFromIndex(IndexDocType.LAYER, online)
         layers.each { layer ->
             def doc = [:]
             doc["id"] = layer.name
@@ -308,20 +311,23 @@ class ImportService implements GrailsConfigurationAware {
             log "Importing layer ${layer.displayname}"
             batch << doc
         }
-        indexService.indexBatch(batch)
+        indexService.indexBatch(batch, online)
         log "Finished indexing ${layers.size()} layers"
         log "Finsihed layer import"
     }
 
-    def importLocalities() {
+    def importLocalities(boolean online) {
         log "Starting localities import"
-        indexService.deleteFromIndex(IndexDocType.LOCALITY)
+        if (online) {
+            log "Localities may be temporarily unavailable"
+        }
+        indexService.deleteFromIndex(IndexDocType.LOCALITY, online)
         if (gazetteerId) {
             log("Starting indexing ${gazetteerId}")
             log("Getting metadata for layer: ${gazetteerId}")
             def layer = layerService.get(gazetteerId)
             log("Starting indexing ${layer.id} - ${layer.name} gazetteer layer")
-            importLayer(layer)
+            importLayer(layer, online)
             log("Finished indexing ${layer.id} - ${layer.name} gazetteer layer")
         } else {
             log("Skipping localities, no gazetteer layer ID configured")
@@ -329,13 +335,16 @@ class ImportService implements GrailsConfigurationAware {
         log "Finished localities import"
     }
 
-    def importRegions() {
+    def importRegions(boolean online) {
         log "Starting regions import"
-        indexService.deleteFromIndex(IndexDocType.REGION)
+        if (online) {
+            log "Regions may be temporarily unavailable"
+        }
+        indexService.deleteFromIndex(IndexDocType.REGION, online)
         def layers = layerService.layers()
         layers.each { layer ->
             if (layer.type == "Contextual") {
-                importLayer(layer)
+                importLayer(layer, online)
             }
         }
         log "Finished indexing ${layers.size()} region layers"
@@ -349,7 +358,7 @@ class ImportService implements GrailsConfigurationAware {
      * @param layer
      * @return
      */
-    private def importLayer(layer) {
+    private def importLayer(layer, boolean online) {
         log("Loading regions from layer " + layer.name)
 
         def file = layerService.getRegions(layer.id)
@@ -402,13 +411,13 @@ class ImportService implements GrailsConfigurationAware {
                     batch << doc
 
                     if (batch.size() >= BATCH_SIZE) {
-                        indexService.indexBatch(batch)
+                        indexService.indexBatch(batch, online)
                         batch.clear()
                     }
                 }
             }
             if (batch) {
-                indexService.indexBatch(batch)
+                indexService.indexBatch(batch, online)
                 batch.clear()
             }
         }
@@ -454,7 +463,7 @@ class ImportService implements GrailsConfigurationAware {
      *
      * @return
      */
-    def importCollectory() {
+    def importCollectory(online) {
         log "Starting collectory import"
         [
                 "dataResource": IndexDocType.DATARESOURCE,
@@ -466,7 +475,10 @@ class ImportService implements GrailsConfigurationAware {
             def drLists = collectoryService.resources(entityType)
             log("About to import ${drLists.size()} ${entityType}")
             log("Clearing existing: ${entityType}")
-            indexService.deleteFromIndex(indexDocType)
+            if (online) {
+                log "Search may be temporarily unavailable for ${entityType}"
+            }
+            indexService.deleteFromIndex(indexDocType, online)
             log("Cleared")
 
             drLists.each {
@@ -490,12 +502,12 @@ class ImportService implements GrailsConfigurationAware {
                 entities << doc
 
                 if (entities.size() > BUFFER_SIZE) {
-                    indexService.indexBatch(entities)
+                    indexService.indexBatch(entities, online)
                     entities.clear()
                 }
             }
             if (entities) {
-                indexService.indexBatch(entities)
+                indexService.indexBatch(entities, online)
             }
             log("Finished indexing ${drLists.size()} ${entityType}")
         }

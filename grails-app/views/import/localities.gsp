@@ -16,10 +16,19 @@
     </div>
 
     <div>
-        <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importLocalities')}')" class="btn btn-primary import-button"><g:message code="admin.button.importlocalities"/></button>
+        <button id="start-import" onclick="javascript:importLocalities()" class="btn btn-primary import-button"><g:message code="admin.button.importlocalities"/></button>
+    </div>
+    <div>
+        <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 
     <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
+
+    <asset:script type="text/javascript">
+        function importLocalities(){
+            loadInfo("${createLink(controller:'import', action:'importLocalities')}?online=" + $('#use-online').is(':checked'));
+        }
+    </asset:script>
 </div>
 </body>
 </html>

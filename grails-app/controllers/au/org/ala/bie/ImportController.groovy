@@ -119,8 +119,9 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importCollectory(){
+        boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.collectory.service){
-            def job = execute("importCollectory", "admin.button.importcollectory", { importService.importCollectory() })
+            def job = execute("importCollectory", "admin.button.importcollectory", { importService.importCollectory(online) })
             asJson(job.status())
         } else {
             asJson([success: false, message: 'collectoryServicesUrl not configured'])
@@ -134,8 +135,9 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importLayers(){
+        boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service){
-            def job = execute("importLayers", "admin.button.importlayer", { importService.importLayers() })
+            def job = execute("importLayers", "admin.button.importlayer", { importService.importLayers(online) })
             asJson(job.status())
         } else {
             asJson([success: false, message: 'layers.service not configured'])
@@ -149,8 +151,9 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importLocalities(){
+        boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service && grailsApplication.config.layers.gazetteerId){
-            def job = execute("importLocalities", "admin.button.importlocalities", { importService.importLocalities() })
+            def job = execute("importLocalities", "admin.button.importlocalities", { importService.importLocalities(online) })
             asJson(job.status())
         } else {
             asJson([success: false, message: 'layers.services not configured or layers.gazetteerId not configured'])
@@ -164,8 +167,9 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importRegions(){
+        boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service){
-            def job = execute("importRegions", "admin.button.importregions", { importService.importRegions() })
+            def job = execute("importRegions", "admin.button.importregions", { importService.importRegions(online) })
             asJson(job.status())
         } else {
             asJson([success: false, message: 'layers.service not configured'])
