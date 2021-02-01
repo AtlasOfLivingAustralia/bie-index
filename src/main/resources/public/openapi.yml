@@ -920,7 +920,7 @@ paths:
     get:
       summary: Import workpress pages
       description: >
-        Imports wordpress pages into the offline (defauult) or online index
+        Imports wordpress pages into the offline (default) or online index
       tags:
       - admin
       parameters:
