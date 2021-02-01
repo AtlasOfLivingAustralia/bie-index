@@ -840,6 +840,8 @@ paths:
         Import data resources, collections etc. from the collectory into the offline index
       tags:
       - admin
+      parameters:
+      -  $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -855,6 +857,8 @@ paths:
         Imports all spatial layer descriptions from the spatial service into the offline index
       tags:
       - admin
+      parameters:
+      - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -870,6 +874,8 @@ paths:
         Imports all locality descriptions from the spatial service and gazetteer layer into the offline index
       tags:
       - admin
+      parameters:
+      - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -885,6 +891,8 @@ paths:
         Imports all region descriptions from the spatial service into the offline index
       tags:
       - admin
+      parameters:
+      - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -912,11 +920,30 @@ paths:
     get:
       summary: Import workpress pages
       description: >
-        Imports wordpress pages into the offline index
+        Imports wordpress pages into the offline (default) or online index
       tags:
       - admin
+      parameters:
+        -  $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importKnowledgebase:
+    get:
+      summary: Import knowledgebase pages
+      description: >
+        Imports knowledgebase pages into the offline (default) or online index
+      tags:
+        - admin
+      parameters:
+        -  $ref: '#/components/parameters/onlineParam'
+      security:
+        - cas: []
       responses:
         200:
           content:
@@ -985,12 +1012,7 @@ paths:
       tags:
         - admin
       parameters:
-        - name: online
-          in: query
-          description: Build using the online, rather than the offline, index
-          schema:
-            type: boolean
-          default: false
+        -  $ref: '#/components/parameters/onlineParam'
       security:
         - cas: []
       responses:
@@ -1007,12 +1029,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Scan the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+      - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1029,12 +1046,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Build using the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1052,12 +1064,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Build using the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1076,12 +1083,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Scan the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1098,12 +1100,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Scan the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1120,12 +1117,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Scan the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1985,6 +1977,14 @@ components:
       schema:
         type: integer
         default: 10
+      required: false
+    onlineParam:
+      name: online
+      description: Build using the online, rather than the offline, index
+      in: query
+      schema:
+        type: boolean
+        default: false
       required: false
 tags:
 - name: search

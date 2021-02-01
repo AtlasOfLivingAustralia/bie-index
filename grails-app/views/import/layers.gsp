@@ -15,9 +15,18 @@
         <p class="col-md-4 well"><g:message code="admin.import.swap"/></p>
     </div>
     <div>
-        <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importLayers')}')" class="btn btn-primary import-button"><g:message code="admin.button.importlayer"/></button>
+        <button id="start-import" onclick="javascript:importLayers()" class="btn btn-primary import-button"><g:message code="admin.button.importlayer"/></button>
+    </div>
+    <div>
+        <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
     <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
+
+    <asset:script type="text/javascript">
+        function importLayers(){
+            loadInfo("${createLink(controller:'import', action:'importLayers')}?online=" + $('#use-online').is(':checked'));
+        }
+    </asset:script>
 </div>
 </body>
 </html>

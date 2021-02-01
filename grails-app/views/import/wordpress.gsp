@@ -35,10 +35,19 @@
     </div>
 
     <div>
-        <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importWordPress')}')" class="btn btn-primary import-button"><g:message code="admin.button.loadwordpress"/></button>
+        <button id="start-import" onclick="javascript:importWordPress()" class="btn btn-primary import-button"><g:message code="admin.button.loadwordpress"/></button>
+    </div>
+    <div>
+        <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 
     <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
+
+    <asset:script type="text/javascript">
+        function importWordPress(){
+            loadInfo("${createLink(controller:'import', action:'importWordPress')}?online=" + $('#use-online').is(':checked'));
+        }
+     </asset:script>
 </div>
 </body>
 </html>
