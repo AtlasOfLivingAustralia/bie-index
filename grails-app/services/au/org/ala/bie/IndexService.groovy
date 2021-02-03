@@ -63,7 +63,7 @@ class IndexService implements GrailsConfigurationAware {
      * @param docType
      * @return
      */
-    def deleteFromIndex(IndexDocType docType, boolean online = false) {
+    def deleteFromIndex(IndexDocType docType, boolean online) {
         log.info("Deleting from index: " + docType.name() + "....")
         def client = online ? updatingLiveSolrClient : offlineSolrClient
         client.deleteByQuery("idxtype:" + docType.name())
