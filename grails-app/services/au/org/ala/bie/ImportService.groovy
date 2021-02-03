@@ -216,7 +216,7 @@ class ImportService implements GrailsConfigurationAware {
             try {
                 switch (step) {
                     case 'collectory':
-                        importCollectory()
+                        importCollectory(false)
                         break
                     case 'conservation-lists':
                         importConservationSpeciesLists()
@@ -232,19 +232,19 @@ class ImportService implements GrailsConfigurationAware {
                         loadImages(false)
                         break
                     case 'layers':
-                        importLayers()
+                        importLayers(false)
                         break
                     case 'link-identifiers':
                         buildLinkIdentifiers(false)
                         break
                     case 'localities':
-                        importLocalities()
+                        importLocalities(false)
                         break
                     case 'occurrences':
                         importOccurrenceData(false)
                         break
                     case 'regions':
-                        importRegions()
+                        importRegions(false)
                         break
                     case 'suggest-index':
                         buildSuggestIndex(false)
@@ -259,10 +259,10 @@ class ImportService implements GrailsConfigurationAware {
                         buildWeights(false)
                         break
                     case 'wordpress':
-                        importWordPressPages()
+                        importWordPressPages(false)
                         break
                     case 'knowledgebase':
-                        importKnowledgeBasePages()
+                        importKnowledgeBasePages(false)
                         break
                     default:
                         log("Unknown step ${step}")
@@ -426,7 +426,7 @@ class ImportService implements GrailsConfigurationAware {
     def importHabitats() {
 
         def batch = []
-        indexService.deleteFromIndex(IndexDocType.HABITAT)
+        indexService.deleteFromIndex(IndexDocType.HABITAT, false)
 
         //read the DwC metadata
         Archive archive = ArchiveFactory.openArchive(new File("/data/habitat/"));
@@ -463,7 +463,7 @@ class ImportService implements GrailsConfigurationAware {
      *
      * @return
      */
-    def importCollectory(online) {
+    def importCollectory(boolean online) {
         log "Starting collectory import"
         [
                 "dataResource": IndexDocType.DATARESOURCE,
@@ -1030,10 +1030,10 @@ class ImportService implements GrailsConfigurationAware {
 
     def clearTaxaIndex() {
         log("Deleting existing taxon entries in index...")
-        indexService.deleteFromIndex(IndexDocType.TAXON)
-        indexService.deleteFromIndex(IndexDocType.COMMON)
-        indexService.deleteFromIndex(IndexDocType.IDENTIFIER)
-        indexService.deleteFromIndex(IndexDocType.TAXONVARIANT)
+        indexService.deleteFromIndex(IndexDocType.TAXON, false)
+        indexService.deleteFromIndex(IndexDocType.COMMON, false)
+        indexService.deleteFromIndex(IndexDocType.IDENTIFIER, false)
+        indexService.deleteFromIndex(IndexDocType.TAXONVARIANT, false)
         log("Cleared.")
     }
 
