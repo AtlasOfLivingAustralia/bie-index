@@ -356,7 +356,7 @@ paths:
   /species/image/{imageType}/{id}:
     get:
       summary: Get a suitably sized representative image for a taxon
-      description: Return a URL to the representative image
+      description: Return a redirect to a URL with representative image. Note that testing this using the swagger UI will, most likey cause a CORS error. Copying and pasting the request URL should succeeed.
       tags:
       - lookup
       parameters:
@@ -387,16 +387,13 @@ paths:
       responses:
         404:
           description: If there is no image for the supplied id and showNoImage=false
-        200:
-          content:
-            application/json:
+        302:
+          headers:
+            Location:
+              description: The location of the image
               schema:
-                type: object
-                properties:
-                  url:
-                    type: string
-                    format: url
-                    description: The URL of the requested image
+                type: string
+                format: url
   /species/shortProfile/{id}:
     get:
       summary: Get a short description of a taxon
@@ -1942,10 +1939,10 @@ components:
       in: path
       description: >
         The guid of a specific taxon, data resource, layer etc.
-        Since guids can be URLs but can also be interpolated into paths, a http:// prefix may be converted into http:/ by
+        Since guids can be URLs but can also be interpolated into paths, a http:// or https:// prefix may be converted into http:/ or https:/ by
         the tomcat container.
-        A supplied guid of, eg. http:/id.biodiversity.org.au/node/apni/50587232 will be converted into
-        http://id.biodiversity.org.au/node/apni/50587232
+        A supplied guid of, eg. https:/id.biodiversity.org.au/node/apni/50587232 will be converted into
+        https://id.biodiversity.org.au/node/apni/50587232
       required: true
       schema:
         $ref: '#/components/schemas/GUID'
