@@ -306,12 +306,6 @@ class ImportController {
         asJson (job.status())
     }
 
-    // Documented in openapi.yml
-    def ranks() {
-        asJson(importService.ranks())
-    }
-
-
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
         render (model as JSON)
