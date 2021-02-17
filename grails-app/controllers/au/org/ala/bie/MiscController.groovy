@@ -28,6 +28,11 @@ class MiscController {
         return
     }
 
+    // Documented in openapi.yml
+    def ranks() {
+        render importService.ranks() as JSON
+    }
+
     def indexFields() {
         def fields = indexService.getIndexFieldDetails(null)
 
