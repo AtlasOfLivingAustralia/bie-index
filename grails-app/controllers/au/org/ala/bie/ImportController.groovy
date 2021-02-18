@@ -15,7 +15,6 @@ package au.org.ala.bie
 
 import au.org.ala.bie.util.Job
 import grails.converters.JSON
-import org.apache.commons.lang.BooleanUtils
 import au.org.ala.web.AlaSecured
 /**
  * Controller for data import into the system.
@@ -70,7 +69,7 @@ class ImportController {
             return
         }
 
-        def clearIndex = BooleanUtils.toBooleanObject(params.clear_index ?: "false")
+        def clearIndex = params.getBoolean('clear_index', false)
         def dwcDir = params.dwca_dir
 
         if(new File(dwcDir).exists()){
@@ -120,8 +119,9 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importCollectory(){
+        boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.collectory.service){
-            def job = execute("importCollectory", "admin.button.importcollectory", { importService.importCollectory() })
+            def job = execute("importCollectory", "admin.button.importcollectory", { importService.importCollectory(online) })
             asJson(job.status())
         } else {
             asJson([success: false, message: 'collectoryServicesUrl not configured'])
@@ -135,8 +135,9 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importLayers(){
+        boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service){
-            def job = execute("importLayers", "admin.button.importlayer", { importService.importLayers() })
+            def job = execute("importLayers", "admin.button.importlayer", { importService.importLayers(online) })
             asJson(job.status())
         } else {
             asJson([success: false, message: 'layers.service not configured'])
@@ -150,8 +151,9 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importLocalities(){
+        boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service && grailsApplication.config.layers.gazetteerId){
-            def job = execute("importLocalities", "admin.button.importlocalities", { importService.importLocalities() })
+            def job = execute("importLocalities", "admin.button.importlocalities", { importService.importLocalities(online) })
             asJson(job.status())
         } else {
             asJson([success: false, message: 'layers.services not configured or layers.gazetteerId not configured'])
@@ -165,8 +167,9 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importRegions(){
+        boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service){
-            def job = execute("importRegions", "admin.button.importregions", { importService.importRegions() })
+            def job = execute("importRegions", "admin.button.importregions", { importService.importRegions(online) })
             asJson(job.status())
         } else {
             asJson([success: false, message: 'layers.service not configured'])
@@ -191,7 +194,8 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importWordPress(){
-        def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages() })
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages(online) })
         asJson(job.status())
     }
 
@@ -201,7 +205,8 @@ class ImportController {
      * @return
      */
     def importKnowledgeBase(){
-        def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages() })
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages(online) })
         asJson(job.status())
     }
 
@@ -212,7 +217,8 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importOccurrences(){
-        def job = execute("importOccurrences", "admin.button.loadoccurrence", { importService.importOccurrenceData() })
+        def online = params.getBoolean('online', false)
+        def job = execute("importOccurrences", "admin.button.loadoccurrence", { importService.importOccurrenceData(online) })
         asJson (job.status())
 
     }
@@ -242,7 +248,7 @@ class ImportController {
 
     // Documented in openapi.yml
     def buildLinkIdentifiers() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def online = params.getBoolean('online', false)
         def job = execute("buildLinkIdentifiers", "admin.button.buildLinks", { importService.buildLinkIdentifiers(online) })
         asJson (job.status())
 
@@ -250,7 +256,7 @@ class ImportController {
 
     // Documented in openapi.yml
     def denormaliseTaxa() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def online = params.getBoolean('online', false)
         def job = execute("denormaliseTaxa", "admin.button.denormalise", { importService.denormaliseTaxa(online) })
         asJson (job.status())
 
@@ -258,7 +264,7 @@ class ImportController {
 
     // Documented in openapi.yml
     def buildFavourites() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def online = params.getBoolean('online', false)
         def job = execute("buildFavourites", "admin.button.buildfavourites", { importService.buildFavourites(online) })
         asJson (job.status())
 
@@ -266,7 +272,7 @@ class ImportController {
 
     // Documented in openapi.yml
     def buildWeights() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def online = params.getBoolean('online', false)
         def job = execute("buildWeights", "admin.button.buildweights", { importService.buildWeights(online) })
         asJson (job.status())
 
@@ -274,7 +280,7 @@ class ImportController {
 
     // Documented in openapi.yml
     def buildSuggestIndex() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def online = params.getBoolean('online', false)
         def job = execute("buildSuggestIndex", "admin.button.buildsuggestindex", { importService.buildSuggestIndex(online) })
         asJson (job.status())
 
@@ -288,23 +294,17 @@ class ImportController {
      */
     // Documented in openapi.yml
     def loadPreferredImages() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def online = params.getBoolean('online', false)
         def job = execute("loadImages", "admin.button.loadimagespref", { importService.loadPreferredImages(online) })
         asJson (job.status())
     }
 
     // Documented in openapi.yml
     def loadImages() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
+        def online = params.getBoolean('online', false)
         def job = execute("loadImages", "admin.button.loadimagesall", { importService.loadImages(online) })
         asJson (job.status())
     }
-
-    // Documented in openapi.yml
-    def ranks() {
-        asJson(importService.ranks())
-    }
-
 
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")

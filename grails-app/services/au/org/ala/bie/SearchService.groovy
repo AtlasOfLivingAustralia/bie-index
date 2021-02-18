@@ -990,19 +990,19 @@ class SearchService {
                         "infoSourceName" : it.datasetName,
                         "infoSourceURL" : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}"
                 ]
-            } else if (it.idxtype == IndexDocType.COMMON.name()){
+            } else if (it.idxtype == IndexDocType.COMMON.name()) {
                 doc = [
-                        "id" : it.id, // needed for highlighting
-                        "guid" : it.guid,
-                        "taxonGuid" : it.taxonGuid,
-                        "linkIdentifier" : it.linkIdentifier,
-                        "idxtype": it.idxtype,
-                        "name" : it.name,
-                        "language" : it.language,
+                        "id"                 : it.id, // needed for highlighting
+                        "guid"               : it.guid,
+                        "taxonGuid"          : it.taxonGuid,
+                        "linkIdentifier"     : it.linkIdentifier,
+                        "idxtype"            : it.idxtype,
+                        "name"               : it.name,
+                        "language"           : it.language,
                         "acceptedConceptName": it.acceptedConceptName,
-                        "favourite": it.favourite,
-                        "infoSourceName" : it.datasetName,
-                        "infoSourceURL" : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}"
+                        "favourite"          : it.favourite,
+                        "infoSourceName"     : it.datasetName,
+                        "infoSourceURL"      : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}"
                 ]
                 if (it.image) {
                     doc.put("image", it.image)
@@ -1028,6 +1028,9 @@ class SearchService {
                 }
                 if(it.favourite){
                     doc.put("favourite", it.favourite)
+                }
+                if (it.content){
+                    doc.put("content", it.content)
                 }
             }
             if (doc) {
