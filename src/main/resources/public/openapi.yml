@@ -356,7 +356,7 @@ paths:
   /species/image/{imageType}/{id}:
     get:
       summary: Get a suitably sized representative image for a taxon
-      description: Return a URL to the representative image
+      description: Return a redirect to a URL with representative image. Note that testing this using the swagger UI will, most likey cause a CORS error. Copying and pasting the request URL should succeeed.
       tags:
       - lookup
       parameters:
@@ -387,16 +387,13 @@ paths:
       responses:
         404:
           description: If there is no image for the supplied id and showNoImage=false
-        200:
-          content:
-            application/json:
+        302:
+          headers:
+            Location:
+              description: The location of the image
               schema:
-                type: object
-                properties:
-                  url:
-                    type: string
-                    format: url
-                    description: The URL of the requested image
+                type: string
+                format: url
   /species/shortProfile/{id}:
     get:
       summary: Get a short description of a taxon
@@ -840,6 +837,8 @@ paths:
         Import data resources, collections etc. from the collectory into the offline index
       tags:
       - admin
+      parameters:
+      -  $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -855,6 +854,8 @@ paths:
         Imports all spatial layer descriptions from the spatial service into the offline index
       tags:
       - admin
+      parameters:
+      - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -870,6 +871,8 @@ paths:
         Imports all locality descriptions from the spatial service and gazetteer layer into the offline index
       tags:
       - admin
+      parameters:
+      - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -885,6 +888,8 @@ paths:
         Imports all region descriptions from the spatial service into the offline index
       tags:
       - admin
+      parameters:
+      - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -912,11 +917,30 @@ paths:
     get:
       summary: Import workpress pages
       description: >
-        Imports wordpress pages into the offline index
+        Imports wordpress pages into the offline (default) or online index
       tags:
       - admin
+      parameters:
+        -  $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importKnowledgebase:
+    get:
+      summary: Import knowledgebase pages
+      description: >
+        Imports knowledgebase pages into the offline (default) or online index
+      tags:
+        - admin
+      parameters:
+        -  $ref: '#/components/parameters/onlineParam'
+      security:
+        - cas: []
       responses:
         200:
           content:
@@ -985,12 +1009,7 @@ paths:
       tags:
         - admin
       parameters:
-        - name: online
-          in: query
-          description: Build using the online, rather than the offline, index
-          schema:
-            type: boolean
-          default: false
+        -  $ref: '#/components/parameters/onlineParam'
       security:
         - cas: []
       responses:
@@ -1007,12 +1026,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Scan the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+      - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1029,12 +1043,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Build using the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1052,12 +1061,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Build using the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1076,12 +1080,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Scan the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1098,12 +1097,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Scan the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1120,12 +1114,7 @@ paths:
       tags:
       - admin
       parameters:
-      - name: online
-        in: query
-        description: Scan the online, rather than the offline, index
-        schema:
-          type: boolean
-        default: false
+        - $ref: '#/components/parameters/onlineParam'
       security:
       - cas: []
       responses:
@@ -1950,10 +1939,10 @@ components:
       in: path
       description: >
         The guid of a specific taxon, data resource, layer etc.
-        Since guids can be URLs but can also be interpolated into paths, a http:// prefix may be converted into http:/ by
+        Since guids can be URLs but can also be interpolated into paths, a http:// or https:// prefix may be converted into http:/ or https:/ by
         the tomcat container.
-        A supplied guid of, eg. http:/id.biodiversity.org.au/node/apni/50587232 will be converted into
-        http://id.biodiversity.org.au/node/apni/50587232
+        A supplied guid of, eg. https:/id.biodiversity.org.au/node/apni/50587232 will be converted into
+        https://id.biodiversity.org.au/node/apni/50587232
       required: true
       schema:
         $ref: '#/components/schemas/GUID'
@@ -1985,6 +1974,14 @@ components:
       schema:
         type: integer
         default: 10
+      required: false
+    onlineParam:
+      name: online
+      description: Build using the online, rather than the offline, index
+      in: query
+      schema:
+        type: boolean
+        default: false
       required: false
 tags:
 - name: search

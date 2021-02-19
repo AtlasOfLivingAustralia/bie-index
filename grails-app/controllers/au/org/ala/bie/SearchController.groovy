@@ -63,10 +63,11 @@ class SearchController implements GrailsConfigurationAware {
      */
     // Documented in openapi.yml
     def imageLinkSearch() {
-        def showNoImage = params.containsKey("showNoImage") ? params.boolean("showNoImage") : true
+        def showNoImage = params.boolean('showNoImage', true)
         def guid = regularise(params.id)
         def locales = [request.locale, defaultLocale]
-        def url = searchService.imageLinkSearch(guid, params.imageType, params.qc, locales)
+        def imageType = params.imageType
+        def url = searchService.imageLinkSearch(guid, imageType, params.qc, locales)
 
         if (!url && showNoImage) {
             url = resource(dir: "images", file: "noImage85.jpg", absolute: true)
@@ -86,13 +87,15 @@ class SearchController implements GrailsConfigurationAware {
     // Documented in openapi.yml
     def childConcepts(){
         def taxonID = params.id
-        if(!taxonID){
+        if(!taxonID) {
             response.sendError(400, "Please provide a GUID")
             return null
         }
-        def within = params.within && params.within.isInteger() ? params.within as Integer : 2000
-        def unranked = params.unranked ? params.unranked.toBoolean() : true
-        render (searchService.getChildConcepts(regularise(taxonID), request.queryString, within, unranked) as JSON)
+        def within = params.int('within', 2000)
+        def unranked = params.boolean('unranked', true)
+        ['within', 'unranked', 'controller', 'action', 'id'].each {params.remove(it) }
+        def extra = params.toQueryString().replaceFirst('^\\?', '')
+        render (searchService.getChildConcepts(regularise(taxonID), extra, within, unranked) as JSON)
     }
 
     // Documented in openapi.yml
