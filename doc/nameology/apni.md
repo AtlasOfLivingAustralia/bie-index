@@ -42,10 +42,8 @@ The names file contains the following:
 Some names in APNI have not yet been placed in the APC.
 These orphan names are treated as inferred accepted taxa and placed under Plantae; 
 we at least know which kingdom they come from.
-Names that have been placed in the APC are given a different dataset identifier to those names
-that are only in APNI.
-
-It is theoretically possible to use the higher taxonomy in the names data to provide placement
-for APNI-only names and allow [merging](merging.md) to correctly link these names to parent taxa.
-This is not currently done.
+These are produced as a separate DwCA with a slightly different structure, containing
+kingdom, phylum, class, order, family and genus names.
+The name information generally contains genus and family.
+[Merging](merging.md) can use this structural information to partially place the resulting names.
 
