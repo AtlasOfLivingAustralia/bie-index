@@ -146,7 +146,8 @@ images:
   index: true
 wordPress:
   service: https://www.ala.org.au
-  sitemap: /sitemap.xml
+  sitemap: /xmlsitemap.xml
+  index: index.xml
   page: /?page_id={0}
   timeout: 10000
   validateTLS: false
@@ -154,6 +155,8 @@ wordPress:
   contentSelector: body main
   idSelector: head > meta[name=id]
   shortLinkSelector: head > link[rel=shortlink]
+  excludedLocations:
+  - .*/category/.*
   excludedCategories:
   - button
   contentOnlyParams: ?content-only=1&categories=1

@@ -22,12 +22,16 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
 
+import java.util.function.Predicate
+import java.util.regex.Pattern
+
 /**
  * Service for accessing Word Press pages
  */
 class WordpressService implements IndexingInterface, GrailsConfigurationAware {
     String service
     String sitemap
+    String index
     int timeout
     boolean validateTLS
     String titleSelector
@@ -35,6 +39,7 @@ class WordpressService implements IndexingInterface, GrailsConfigurationAware {
     String idSelector
     String shortLinkSelector
     String contentOnlyParams
+    List<Predicate<String>> excludedLocations
 
     /**
      * Set up service with configuration
@@ -45,6 +50,7 @@ class WordpressService implements IndexingInterface, GrailsConfigurationAware {
     void setConfiguration(Config config) {
         this.service = config.wordPress.service
         this.sitemap = config.wordPress.sitemap
+        this.index = config.wordPress.index
         this.timeout = config.getProperty("wordPress.timeout", Integer, 10000)
         this.validateTLS = config.getProperty("wordPress.validateTLS", Boolean, false)
         this.titleSelector = config.wordPress.titleSelector
@@ -52,6 +58,7 @@ class WordpressService implements IndexingInterface, GrailsConfigurationAware {
         this.idSelector = config.wordPress.idSelector
         this.shortLinkSelector = config.wordPress.shortLinkSelector
         this.contentOnlyParams = config.wordPress.contentOnlyParams ?: ""
+        this.excludedLocations = (config.wordPress.excludedLocations ?: []).collect { Pattern.compile(it).asPredicate() }
     }
 
     /**
@@ -84,15 +91,22 @@ class WordpressService implements IndexingInterface, GrailsConfigurationAware {
                 Elements sitemaps = doc.select("sitemapindex sitemap loc")
                 sitemaps.each { loc ->
                     try {
-                        URL url = new URL(loc.text())
+                        String sitemap = loc.text()
+                        if (sitemap.endsWith('/')) {
+                            sitemap = sitemap + this.index
+                        }
+                        URL url = new URL(sitemap)
                         queue << url
-                    } catch (MalformedURLException mex) {
+                     } catch (MalformedURLException mex) {
                         log.warn "Site map URL ${loc.text()} is malformed"
                     }
                 }
                 Elements pages = doc.select("urlset url loc")
                 pages.each { loc ->
-                    locations << loc.text()
+                    String url = loc.text()
+                    if (!this.excludedLocations.any { it.test(url) }) {
+                        locations << url
+                    }
                 }
             } catch (IOException ex) {
                 log.warn "Unable to retrieve ${source}: ${ex.message}, ignoring"
