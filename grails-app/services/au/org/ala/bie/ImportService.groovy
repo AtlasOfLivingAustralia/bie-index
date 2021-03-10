@@ -543,20 +543,11 @@ class ImportService implements GrailsConfigurationAware {
                     log.debug documentCount + ". Indexing WP page - id: " + document.id + " | title: " + document.title + " | text: " + StringUtils.substring(document.body, 0, 100) + "... ";
                     def doc = [:]
                     doc["idxtype"] = IndexDocType.WORDPRESS.name()
-
-                    if (StringUtils.isNotBlank(document.shortlink)) {
-                        doc["guid"] = document.shortlink
-                    } else if (StringUtils.isNotEmpty(document.id)) {
-                        doc["guid"] = Encoder.buildServiceUrl(wordPressBaseUrl, wordPressPageFormat, document.id).toExternalForm()
-                    } else {
-                        // fallback
-                        doc["guid"] = pageUrl
-                    }
-
                     doc["id"] = "wp" + document.id // probably not needed but safer to leave in
-                    doc["name"] = document.title // , 1.2f
+                    doc["guid"] = pageUrl
+                    doc["name"] = document.title
                     doc["content"] = document.body
-                    doc["linkIdentifier"] = pageUrl
+                    doc["linkIdentifier"] =  pageUrl
                     //doc["australian_s"] = "recorded" // so they appear in default QF search
                     doc["categories"] = categories
                     // add to doc to buffer (List)
