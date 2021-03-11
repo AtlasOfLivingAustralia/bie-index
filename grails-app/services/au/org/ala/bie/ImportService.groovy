@@ -547,7 +547,7 @@ class ImportService implements GrailsConfigurationAware {
                     doc["guid"] = pageUrl
                     doc["name"] = document.title
                     doc["content"] = document.body
-                    doc["linkIdentifier"] =  pageUrl
+                    doc["linkIdentifier"] = pageUrl
                     //doc["australian_s"] = "recorded" // so they appear in default QF search
                     doc["categories"] = categories
                     // add to doc to buffer (List)
