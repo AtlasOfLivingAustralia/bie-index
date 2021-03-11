@@ -33,6 +33,7 @@ class WordPressServiceSpec extends Specification {
     def setupSpec() {
         // call web service once only and store results in static vars
         service.setConfiguration(grailsApplication.config)
+        service.sitemap = '/sitemap.xml' // Depends on wordpress implementation!
         pages = service.resources("")
         firstPageUrl = pages.get(1) // homepage has no body so use second page for testing
         firstPageMap = service.getResource(firstPageUrl)
