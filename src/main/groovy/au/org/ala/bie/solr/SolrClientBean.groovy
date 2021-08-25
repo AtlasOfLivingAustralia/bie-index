@@ -1,6 +1,6 @@
 package au.org.ala.bie.solr
 
-import grails.util.CacheEntry
+
 import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.impl.CloudSolrClient
 import org.apache.solr.client.solrj.impl.ConcurrentUpdateSolrClient
@@ -57,21 +57,19 @@ class SolrClientBean {
      * @return
      */
     SolrClient buildClient() {
-        def builder
         switch (clientType) {
             case ClientType.UPDATE:
-                builder = new ConcurrentUpdateSolrClient.Builder(connection)
+                def builder = new ConcurrentUpdateSolrClient.Builder(connection)
                 builder.withQueueSize(queueSize)
                 builder.withThreadCount(threadCount)
-                break;
+                return builder.build();
             case ClientType.ZOOKEEPER:
-                builder = new CloudSolrClient.Builder()
-                builder.withZkHost(connection)
-                break;
+                def builder = new CloudSolrClient.Builder(connection.split(',') as List)
+                return builder.build();
             default:
-                builder = new HttpSolrClient.Builder(connection)
+                def builder = new HttpSolrClient.Builder(connection)
+                return builder.build();
         }
-        return builder.build()
     }
 
     void setClientType(String name) {

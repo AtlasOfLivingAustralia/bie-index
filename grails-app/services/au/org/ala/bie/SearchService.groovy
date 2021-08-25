@@ -284,34 +284,40 @@ class SearchService {
         }
     }
 
+    private queryChildConcepts(q, fqs, queryString, children) {
+        def response = indexService.query(true, q, fqs, 1000, 0, queryString)
+        def taxa = response.results
+        taxa.each { taxon ->
+            children << [
+                    guid         : taxon.guid,
+                    parentGuid   : taxon.parentGuid,
+                    name         : taxon.scientificName,
+                    nameComplete : taxon.nameComplete ?: taxon.scientificName,
+                    nameFormatted: taxon.nameFormatted,
+                    author       : taxon.scientificNameAuthorship,
+                    rank         : taxon.rank,
+                    rankID       : taxon.rankID
+            ]
+        }
+    }
 
     def getChildConcepts(taxonID, queryString, within, unranked){
         def baseTaxon = lookupTaxon(taxonID)
         def baseRankID = baseTaxon?.rankID ?: -1
         def baseFq = "idxtype:${IndexDocType.TAXON.name()}"
         def fqs = [ baseFq ]
-        if (baseRankID > 0 && within) {
-            fqs << "rankID:[${unranked ? -1 : baseRankID + 1} TO ${baseRankID + within}]"
-        }
         def q = "parentGuid:\"${ Encoder.escapeSolr(taxonID) }\""
-        def response = indexService.query(true, q, fqs, 1000, 0, queryString)
-        if (response.results.numFound == 0) {
-            response = indexService.query(true, q, [ baseFq ], 1000, 0, queryString)
-        }
         def children = []
-        def taxa = response.results
-        taxa.each { taxon ->
-            children << [
-                    guid:taxon.guid,
-                    parentGuid: taxon.parentGuid,
-                    name: taxon.scientificName,
-                    nameComplete: taxon.nameComplete ?: taxon.scientificName,
-                    nameFormatted: taxon.nameFormatted,
-                    author: taxon.scientificNameAuthorship,
-                    rank: taxon.rank,
-                    rankID:taxon.rankID
-            ]
+
+        if (baseRankID > 0 && within) {
+             fqs << "rankID:[${unranked ? -1 : baseRankID + 1} TO ${baseRankID + within}]"
         }
+
+        this.queryChildConcepts(q, fqs, queryString, children)
+        if (unranked && baseRankID > 0 && within)  // Long running bug in SOLR unable to handle (- +) subqueries
+            this.queryChildConcepts(q, [ baseFq, "-rankID:*"], queryString, children)
+        if (children.isEmpty() && fqs.size() > 1)
+            this.queryChildConcepts(q, [ baseFq ], queryString, children)
         children.sort { c1, c2 ->
             def r1 = c1.rankID
             def r2 = c2.rankID
