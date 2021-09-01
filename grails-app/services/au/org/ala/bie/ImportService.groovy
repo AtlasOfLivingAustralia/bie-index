@@ -2129,17 +2129,16 @@ class ImportService implements GrailsConfigurationAware {
         def variants = searchService.lookupVariant(guid, !online)
         if (variants) {
             priority = variants.collect({ (double) it.priority ?: weightNorm }).max()
-            double boost = Math.min(weightMax, Math.max(weightMin, priority))
             def names = (variants.collect { it.scientificName }) as Set
             names.addAll(variants.collect { it.nameComplete })
             names.remove(null)
             names.remove(scientificName)
             names.remove(nameComplete)
             if (names)
-                update["nameVariant"] = [boost: boost, set: names]
-            update["scientificName"] = [boost: boost, set: scientificName]
+                update["nameVariant"] = [set: names]
+            update["scientificName"] = [set: scientificName]
             if (nameComplete)
-                update["nameComplete"] = [boost: boost, set: nameComplete]
+                update["nameComplete"] = [set: nameComplete]
         }
         update['priority'] = [set: (int) Math.round(priority)]
         def commonNames = searchService.lookupVernacular(guid, !online)

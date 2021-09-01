@@ -84,17 +84,12 @@ class IndexService implements GrailsConfigurationAware {
         docsToIndex.each { map ->
             def solrDoc = new SolrInputDocument()
             map.each{ fieldName, fieldValue ->
-                def boost = 1.0f
-                if (fieldValue && Map.class.isAssignableFrom(fieldValue.getClass()) && fieldValue["boost"]) {
-                    boost = fieldValue.boost
-                    fieldValue.remove("boost")
-                }
                 if(isList(fieldValue)){
                     fieldValue.each {
-                        solrDoc.addField(fieldName, it, (float) boost)
+                        solrDoc.addField(fieldName, it)
                     }
                 } else {
-                    solrDoc.addField(fieldName, fieldValue, (float) boost)
+                    solrDoc.addField(fieldName, fieldValue)
                 }
             }
             buffer << solrDoc
