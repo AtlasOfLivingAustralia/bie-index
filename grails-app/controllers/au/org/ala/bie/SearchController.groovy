@@ -1,32 +1,45 @@
 package au.org.ala.bie
 
-import au.org.ala.bie.search.SearchResultsDTO
+import grails.config.Config
 import grails.converters.JSON
+import grails.core.support.GrailsConfigurationAware
+import org.apache.solr.common.SolrException
+
 /**
  * A set of JSON based search web services.
  */
-class SearchController {
-
-    def grailsApplication
-
+class SearchController implements GrailsConfigurationAware {
     def searchService, solrSearchService, autoCompleteService, downloadService
 
     static defaultAction = "search"
+
+    // Caused by the grails structure eliminating the // from http://x.y.z type URLs
+    static BROKEN_URLPATTERN = /^[a-z]+:\/[^\/].*/
+
+    /** The default locale to use when choosing common names */
+    Locale defaultLocale
+
+    @Override
+    void setConfiguration(Config config) {
+        defaultLocale = Locale.forLanguageTag(config.commonName.defaultLanguage)
+    }
 
     /**
      * Retrieve a classification for the supplied taxon.
      *
      * @return
      */
+    // Documented in openapi.yml
     def classification(){
         if(!params.id){
             response.sendError(404, "Please provide a GUID")
             return null
         }
-        def classification = searchService.getClassification(params.id)
+        def guid = regularise(params.id)
+        def classification = searchService.getClassification(guid)
 
         if (!classification) {
-            response.sendError(404, "GUID ${params.id} not found")
+            response.sendError(404, "GUID ${guid} not found")
         } else {
             render (classification as JSON)
         }
@@ -37,22 +50,30 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def imageSearch(){
-        asJson ([searchResults:searchService.imageSearch(params.id, params.start, params.rows, params.qc)])
+        def start = params.start as Integer
+        def rows = params.rows as Integer
+        def locales = [request.locale, defaultLocale]
+        render ([searchResults:searchService.imageSearch(regularise(params.id), start, rows, params.qc, locales)] as JSON)
     }
 
     /**
      * Returns a redirect to an image of the appropriate type
      */
+    // Documented in openapi.yml
     def imageLinkSearch() {
-        def showNoImage = params.containsKey("showNoImage") ? params.boolean("showNoImage") : true
-        def url = searchService.imageLinkSearch(params.id, params.imageType, params.qc)
+        def showNoImage = params.boolean('showNoImage', true)
+        def guid = regularise(params.id)
+        def locales = [request.locale, defaultLocale]
+        def imageType = params.imageType
+        def url = searchService.imageLinkSearch(guid, imageType, params.qc, locales)
 
         if (!url && showNoImage) {
             url = resource(dir: "images", file: "noImage85.jpg", absolute: true)
         }
         if (!url) {
-            response.sendError(404, "No image for " + params.id)
+            response.sendError(404, "No image for " + guid)
             return null
         }
         redirect(url: url)
@@ -63,18 +84,25 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def childConcepts(){
-        if(!params.id){
-            response.sendError(404, "Please provide a GUID")
+        def taxonID = params.id
+        if(!taxonID) {
+            response.sendError(400, "Please provide a GUID")
             return null
         }
-        render (searchService.getChildConcepts(params.id, request.queryString) as JSON)
+        def within = params.int('within', 2000)
+        def unranked = params.boolean('unranked', true)
+        ['within', 'unranked', 'controller', 'action', 'id'].each {params.remove(it) }
+        def extra = params.toQueryString().replaceFirst('^\\?', '')
+        render (searchService.getChildConcepts(regularise(taxonID), extra, within, unranked) as JSON)
     }
 
+    // Documented in openapi.yml
     def guid(){
         if(params.name == 'favicon') return; //not sure why this is happening....
         if(!params.name){
-            response.sendError(404, "Please provide a name for lookups")
+            response.sendError(400, "Please provide a name for lookups")
             return null
         }
         def model = searchService.getProfileForName(params.name)
@@ -86,21 +114,24 @@ class SearchController {
         }
     }
 
+    // Documented in openapi.yml
     def shortProfile(){
-        if(params.id == 'favicon') return; //not sure why this is happening....
-        if(!params.id){
-            response.sendError(404, "Please provide a GUID")
+        def guid = regularise(params.id)
+        if(guid == 'favicon') return; //not sure why this is happening....
+        if(!guid){
+            response.sendError(400, "Please provide a GUID")
             return null
         }
-        def model = searchService.getShortProfile(params.id)
+        def model = searchService.getShortProfile(guid)
         if(!model){
-            response.sendError(404,"GUID not recognised ${params.id}")
+            response.sendError(404,"GUID not recognised ${guid}")
             return null
         } else {
-            asJson model
+            render (model as JSON)
         }
     }
 
+    // Documented in openapi.yml
     def getSpeciesForNames() {
         def result = params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
         if (!result)
@@ -109,16 +140,18 @@ class SearchController {
             asJsonP(params,result)
      }
 
+    // Documented in openapi.yml
     def bulkGuidLookup(){
         def guidList = request.JSON
-        def results = searchService.getTaxa(guidList)
-        if(!results){
-            response.sendError(404,"GUID not recognised ${params.id}")
+        if(!(guidList in List) || guidList == null){
+            response.sendError(400, "Please provide a GUID list")
             return null
-        } else {
-            def dto = [searchDTOList: results]
-            asJson dto
         }
+        def results = searchService.getTaxa(guidList)
+        if (results == null)
+            results = []
+        def dto = [searchDTOList: results]
+        asJson dto
     }
 
     /**
@@ -126,14 +159,16 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def taxon(){
-        def guid = params.id
+        def guid = regularise(params.id)
+        def locales = [request.locale, defaultLocale]
         if(guid == 'favicon') return; //not sure why this is happening....
         if(!guid){
-            response.sendError(404, "Please provide a GUID")
+            response.sendError(400, "Please provide a GUID")
             return null
         }
-        def model = searchService.getTaxon(guid)
+        def model = searchService.getTaxon(guid, locales)
         log.debug "taxon model = ${model}"
 
         if(!model) {
@@ -147,6 +182,7 @@ class SearchController {
         }
     }
 
+    // Documented in openapi.yml
     def speciesLookupBulk() {
         final req = request.getJSON()
         if (!req) {
@@ -170,12 +206,17 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def download(){
-        response.setHeader("Cache-Control", "must-revalidate");
-        response.setHeader("Pragma", "must-revalidate");
-        response.setHeader("Content-Disposition", "attachment;filename=${params.file?:'species.csv'}");
-        response.setContentType("text/csv");
-        downloadService.download(params, response.outputStream, request.locale)
+        if (!params.q?.trim()) {
+            response.sendError(400, "A q parameter is required")
+        } else {
+            response.setHeader("Cache-Control", "must-revalidate");
+            response.setHeader("Pragma", "must-revalidate");
+            response.setHeader("Content-Disposition", "attachment;filename=${params.file ?: 'species.csv'}");
+            response.setContentType("text/csv");
+            downloadService.download(params, response.outputStream, request.locale)
+        }
     }
 
     /**
@@ -183,28 +224,25 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def auto(){
-        log.debug("auto called with q = " + params.q)
-        log.debug("auto called with queryString = " + request.queryString)
-        def fqString = ""
-        def limit = params.limit
+        def limit = params.limit?.toInteger()
         def idxType = params.idxType
         def geoOnly = params.geoOnly
-
-        if (limit) {
-            fqString += "&rows=${limit}"
-        }
-
-        if (idxType) {
-            fqString += "&fq=idxtype:${idxType.toUpperCase()}"
-        }
+        def kingdom = params.kingdom
+        def locales = [request.locale, defaultLocale]
+        def payload
 
         if (geoOnly) {
             // TODO needs WS lookup to biocache-service (?)
         }
 
-        def autoCompleteList = autoCompleteService.auto(params.q, fqString)
-        def payload = [autoCompleteList:autoCompleteList]
+        try {
+            def autoCompleteList = autoCompleteService.auto(params.q, idxType, kingdom, limit, locales)
+            payload = [autoCompleteList: autoCompleteList]
+        } catch (SolrException ex) { // Can be caused by list not being ready
+            payload = [autoCompleteList: [], error: ex.getMessage()]
+        }
         asJson payload
     }
 
@@ -213,34 +251,41 @@ class SearchController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def search(){
         try {
             def facets = []
             def requestFacets = params.getList("facets")
+            def locales = [request.locale, defaultLocale]
             if(requestFacets){
                 requestFacets.each {
                     it.split(",").each { facet -> facets << facet }
                 }
             }
-            asJson([searchResults: searchService.search(params.q, params, facets)])
+            def results = searchService.search(params.q, params, facets, locales)
+            asJson([searchResults: results])
         } catch (Exception e){
             log.error(e.getMessage(), e)
             render(["error": e.getMessage(), indexServer: grailsApplication.config.indexLiveBaseUrl] as JSON)
         }
     }
 
+    // Documented in openapi.yml
     def habitats(){
         asJson([searchResults: searchService.getHabitats()])
     }
 
+    // Documented in openapi.yml
     def habitatTree(){
         asJson([searchResults: searchService.getHabitatsTree()])
     }
 
+    // Documented in openapi.yml
     def getHabitat(){
         asJson([searchResults: searchService.getHabitatByGuid(params.guid)])
     }
 
+    // Documented in openapi.yml
     def getHabitatIDs(){
         asJson([searchResults: searchService.getHabitatsIDsByGuid(params.guid)])
     }
@@ -267,6 +312,15 @@ class SearchController {
 
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
-        model
+        render(model as JSON)
+    }
+
+    private regularise(String guid) {
+        if (!guid)
+            return guid
+        if (guid ==~ BROKEN_URLPATTERN) {
+            guid = guid.replaceFirst(":/", "://")
+        }
+        return guid
     }
 }

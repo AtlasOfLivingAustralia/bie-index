@@ -2,16 +2,21 @@
   {
     "status": "primary",
     "description": "The current primary identifier for something",
-    "priority": 500
+    "priority": 600
   },
   {
     "status": "current",
     "description": "An alternative, currently used identifirt",
-    "priority": 400
+    "priority": 500
   },
   {
     "status": "replaced",
     "description": "An identifier that has been replaced but may be referred to in outdated documents",
+    "priority": 400
+  },
+  {
+    "status": "discarded",
+    "description": "An identifier for a taxon discarded in processing that has been mapped onto this taxon",
     "priority": 300
   },
   {

@@ -6,7 +6,7 @@ Data is compiled by the National Botanic Gardens
 
 ## Data Source
 
-Data is provided in the form pair of CSV files from https://www.anbg.gov.au/ibis25/pages/viewpage.action?pageId=11960657 
+Data is provided in the form of a pair of CSV files from https://www.anbg.gov.au/ibis25/pages/viewpage.action?pageId=11960657 
 The `APNInames.csv` file contains the complete list of names in APNI and contains names and publication references.
 The `APCdata.csv` file contains the current APC view and contains taxonomic structure information.
 Both files contains Darwin Core terms, along with additional flags and terms.
@@ -40,5 +40,10 @@ The names file contains the following:
 ### Names not in APC
 
 Some names in APNI have not yet been placed in the APC.
-These orphan names are treated as accepted taxa and placed under Plantae; we at least know which kingdom they come from.
+These orphan names are treated as inferred accepted taxa and placed under Plantae; 
+we at least know which kingdom they come from.
+These are produced as a separate DwCA with a slightly different structure, containing
+kingdom, phylum, class, order, family and genus names.
+The name information generally contains genus and family.
+[Merging](merging.md) can use this structural information to partially place the resulting names.
 

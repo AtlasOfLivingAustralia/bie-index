@@ -3,6 +3,9 @@
 Going from a bunch of files to a shiney new DwCA tends to follow more or less the same pattern,
 no matter how ropey and deranged the originating data is.
 
+The general principle is to identify current data, reformat it into DwCA form and pass it on.
+The [merging](merging.md) step decides which of the resulting taxa is used
+
 ## Tools
 
 [Talend OS](http://www.talend.com/) is used as a processing engine.
@@ -32,13 +35,35 @@ structured so that further processing steps can proceed.
 
 Before use, source files should be sanitized.
 This means checking that the fields you use contain data that looks like it should be there.
-Generally, this involves:
+For example, for an AFD taxon file, sanitization consists of:
+
+* The TAXON_ID is present and is a sequence of digits
+* The PARENT_ID is absent or is a sequence of digits
+* The TAXON_GUID is present and is formatted as a UUID
+* The PRIMARY_RANK is present and is of the form `taxon.rank.XXXX`
+* The UNPLACED field is absent or one of `0` or `1`
+* The UNPUBLISHED field is absent or one of `0` or `1`
+* The RESTRICTED field is absent or one of `0` or `1`
+* The RANK_PREFIX field is absent or is a sequence of letters
+* The ORDER_INDEX field is absent of is a sequence of digits
+* The LEGACY_TAXON_ID field is absent of is a sequence of digits
+* The DRAFT field is absent or one of `0` or `1`
+* The START_DATE field is present and is a date of the form `dd-MMM-yy` (eg 19-AUG-09)
+* The END_DATE field is absent or is a date of the form `dd-MMM-yy`
+* The CREATED_FROM_ID field is absent of is a sequence of digits
+* The STATUS is present and is of the form `taxon.status.XXXX`
+* The DRAFT_NAME_ONLY field is absent or one of `0` or `1`
+* The ASSIGNED_TAXON_ID field is absent of is a sequence of digits
+
+Sanitization at least consists of:
 
 * Checking to see whether identifiers pass muster
 * Checking to see whether there is a name at all.
 It would be nice to be able to check to see whether the name fits the established rules for
 the branch of biology but this is almost always a fool's errand.
 [Phrase names](glossary.md#def-phrase-name) and the like usually play merry hell with whatever rules you come up with.
+
+Rows that do not pass sanitization tests are placed in a rejected file, for further examination.
 
 ### Cleaning
 
@@ -49,7 +74,6 @@ In particular, year of publication seems to cause a desire to prevaricate in way
 
 Data that contains historical trails of information needs to be filtered so that only the current
 view of names and taxonomy is used.
-[Incertae Sedis](glossary.md#def-incertae-sedis) taxa of doubtful position may also be eliminated at this point.
 
 If the data contains historical trails, it may be possible to build a trail of ancestor identifiers
 that can be used to provide a service for clients not yet up to date. 
@@ -58,28 +82,14 @@ that can be used to provide a service for clients not yet up to date.
 ### Identification
 
 Adding taxonIDs to the various taxa, along with notes as to whether they are to be used or not.
-Minor sources of names often duplicate taxa that have already been processed.
-Identification involves mapping taxa onto pre-existing identifiers, or building new identifiers for the incoming taxa.
+In some cases, there are internal identifiers (eg. a row number in a database or UUID) and external identifiers
+(eg. an LSID or URL) that are linked to the internal identifiers.
+The output should use the external identifiers.
 
 Where necessary, the supplied identifier is left in place  and a parallel `identifier` column is used
 to carry the final identifier.
 This process is useful in ensuring that additional identifiers and names can be passed through for taxa
 that have a higher-priority predecessor but carry additional information.
-
-#### <a name="name-matching"/> Name Matching
-
-When matching names and authors from other sources, slight variations in spelling and punctuation
-mean that two names that are a match may not syntactically match.
-To ease matching, a *match name* and *match author* are often built.
-These are canonicalisations of the name and author with the following characteristics:
-
-* If the name has a subgenus element (eg. *Coniopteryx (Xeroconiopteryx) occidentalis*) then the subgenus element is removed.
-For example, the above name would become *Coniopteryx occidentalis*
-* Any " and " part of the author is replaced by an ampersand.
-* Any year following the author is removed.
-* The name or author is made upper case.
-* Any punctuation is removed
-* Multiple spaces are normalised to a single space
 
 
 ### Annotation
@@ -97,13 +107,12 @@ By the time the data has passed though pre-processing, things may look a bit pat
 
 Ideally, the supplied data should explicitly provide the parent taxon by a linking identifier.
 If it doesn't, then it probably provides the names of higher taxa.
-If that is the case, then it becomes necessary to work down through the list of higher taxa, providing
-the lowest rank parent taxon as the parent.
+These are proceessed during [merging](#combining-sources).
 
 
 ### <a name="correcting-parents"/> Correcting Parents
 
-Some taxa may have non-current or incertae sedis parents.
+Some taxa may have non-current or otherwise eliminated parents.
 If these have been eliminated during pre-processing, then the parent taxon needs to be bumped up to the 
 current taxon of the next highest rank.
 
@@ -159,6 +168,20 @@ pre-built `meta.xml` and `eml.xml` files.
 Once packaged, the resulting DwCA can be delivered to the BIE index.
 .
 * TODO (Potentially, it may not be worth it) Dynamically build the meta.xml file.
+
+## Combining Sources
+
+Once constructed, the resulting data is fed into the taxonomy builder,
+implemented in [ala-name-matching](https://github.com/AtlasOfLivingAustralia/ala-name-matching).
+Also known as the Large Taxon Collider.
+The taxonomy builder merges taxonomic trees in DwCA form to provide a single, 
+consistent(ish) taxonomy.
+A scoring system is used to choose between different sources of information when
+there are conflicts.
+
+The combined index can be cleanly fed into the index builders for the name matching librariues
+and the BIE.
+
 
 
 

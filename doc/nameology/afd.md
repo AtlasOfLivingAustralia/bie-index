@@ -35,19 +35,36 @@ Since each taxon/name combination represents an edit, there may be multiple copi
 name, author and year combination in the name table.
 The disambiguation table assigns a single ID to each name/author/year.
 
+### Sanitization
+
+Rows from the input are checked for correct formatting:
+
+* Identifiers are sequences of digits.
+* GUIDs are UUIDs.
+* Flags are `0` (false) or `1` (true) with nothing defaulting to false.
+* Dates are of the form `dd-MMM-yy`.
+* Names have HTML elements removed and essential names are not empty.
+* Vocabulary terms from lookup tables have the form `XXX.YYY.ZZZ` eg taxon.rank.K.
+
+Care needs to be taken when providing input that long text, such as a reference qualification, that it is
+correctly enclosed in quotes and escaped, otherwise the row will be rejected.
+
 ## Currency
 
 The supplied AFD tables contain a complete history of all changes.
 To be current, a taxon needs to be:
 
-* Not unplaced
-* Not with a primary rank of `taxom.rank.SI` ([species inquirenda](glossary.md#def-species-inquirenda)) or
-`taxon.rank.IS` ([incertae sedis](glossary.md#def-incertae-sedis))
+* Not unplaced (ie with a specific unplaced flag)
 * A status of `taxon.status.P` (placed)
 * No end-date
 
-In addition, a useful taxon needs to have a matching name in the names table.
+Any taxon which does not meet the currency test is sent to either an unplaced or not previous taxon file.
+The previous taxon file is used to build an [ancestor trail](#ancestors) for the current taxon.
 
+A name is current if it has no end-date.
+
+In addition, a useful taxon needs to have a matching name in the names table.
+Taxa with missing names are placed in an unnamed file.
 
 ## Identification
 
@@ -64,6 +81,15 @@ for example http://biodiversity.org.au/afd.taxon/05d742b7-34fe-4d9e-936f-91cd213
 * A name LSID has the form `urn:lsid:biodiversity.org.au:afd.name:<disambiguated name id>`
 This LSID can be resolved to `http://biodiversity.org.au/afd.taxon/<disambiguated name id>` 
 for example http://biodiversity.org.au/afd.name/489144
+
+## Source Splitting
+
+Names are split according to the following rules:
+
+* Valid names are treated as accepted names and linked to a taxon
+* Synonyms or various sorts and excluded names are treated as synonyms
+* Common names, miscellaneous literature and legislative names are treated as vernacular names
+* Other names, such as associated flora, associated fauna, type species, etc. are discarded
 
 ## Annotation
 
@@ -86,9 +112,9 @@ An ancestor trail of previous taxa identifiers is built iteratively.
 Each taxon contains a column with the identifier of the previous version of the taxon.
 The ancestor trail is traversed to build a list of ancestors for each current taxon.
 
-## Parents
+### Parents
 
-There are several uncertain taxa in the AFD with accepted child taxa.
+There are possibly rejected taxa in the AFD with accepted child taxa.
 Once the list of current taxa has been generated an iterative process builds a table of actual parents.
 On each iteration, the parent ID for a taxon is bumped up to the parent with the next highest rank if
 the parent is not part of the list of accepted taxa.
@@ -99,6 +125,11 @@ Files are generated for accepted taxa, synonyms, vernacular names and previous t
 Accepted taxa and synonyms are checked against parents for rank inversions.
 
 Zoological practise is to include the accepted name for a taxon as a senior synonym.
-Since all this does is gum the index up, 
+This is ignored, since all this does is gum the index up.
+
+Incerate sedis and species inquirenda status, for some reason, is supplied via the taxon rank.
+The senior synonym also holds the actual taxon name, rather than the name "Incertae sedis".
+The taxonomic status is coverted to the appropriate taxonomic status and the rank is converted to `unknown`
+when this appears.
 
 

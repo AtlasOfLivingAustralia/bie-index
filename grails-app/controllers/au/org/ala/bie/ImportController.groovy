@@ -13,8 +13,8 @@
 
 package au.org.ala.bie
 
+import au.org.ala.bie.util.Job
 import grails.converters.JSON
-import org.apache.commons.lang.BooleanUtils
 import au.org.ala.web.AlaSecured
 /**
  * Controller for data import into the system.
@@ -23,6 +23,10 @@ import au.org.ala.web.AlaSecured
 class ImportController {
 
     def importService, bieAuthService
+    def brokerMessagingTemplate
+    def jobService
+
+    Map<String, Job> jobStatus = [:]
 
     /**
      * Load import index page.
@@ -46,6 +50,8 @@ class ImportController {
 
     def wordpress(){}
 
+    def knowledgebase(){}
+
     def links(){}
 
     def occurrences(){}
@@ -55,34 +61,34 @@ class ImportController {
      *
      * @return
      */
+    // Dcoumented in openapi.yml
     def importDwcA() {
 
         if(!params.dwca_dir || !(new File(params.dwca_dir).exists())){
-            render ([success: false, message: 'Supply a DwC-A parameter'] as JSON)
+            asJson([success: false, message: 'Supply a DwC-A parameter'])
             return
         }
 
-        def clearIndex = BooleanUtils.toBooleanObject(params.clear_index ?: "false")
+        def clearIndex = params.getBoolean('clear_index', false)
         def dwcDir = params.dwca_dir
 
         if(new File(dwcDir).exists()){
-            Thread.start {
-                log.info("Starting import of ${dwcDir}....")
-                importService.importDwcA(dwcDir, clearIndex)
-                log.info("Finished import of ${dwcDir}.")
-            }
-            asJson ([success:true])
+            def job = execute("importDwca", "admin.button.importdwca", { importService.importDwcA(dwcDir, clearIndex) })
+            asJson (job.status())
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
         }
     }
 
+    // Dcoumented in openapi.yml
     def importAll(){
-        try {
-            importService.importAll()
-        } catch (Exception e) {
-            log.error("Problem loading taxa: " + e.getMessage(), e)
-        }
+        def job = execute(
+                "importDwca,importCollectory,deleteDanglingSynonyms,importLayers,importLocalities,importRegions,importHabitats,importHabitats," +
+                    "importWordPressPages,importOccurrences,importConsevationSpeciesLists,buildVernacularSpeciesLists,buildLinkIdentifiers" +
+                    "denormaliseTaxa,loadImages,importKnowledgeBase",
+                "admin.button.importall",
+                { importService.importAll() })
+        asJson(job.status())
     }
 
     /**
@@ -90,21 +96,20 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importAllDwcA() {
-        if(new File(grailsApplication.config.importDir).exists()){
-            Thread.start {
-                log.info("Starting import of all archives....")
-                importService.importAllDwcA()
-                log.info("Finished import of all archives.")
-            }
-            asJson ([success:true])
+        if(new File(grailsApplication.config..getProperty('import.taxonomy.dir')).exists()){
+            def job = execute("importDwca", "admin.button.importalldwca", { importService.importAllDwcA() })
+            asJson(job.status())
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
         }
     }
 
+    // Documented in openapi.yml
     def deleteDanglingSynonyms(){
-        importService.clearDanglingSynonyms()
+        def job = execute("deleteDanglingSynonyms", "admin.button.deletedanglingsynonyms", { importService.clearDanglingSynonyms() })
+        asJson(job.status())
     }
 
     /**
@@ -112,16 +117,14 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importCollectory(){
-        if(grailsApplication.config.collectoryServicesUrl){
-            Thread.start {
-                log.info("Starting import of collectory....")
-                importService.importCollectory()
-                log.info("Finished import of collectory.")
-            }
-            asJson ([success:true] )
+        boolean online = params.getBoolean('online', false)
+        if(grailsApplication.config.collectory.service){
+            def job = execute("importCollectory", "admin.button.importcollectory", { importService.importCollectory(online) })
+            asJson(job.status())
         } else {
-            asJson ([success: false, message: 'collectoryServicesUrl not configured'] )
+            asJson([success: false, message: 'collectoryServicesUrl not configured'])
         }
     }
 
@@ -130,16 +133,14 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importLayers(){
-        if(grailsApplication.config.layersServicesUrl){
-            Thread.start {
-                log.info("Starting import of layers....")
-                importService.importLayers()
-                log.info("Finished import of layers.")
-            }
-            asJson ([success:true] )
+        boolean online = params.getBoolean('online', false)
+        if(grailsApplication.config.layers.service){
+            def job = execute("importLayers", "admin.button.importlayer", { importService.importLayers(online) })
+            asJson(job.status())
         } else {
-            asJson ([success: false, message: 'layersServicesUrl not configured'] )
+            asJson([success: false, message: 'layers.service not configured'])
         }
     }
 
@@ -148,16 +149,14 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importLocalities(){
-        if(grailsApplication.config.layersServicesUrl && grailsApplication.config.gazetteerLayerId){
-            Thread.start {
-                log.info("Starting import of localities from gazetteer....")
-                importService.importLocalities()
-                log.info("Finished import of localities from gazetteer.")
-            }
-            asJson ([success:true] )
+        boolean online = params.getBoolean('online', false)
+        if(grailsApplication.config.layers.service && grailsApplication.config.layers.gazetteerId){
+            def job = execute("importLocalities", "admin.button.importlocalities", { importService.importLocalities(online) })
+            asJson(job.status())
         } else {
-            asJson ([success: false, message: 'layersServicesUrl not configured or gazetteerLayerId not configured'] )
+            asJson([success: false, message: 'layers.services not configured or layers.gazetteerId not configured'])
         }
     }
 
@@ -166,16 +165,14 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importRegions(){
-        if(grailsApplication.config.layersServicesUrl){
-            Thread.start {
-                log.info("Starting import of regions....")
-                importService.importRegions()
-                log.info("Finished import of regions.")
-            }
-            asJson ([success:true] )
+        boolean online = params.getBoolean('online', false)
+        if(grailsApplication.config.layers.service){
+            def job = execute("importRegions", "admin.button.importregions", { importService.importRegions(online) })
+            asJson(job.status())
         } else {
-            asJson ([success: false, message: 'layersServicesUrl not configured'] )
+            asJson([success: false, message: 'layers.service not configured'])
         }
     }
 
@@ -184,13 +181,10 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importHabitats(){
-            Thread.start {
-                log.info("Starting import of habitats....")
-                importService.importHabitats()
-                log.info("Finished import of habitats.")
-            }
-            asJson ([success:true] )
+        def job = execute("importHabitats", "admin.button.importhabitats", { importService.importHabitats() })
+        asJson(job.status())
     }
 
     /**
@@ -198,14 +192,22 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importWordPress(){
-            Thread.start {
-                log.info("Starting import of CMS pages....")
-                importService.importWordPressPages()
-                log.info("Finished import of CMS pages.")
-            }
-            asJson ([success:true] )
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages(online) })
+        asJson(job.status())
+    }
 
+    /**
+     * Import/index KB (Fresh Desk) pages
+     *
+     * @return
+     */
+    def importKnowledgeBase(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages(online) })
+        asJson(job.status())
     }
 
     /**
@@ -213,13 +215,11 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importOccurrences(){
-            Thread.start {
-                log.info("Starting import of occurrences data....")
-                importService.importOccurrenceData()
-                log.info("Finished import of occurrences data.")
-            }
-            asJson ([success:true] )
+        def online = params.getBoolean('online', false)
+        def job = execute("importOccurrences", "admin.button.loadoccurrence", { importService.importOccurrenceData(online) })
+        asJson (job.status())
 
     }
 
@@ -228,14 +228,10 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importConservationSpeciesLists(){
-            Thread.start {
-                log.info("Starting import of Conservation Species Lists....")
-                importService.importConservationSpeciesLists()
-                log.info("Finished import of Conservation Species Lists.")
-            }
-            asJson ([success:true] )
-
+        def job = execute("importConsevationSpeciesLists", "admin.button.importlistconservatioon", { importService.importConservationSpeciesLists() })
+        asJson(job.status())
     }
 
     /**
@@ -243,71 +239,95 @@ class ImportController {
      *
      * @return
      */
+    // Documented in openapi.yml
     def importVernacularSpeciesLists(){
-        Thread.start {
-            log.info("Starting import of Vernacular Species Lists....")
-            importService.importVernacularSpeciesLists()
-            log.info("Finished import of Vernacular Species Lists.")
-        }
-        asJson ([success:true] )
+        def job = execute("buildVernacularSpeciesLists", "admin.button.importlistvernacular", { importService.importVernacularSpeciesLists() })
+        asJson (job.status())
 
     }
 
+    // Documented in openapi.yml
     def buildLinkIdentifiers() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        Thread.start {
-            log.info("Starting build of link identifiers....")
-            importService.buildLinkIdentifiers(online)
-            log.info("Finished build of link identifiers.")
-        }
-        asJson ([success:true] )
+        def online = params.getBoolean('online', false)
+        def job = execute("buildLinkIdentifiers", "admin.button.buildLinks", { importService.buildLinkIdentifiers(online) })
+        asJson (job.status())
 
     }
 
+    // Documented in openapi.yml
     def denormaliseTaxa() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        Thread.start {
-            log.info("Starting taxon denormalisaion....")
-            importService.denormaliseTaxa(online)
-            log.info("Finished taxon denormalisaion.")
-        }
-        asJson ([success:true] )
+        def online = params.getBoolean('online', false)
+        def job = execute("denormaliseTaxa", "admin.button.denormalise", { importService.denormaliseTaxa(online) })
+        asJson (job.status())
+
+    }
+
+    // Documented in openapi.yml
+    def buildFavourites() {
+        def online = params.getBoolean('online', false)
+        def job = execute("buildFavourites", "admin.button.buildfavourites", { importService.buildFavourites(online) })
+        asJson (job.status())
+
+    }
+
+    // Documented in openapi.yml
+    def buildWeights() {
+        def online = params.getBoolean('online', false)
+        def job = execute("buildWeights", "admin.button.buildweights", { importService.buildWeights(online) })
+        asJson (job.status())
+
+    }
+
+    // Documented in openapi.yml
+    def buildSuggestIndex() {
+        def online = params.getBoolean('online', false)
+        def job = execute("buildSuggestIndex", "admin.button.buildsuggestindex", { importService.buildSuggestIndex(online) })
+        asJson (job.status())
 
     }
 
     /**
      * Reads preferred images list in list tool and updates imageId if values have changed
-     * list DR is defined by config var ${imagesListsUrl} - property {lists}
+     * list DR is defined by config var ${images.config} - property {lists}
      *
      * @return
      */
+    // Documented in openapi.yml
     def loadPreferredImages() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        Thread.start {
-            log.info("Starting loading preferred images...")
-            importService.loadPreferredImages(online)
-            log.info("Finished loading preferred images.")
-        }
-        asJson ([success:true] )
+        def online = params.getBoolean('online', false)
+        def job = execute("loadImages", "admin.button.loadimagespref", { importService.loadPreferredImages(online) })
+        asJson (job.status())
     }
 
+    // Documented in openapi.yml
     def loadImages() {
-        def online = BooleanUtils.toBooleanObject(params.online ?: "false")
-        Thread.start {
-            log.info("Starting image load....")
-            importService.loadImages(online)
-            log.info("Finished image load.")
-        }
-        asJson ([success:true] )
+        def online = params.getBoolean('online', false)
+        def job = execute("loadImages", "admin.button.loadimagesall", { importService.loadImages(online) })
+        asJson (job.status())
     }
-
-    def ranks() {
-        asJson(importService.ranks())
-    }
-
 
     private def asJson = { model ->
         response.setContentType("application/json;charset=UTF-8")
-        model
+        render (model as JSON)
+    }
+
+    private def execute(String type, String titleCode, Closure task) {
+        def title = message(code: titleCode)
+        def types = type.split(',') as Set
+        def job = jobService.existing(types)
+        if (job) {
+            return job
+        }
+        job = jobService.create(types, title, {
+            try {
+                brokerMessagingTemplate.convertAndSend "/topic/import-control", "STARTED"
+                task.call()
+                brokerMessagingTemplate.convertAndSend "/topic/import-control", "FINISHED"
+            } catch (Exception ex) {
+                log.error(ex.message, ex)
+                brokerMessagingTemplate.convertAndSend "/topic/import-control", "ERROR"
+                throw ex
+            }
+        })
     }
 }

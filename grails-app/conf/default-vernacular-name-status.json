@@ -1,0 +1,32 @@
+[
+  {
+    "status": "legislated",
+    "description": "The name appears in legislation as a name for the species. This might include \"scientific\" names that are no longer considered valid but which are lying about in legislation.",
+    "priority": 500
+  },
+  {
+    "status": "standard",
+    "description": "The name appears in a standards document as a standardised common name.",
+    "priority": 400
+  },
+  {
+    "status": "preferred",
+    "description": "A preferred common name for some reason",
+    "priority": 300
+  },
+  {
+    "status": "common",
+    "description": "A widely used common name",
+    "priority": 200
+  },
+  {
+    "status": "traditionalKnowledge",
+    "description": "A name derived from traditional sources of knowledge",
+    "priority": 200
+  },
+  {
+    "status": "local",
+    "description": "A locally used common name",
+    "priority": 100
+  }
+]

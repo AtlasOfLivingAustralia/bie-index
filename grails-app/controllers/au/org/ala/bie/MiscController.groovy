@@ -2,9 +2,10 @@ package au.org.ala.bie
 
 import grails.converters.JSON
 import grails.converters.XML
+import org.apache.http.HttpStatus
 
-import static org.codehaus.groovy.grails.web.servlet.HttpHeaders.CONTENT_DISPOSITION
-import static org.codehaus.groovy.grails.web.servlet.HttpHeaders.LAST_MODIFIED
+import static grails.web.http.HttpHeaders.CONTENT_DISPOSITION
+import static grails.web.http.HttpHeaders.LAST_MODIFIED
 
 class MiscController {
 
@@ -25,6 +26,11 @@ class MiscController {
             response.sendError(404)
         }
         return
+    }
+
+    // Documented in openapi.yml
+    def ranks() {
+        render importService.ranks() as JSON
     }
 
     def indexFields() {
@@ -48,18 +54,32 @@ class MiscController {
                 // contain list of guids and images
                 List<Map> preferredImagesList = request.getJSON()
                 def updatedTaxa = importService.updateDocsWithPreferredImage(preferredImagesList)
-                asJson([success: true, updatedTaxa: updatedTaxa])
+                asJson(HttpStatus.SC_OK, [success: true, updatedTaxa: updatedTaxa])
             } catch (Exception e) {
-                asJson([success: false, message: "Internal error occurred: " + e.getMessage() ])
+                asJson(HttpStatus.SC_INTERNAL_SERVER_ERROR, [success: false, message: "Internal error occurred: " + e.getMessage() ])
             }
         } else {
-            asJson([success: false, message: "Unauthorised access. Failed to update Image in Bie" ])
+            asJson(HttpStatus.SC_INTERNAL_SERVER_ERROR, [success: false, message: "Unauthorised access. Failed to update Image in Bie" ])
         }
     }
 
-    private def asJson = { model ->
+
+    /**
+     * Do logouts through this app so we can invalidate the session.
+     *
+     * @param casUrl the url for logging out of cas
+     * @param appUrl the url to redirect back to after the logout
+     */
+    def logout = {
+        session.invalidate()
+        redirect(url:"${params.casUrl}?url=${params.appUrl}")
+    }
+
+
+    private def asJson = { status, model ->
+        response.status = status
         response.setContentType("application/json;charset=UTF-8")
-        model
+        model as JSON
     }
 
 
