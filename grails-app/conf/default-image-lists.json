@@ -1,9 +1,6 @@
 {
-  "boosts": [
-    "record_type:Image^10",
-    "record_type:HumanObservaton^20",
-    "record_type:Observation^20",
-    "-record_type:PreservedSpecimen^20"
+  "preferred": [
+    "-record_type:PreservedSpecimen"
   ],
   "ranks": [
     {

@@ -1,4 +1,4 @@
-# bie-index [![Build Status](https://travis-ci.org/AtlasOfLivingAustralia/bie-index.svg?branch=master)](https://travis-ci.org/AtlasOfLivingAustralia/bie-index)
+# bie-index [![Build Status](https://travis-ci.com/AtlasOfLivingAustralia/bie-index.svg?branch=master)](https://travis-ci.com/AtlasOfLivingAustralia/bie-index)
 
 bie-index is a grails web application that indexes taxonomic content in DwC-A and provides search web services for this content.
 This includes:
@@ -116,10 +116,10 @@ In addition to indexing the content of the darwin core archive, the ingestion & 
 
 This application makes use of the following technologies
 
-- Apache SOLR 4.10.x
-- Grails 2.4.x
+- Apache SOLR 6.6.x
+- Grails 3.2.x
 - Tomcat 7 or higher
-- Java 7 or higher
+- Java 8 or higher
 
 ![Architecture image](architecture.jpg)
 
@@ -177,6 +177,10 @@ hopes of finding something that doesn't look terribly dead. The `boosts` element
 (in the example, observations and images get a boost, preserved specimens are downgraded and images from dr130 are 
 preferred.
 
+The `required` and `preferred` elements contain lists of filter queries that are applied to the search.
+For example,`geospatial_kosher:true` restricts searches to occurrences that
+appear to be geospatially usable.
+
 Only certain ranks get images attached to them.
 The `ranks` element contains taxon ranks that should have images associated with them,
 along with the fields in the occurrence records that allow an occurrence to be found.
@@ -204,15 +208,36 @@ An example vernacular name list configuration is
 {
   "defaultVernacularNameField": "name",
   "defaultNameIdField": "nameID",
+  "defaultKingdomField": "kingdom",
   "defaultStatusField": "status",
   "defaultLanguageField": "language",
   "defaultsourceField": "source",
+  "defaultTemporalField": "temporal",
+  "defaultLocationIdField": "locationID",
+  "defaultLocalityField": "locality",
+  "defaultCountryCodeField": "countryCode",
+  "defaultSexField": "sex",
+  "defaultLifeStageField": "lifeStage",
+  "defaultIsPluralField": "isPlural",
+  "defaultIsPreferredField": "isPreferred",
+  "defaultOrganismPartField": "organismPart",
+  "defaultLabelsField": "labels",
+  "defaultTaxonRemarksField": "taxonRemarks",
+  "defaultProvenanceField": "provenance",
   "defaultStatus": "common",
-  "defaultLanguage": "en",
+  "defaultLanguage": "en",  
   "lists": [
     {
       "uid": "drt1464664375273",
-      "language": "xul"
+      "taxonRemarksField": "Notes",
+      "defaultLanguage": "xul"
+      "defaultStatus": "traditionalKnowledge"
+      
+    },
+    {
+      "uid": "drt1464664375274",
+      "defaultLanguage": "fr",
+      "statusField": "priority"
     }
   ]
 }
@@ -220,7 +245,9 @@ An example vernacular name list configuration is
 
 The default entries provide useful defaults for things like the list fields that hold various pieces of information.
 These can be overridden at the list level.
-Languages should be ISO-639 two- or three-letter codes; the bie-plugin can expand these out.
+The various fields refer to the fields that can be part of the GBIF vernacular names extension.
+The `defaultLanguage` and `defaultStatus` entries provide per-list defaults for language and status entries.
+Languages should be ISO-639 two- or three-letter codes or AIATSIS codes; the bie-plugin can expand these out.
 The `uid` holds the list identifier to load.
 
 **Avoid using vernacularName or commonName as the vernacular name field** 
@@ -237,6 +264,7 @@ An example conservation status list configuration is
 ```
 {
   "defaultSourceField": "status",
+  "defaultKingdomField": "kingdom",
   "lists": [
     {
       "uid": "dr656",
@@ -249,13 +277,154 @@ An example conservation status list configuration is
       "field": "conservationStatusVIC_s",
       "term": "conservationStatusVIC",
       "label": "VIC",
-      "sourceField": "statusName"
+      "sourceField": "statusName",
+      "kingdomField": "kgm"
     }
   ]
-}```
+}
+```
 
 The `uid` supplies the list identifier.
 The `field` supplies the solr field which will be used to store the conservation status.
 The `term` supplies the name of the status field.
 `label` gives the label to apply to the conservation status.
-`sourceField`
+`sourceField` gives the name of the field that contains the conservation status.
+`kingdomField` gives the name of the field that contains the kingdom -- handy for name lookups, if available.
+
+## Weighting Rules
+
+Calculating weights for search and autosuggest operations gets rather complicated,
+score-calculated weights for seach operations are built into each document
+during the import process.
+
+Anything with an idxtype field is annotated with weights.
+
+The weighting rules come from a configuration file, which defaults to
+[default-weights.json](grails-app/conf/default-weights.json) and which can be
+set by `import.weightConfigUrl` in the configuration.
+An example set of weighting rules is
+
+```
+{
+  "script": "nashorn",
+  "global": {
+    "rules": [
+      {
+        "term": "taxonomicStatus",
+        "exists": true,
+        "rules": [
+          {
+            "value": "accepted",
+            "weight": 2.0
+          },
+          {
+            "value": "misapplied",
+            "weight": 0.5
+          }
+        ]
+      },
+    ]
+  },
+  "weights": [
+    {
+      "field": "searchWeight",
+      "rules": []
+    },
+    {
+      "field": "suggestWeight",
+      "rules": [
+        {
+          "term": "scientificName",
+          "exists": true,
+          "condition": "_value.length() > 4",
+          "weightExpression": "_weight * 1.0 / (1.0 + Math.log(_value.length() * 0.01 + 1.0))",
+          "comment": "The longer the name, the less it should be suggested. Mean name length is 16"
+        }
+      ]
+    }
+  ]
+}
+```
+
+The top level contains the following fields:
+
+* **script** The name of the script engine for evaluating *condition* and *weightExpression* rules.
+  By default, this is the *nashorn* javascript engine.
+* **global** Rules to apply to all weights.
+* **weights** Specific weight fields. These have their own field names and rules
+  that are applied after the global rules.
+
+Rules consist of the following entries:
+
+* **term** The term this rule applies to. The term may be absent, unless the *exists* field is set to true.
+* **exists** Ensures that the term either exists or does not exist. 
+  If absent, then the rule applies wether the term exists or not, although most rules will not trigger on an empty value.
+* **value** The value required for the rule to trigger (case sensitive for string values).
+  If the value is a list, then any matching term will trigger the rule.
+* **match** A regular expression to match the term against.
+    If the value is a list, then any matching term will trigger the rule.
+* **condition** A script expression to test. The script is in whatever scripting language
+  is used and must return a boolean value. Any term from the input document
+  can be used in the expression (eg. `kinmgdom == 'Plantae'`).
+  If there is a *term* supplied then the value is supplied to the script as `_value`.
+  If the value is a list, then any matching term will trigger the rule.
+* **weight** The weight to multiply the existing weight by.
+* **weightExpression** A script expression to calculate the weight, in
+  a similar manner to *condition* The returned value does not necessarily
+  multiply the existing weight, it needs to be explicitly included, as `_weight`
+  so that you can do clever things with the weight value.
+* **rules** Sub-rules. These inherit things like *term* from their parent
+  and only trigger if the parent conditions are true. The weight adjustments
+  occur after the application of any parent adjustment.
+  Note that sub-rules can refer to different terms, creating and and-condition.
+* **comment** If you want to document something.
+
+As an example, the above rules, applied to the input
+`[idxtype:'TAXON', taxonomicStatus:'misapplied', scientificName:'Atrobucca brevis']` 
+and with a start value of 1.0 would give.
+
+* Global rules weight = 1.0 * 0.5 = 0.5 for a taxonomicStatus of misapplied.
+* searchWeight = 0.5
+* suggestWeight = 0.5 * (1 / (1 + ln(0.15 + 1))) = 0.4387, since the length of the scientificName is greater than 4.
+
+## Favourites
+
+The favourites function allows lists from the lists tool to be used to mark taxa or 
+common names as having a "favourite" status.
+The favourite status is a term, such as `preferred` or `iconic` that can be used to
+mark entries for faceting and weight calculation.
+
+The favourites configuation comes from a configuration file, which defaults to [default-favourites.json](grails-app/config/default-favourites.json) and which
+can be set by `import.favouritesConfigUrl` in the configuration.
+An example favourites configuration is:
+
+```
+{
+  "defaultTerm": "favourite",
+  "lists": [
+    {
+      "uid": "dr4778",
+      "termField": "favourite",
+      "defaultTerm": "interest"
+    },
+    {
+      "uid": "dr781",
+      "defaultTerm": "iconic"
+    }
+  ]
+}
+```
+
+The top level contains the following entries:
+
+* **defaultTerm** The term to use by default for any list where the favourite term is not specified.
+* **lists** The lists, in the lists tool, that contain favourite lists.
+
+Each list can contain
+
+* **uid** (required) The UID of the list
+* **termField** If the list contains per-entry terms, the field which contains the term. Defaults to none.
+* **defaultTerm** The term to use if one is not specified for the entry. Defaults to the global default term.
+
+Favourites only mark selected taxa and their associated common names with favourite terms.
+Once marked, it is up to the bie-plugin otr weighting rules to make use of these terms.

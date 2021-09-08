@@ -28,6 +28,9 @@ Some vocabulary:
 * A *taxon* is a group of organisms that share some sort of common characteritics.
 A taxon can have several names, one of which is the *valid* or *accepted* name.
 * A *synonym* is a name applied to a taxon that now goes by a different name.
+  Note that what the ALA regards as a synonym is somewhat looser than the use of the term in
+  the taxonomic community; all the ALA wants is to be able to say "this is now referred to as that"
+  so that supplied names and searches can be redirected.
 * A *taxonomic concept* is the placement of a particular taxon in the taxonomic tree in relation other taxa.
 
 The common identifier for a taxonomic DwCA is the [taxonID](http://rs.tdwg.org/dwc/terms/index.htm#taxonID).
@@ -37,8 +40,9 @@ The common identifier for a taxonomic DwCA is the [taxonID](http://rs.tdwg.org/d
 [Life Sciences Identifiers](http://www.omg.org/cgi-bin/doc?dtc/04-05-01) are resolvable [URNs](https://en.wikipedia.org/wiki/Uniform_Resource_Name) that can be used to identify a taxon, name or taxon concept. An LSID has the form *urn:lsid:&lt;authority&gt;:&lt;namespace&gt;:&lt;id&gt;* for example *urn:lsid:biodiversity.org.au:afd.taxon:bcd1b9ea-1cc1-4ab5-a15c-bbca5a987fb2* is a reference to an AFD taxon controlled by biodiversity.org.au. LSIDs can be resolved by going to the service at http://lsid.tdwg.org/
 
 LSIDs are preferred for identifiers, where possible, because they allow links to further information about the taxon.
+However, many sources use URLs, instead, for identifiers; these are also perfectly acceptable.
 
-## <a name="taxonomic-status"/> Taxonomic Status
+## Taxonomic Status
 
 Taxonomic status indicates whether a name or taxon is currently accepted, a synonym or of some other, murkier status.
 
@@ -59,9 +63,16 @@ identification into two parts.
 | heterotypicSynonym | yes | A taxonomic synonym, meaning that a species that was originally considered to be separate has been lumped into another species. The zoological term is subjective synonym, since whether they are synonymns or not is a matter of opinion. |
 | subjectiveSynonym | yes | A taxonomic synonym, meaning that a species that was originally considered to be separate has been lumped into another species. The zoological term is subjective synonym, since whether they are synonymns or not is a matter of opinion. |
 | proParteSynonym | no | A synonym where part of an original taxon has been divided. This means that the original name may still be in use or may have been mapped onto several other taxa. Here be dragons. |
+| incertaeSedis | yes | A name of uncertain placement. This is generally treated as an accepted name with the placement supplied. |
+| speciesInquirena | yes | A species under enquiry. This is generally treated as an accepted name with the placement supplied. |
 | misapplied | no | A name incorrectly applied in a publication to a different species. However, the name itself is perfectly valid and has its own taxon. |
 | excluded | no | A name that shouldn't be used, since it refers to something not found in the region of the occurrence record. |
-| miscellaneousLiterature | no | A name that occurs in other literature. |
+| miscellaneousLiterature | no | A name that occurs in other literature. This will now be converted to a vernacular name, since it's not really a proper name for the|
+| invalid | no | A name that should not be. |
+| inferredAccepted | yes | A name treated as an accepted taxon by the processing software. Inferred markers indicate that the information has been deduced by the processing sofware, rather than explicitly supplied. |
+| inferredSynonym | no | A name treated as a synonym by the processing software |
+| inferredExcluded | no | A name treated as excluded by the processing software |
+| inferredInvalid | no | A name treated as invalid by the processing software |
 
 Informationm about the type of name is placed in the nomenclaturalStatus term.
 
@@ -180,37 +191,54 @@ The ALA version of the taxon datafile consists of the following parts:
 
 | File | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
-| taxon.csv | core | yes | The scientific taxonomic information |
-| vernacularNames.csv | extension | no | Additional vernacular names for each taxon |
-| identifiers.csv | extension | no | Additional identifiers for each taxon (via some other controlled vocabulary) |
+| taxon.csv taxon.txt | core | yes | The scientific taxonomic information |
+| taxonvariant.txt | extension | no | Alternative sources of information on a specific taxon |
+| vernacularNames.csv vernacularname.txt | extension | no | Additional vernacular names for each taxon |
+| identifiers.csv identifier.txt | extension | no | Additional identifiers for each taxon (via some other controlled vocabulary) |
+| rightsHolder.csv rightsholder.txt | extension | no | Licence owners for various data sources |
 | meta.xml | schema | yes | The file and column descriptions |
 | eml.xml | metadata | no | The what-who-why-when |
 
-### taxon.csv
+Files with a .csv extension are comma-separated values (UTF-8, escape character of \ and enclosing quotes of ").
+Files with a .txt extension are tab-separated values (UTF-8, enclosing quotes of " and doubled quotes to escape).
 
-The produced taxon.csv contains scientific names (both accepted and synonyms) and information about the
+### taxon.csv and taxonvariant.csv
+
+The produced taxon.csv contains scientific names (accepted, synonyms and odd fish like excluded) and information about the
 taxonomic tree.
-It contains the following columns
+The taxonomic variant file contains the information from different sources that was used to make a specific taxon.
+It can contain the following columns
 
 | Term | Essential (Required column for processing) | Required (Must not be empty) | Usage |
 | ---- | --------- | -------- | ----- |
 | [taxonID](http://rs.tdwg.org/dwc/terms/taxonID) | yes | yes | The main taxon identifier. If not supplied, this is the taxon concept ID for a taxon and the scientific name ID for a synonym |
 | [parentNameUsageID](http://rs.tdwg.org/dwc/terms/parentNameUsageID) | yes | no | If this is an accepted name then the taxonID of the parent in the taxonomic tree. Empty if a synonym. |
 | [acceptedNameUsageID](http://rs.tdwg.org/dwc/terms/acceptedNameUsageID) | yes | no | If this is an synonym then the taxonID of the accepted name. Empty if an accepted name. |
-| [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | no | The UID of the source collectory dataset for this taxon |
+| [nomenclaturalCode](http://rs.tdwg.org/dwc/terms/nomenclaturalCode) | yes | yes | The nomenclatural code the name was published under. Names from a single nomenclatural code should be unique. |
 | [scientificName](http://rs.tdwg.org/dwc/terms/scientificName) | yes | yes | The accepted taxon name or synonym |
+| [scientificNameAuthorship](http://rs.tdwg.org/dwc/terms/scientificNameAuthorship) | yes | yes | The accepted taxon author |
+| [taxonomicStatus](http://rs.tdwg.org/dwc/terms/taxonomicStatus) | no | no | Information about how the taxon should be treated.  |
 | [taxonRank](http://rs.tdwg.org/dwc/terms/scientificNameAuthorship) | yes | yes | If this is an accepted name then the taxonID of the parent in the taxonomic tree. Empty if a synonym. |
+| [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | no | The UID of the source collectory dataset for this taxon |
 | [taxonConceptID](http://rs.tdwg.org/dwc/terms/taxonConceptID) | no | no | The taxon concept ID that this taxon maps onto.  |
 | [scientificNameID](http://rs.tdwg.org/dwc/terms/scientficNameID) | no | no | The scientific name ID that this name maps onto.  |
-| [taxonomicStatus](http://rs.tdwg.org/dwc/terms/taxonomicStatus) | no | no | Information about how the taxon should be treated.  |
 | [nomenclaturalStatus](http://rs.tdwg.org/dwc/terms/nomenclaturalStatus) | no | no | Information about how the name should be treated. This term does not draw from an established vocabulary but contains any information about the name from the source. |
-| [establishmentMeans](http://rs.tdwg.org/dwc/terms/establishmentMeans) | no | no | Hints on whether the taxon is native or introduced, if available |
+| [nameComplete](http://ala.org.au/terms/1.0/nameComplete) | no | no | The name with authorship information in the correct position  |
+| [nameFormatted](http://ala.org.au/terms/1.0/nameComplete) | no | no | The name with authorship information in the correct position, formatted with HTML/CSS spans  |
+| [nameAccordingToID](http://rs.tdwg.org/dwc/terms/nameAccordingToID) | no | no | A unique ID referencing the person who placed the name in this location |
+| [nameAccordingTo](http://rs.tdwg.org/dwc/terms/nameAcordingTo) | no | no | The person who placed the name in this location. This may be different to the publisher of the name. |
 | [namePublishedInID](http://rs.tdwg.org/dwc/terms/namePublishedInID) | no | no | A unique ID, preferably a DOI, referencing the publication of the name |
 | [namePublishedIn](http://rs.tdwg.org/dwc/terms/namePublishedIn) | no | no | A reference to the publication of the name  |
 | [namePublishedInYear](http://rs.tdwg.org/dwc/terms/namePublishedInYear) | no | no | The year of publication. Note that if this is not included there may be no indication of when the name was published, since the authorship column may not contain a year  |
-| [nameComplete](http://ala.org.au/terms/1.0/nameComplete) | no | no | The name with authorship information in the correct position  |
-| [nameFormatted](http://ala.org.au/terms/1.0/nameComplete) | no | no | The name with authorship information in the correct position, formatted with HTML/CSS spans  |
+| [taxonRemarks](http://rs.tdwg.org/dwc/terms/taxonRemarks) | no | no | Any additional remarks  |
 | [source](http://purl.org/dc/terms/language) | no | no | An optional linked-data URL for the name  |
+| [establishmentMeans](http://rs.tdwg.org/dwc/terms/establishmentMeans) | no | no | Hints on whether the taxon is native or introduced, if available |
+| [datasetName](http://rs.tdwg.org/dwc/terms/datasetName) | no | no | The name of the source dataset |
+| [priority](http://ala.org.au/terms/1.0/priority) | no | no | A score giving the relative priority of the variant |
+| [verbatimNomenclaturalCode](http://ala.org.au/terms/1.0/verbatimNomenclaturalCode) | no | no | The supplied nomenclaural code |
+| [verbatimTaxonomicStatus](http://ala.org.au/terms/1.0/verbatimTaxonomicStatus) | no | no | The supplied taxonomic status |
+| [verbatimNomenclaturalStatus](http://ala.org.au/terms/1.0/verbatimNomenclaturalStatus) | no | no | The supplied nomenclaural status |
+| [provenance](http://purl.org/dc/terms/provenance) | no | no | Information about how a taxon has been processed or modified. Multiple provenance statements are separated by vertical bars  |
 
 
 senior- or self-synonyms are not included in taxon.csv.
@@ -224,18 +252,31 @@ and a scientific nane ID (the stable name for the taxon).
 ### vernacularNames.csv
 
 If present, the vernacular names file contains common names for the taxa in taxon.csv, keyed by taxonID.
-It is patterned after the http://rs.gbif.org/terms/1.0/VernacularName row type.
+It is patterned after the []http://rs.gbif.org/terms/1.0/VernacularName](http://rs.gbif.org/extension/gbif/1.0/vernacularname.xml) row type.
 It contains the following columns
 
 | Term | Required | Usage |
 | ---- | -------- | ----- |
 | [taxonID](http://rs.tdwg.org/dwc/terms/taxonID) | yes | The reference link to the taxon in taxon.csv |
-| nameID | no | A unique identifier for the vernacular name |
-| [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | The source collectory dataset for this name |
 | [vernacularName](http://rs.tdwg.org/dwc/terms/vernacularName) | yes | The actual common name |
-| [status](http://ala.org.au/terms/1.0/status) | no | The relative importance of the name |
+| [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | The source collectory dataset for this name |
+| [nameID](http://ala.org.au/terms/1.0/nameID) | no | A unique identifier for the vernacular name |
 | [language](http://purl.org/dc/terms/language) | no | The language of the common name  |
+| [status](http://ala.org.au/terms/1.0/status) | no | The relative importance of the name |
 | [source](http://purl.org/dc/terms/language) | no | no | An optional linked-data URL for the name  |
+| [datasetName](http://rs.tdwg.org/dwc/terms/datasetName) | no | no | The name of the source dataset |
+| [temporal](http://purl.org/dc/terms/temporal) | no | Any temporal restructions.  |
+| [locationID](http://rs.tdwg.org/dwc/terms/locationID) | no | The ID of the location where this name is used |
+| [locality](http://rs.tdwg.org/dwc/terms/locality) | no | The locality where this name is used |
+| [countryCode](http://rs.tdwg.org/dwc/terms/countryCode) | no | The country where this name is used |
+| [sex](http://rs.tdwg.org/dwc/terms/sex) | no | The sex of the organism to which this name applies |
+| [lifeStage](http://rs.tdwg.org/dwc/terms/lifeStage) | no | The life stage (adult, young, larvae, etc.) of the organism to which this name applies |
+| [isPlural](http://rs.gbif.org/terms/1.0/isPlural) | no | Is this the plural form of a name (eg. cattle) |
+| [isPreferredName](http://rs.gbif.org/terms/1.0/isPreferredName) | input only | Mapped onto the status vocabulary |
+| [organismPart](http://rs.gbif.org/terms/1.0/organismPart) | no | The part of the organism this name applies to (eg tail) |
+| [labels](http://ala.org.au/terms/1.0/labels) | no | Context labels, separated by a vertical bar. See http://localcontexts.org/  |
+| [taxonRemarks](http://rs.tdwg.org/dwc/terms/taxonRemarks) | no | Any additional remarks. Multiple remarks are separated by vertical bars  |
+| [provenance](http://purl.org/dc/terms/provenance) | no | Information about how a name has been processed or modified. Multiple provenance statements are separated by vertical bars  |
 
 Note that a vernacular name, eg. "Blue Gum", can be linked to any number of scientific names.
 
@@ -249,6 +290,7 @@ It uses the following vocabulary (highest priority first):
 | standard | The name appears in a standards document as a standardised common name |
 | preferred | A preferred common name for some reason |
 | common | A widely used common name |
+| traditionalKnowledge | A name used by traditional knowledge holders. These names may carry additional restrictions, identified by the labels term. |
 | local | A locally used common name |
 
 ### identfiers.csv
@@ -268,6 +310,7 @@ It contains the following columns
 | [datasetID](http://rs.tdwg.org/dwc/terms/datasetID) | no | The source collectory dataset for this identifier |
 | [source](http://purl.org/dc/terms/source) | no | The linked-data source of the identifier  |
 | [status](http://ala.org.au/terms/1.0/status) | no | The status of the identifier |
+| [provenance](http://purl.org/dc/terms/provenance) | no | Information about how an identifier has been processed or modified. Multiple provenance statements are separated by vertical bars  |
 
 Identifier status gives a hint as to how additional identifiers should be interpreted.
 They use the following vocabulary:

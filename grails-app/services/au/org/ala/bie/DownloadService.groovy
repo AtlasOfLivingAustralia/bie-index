@@ -29,24 +29,21 @@ class DownloadService {
      * @return
      */
     def download(params, OutputStream outputStream, Locale locale){
-        def q = params.q ?: "*:*"
-        def fq = ""
-        def fields = grailsApplication.config.defaultDownloadFields?:"guid,rank,scientificName,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName"
+        def q = Encoder.escapeQuery(params.q ?: "*:*")
+        def fq = new ArrayList<>(params.list('fq')) // Make modifiable
+        def fields = params.fields ?: grailsApplication.config.getRequiredProperty('defaultDownloadFields')
+        def fqs = ''
 
-        if (params.fields) {
-            fields = params.fields
+        grailsApplication.config.solr.search.fq.each { fq << it }
+        if (fq) {
+            fqs = '&fq=' + fq.collect({ Encoder.escapeQuery(it) }).join("&fq=")
         }
+        // TODO Convert this into a SOLRJ API call
+        String queryUrl = grailsApplication.config.solr.live.connection + "/select?wt=csv&defType=edismax&fl=" +
+                Encoder.escapeQuery(fields) + "&csv.header=false&rows=" + Integer.MAX_VALUE +
+                "&q=${q}${fqs}"
 
-        if (params.fq) {
-            String fqs = params.list("fq").join("&fq=")
-            fq = "&fq=${fqs}"
-        }
-
-        String queryUrl = grailsApplication.config.indexLiveBaseUrl + "/select?wt=csv&defType=edismax&fl=" +
-                fields + "&csv.header=false&rows=" + Integer.MAX_VALUE +
-                "&q=${q}${fq}"
-
-        def connection = new URL(Encoder.encodeUrl(queryUrl)).openConnection()
+        def connection = new URL(queryUrl).openConnection()
         def input = connection.getInputStream()
         def headers = []
 

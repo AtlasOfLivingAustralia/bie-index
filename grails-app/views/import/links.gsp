@@ -14,9 +14,10 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
-  <title>Build Links</title>
+  <title><g:message code="admin.import.links.label"/></title>
   <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
-    <r:require modules="sockets" />
+    <meta name="breadcrumbParent" content="${createLink(controller:'admin', action:'index', absolute:true)},${message(code: 'breadcrumb.admin')}"/>
+    <asset:javascript src="sockets"/>
     <style type="text/css">
         .progress {
             height: 10px !important;
@@ -25,137 +26,73 @@
 </head>
 <body>
 <div>
-    <!-- Breadcrumb -->
-    <ol class="breadcrumb">
-        <li><a class="font-xxsmall" href="../">Home</a></li>
-        <li class="font-xxsmall active" href="#">Import</li>
-    </ol>
-    <!-- End Breadcrumb -->
-    <h2 class="heading-medium">Build Links</h2>
+    <h2 class="heading-medium"><g:message code="admin.import.layers.label"/></h2>
 
-    <p class="lead">
-        Denormalise accepted taxa in the index, building links to higher-order taxa
-        Scan the index for link identifiers; names that are unique and can be treated as an identifier.
-        Scan the index for images; suitable images for various species.
-        Note SOLR cores (bie / bie-offline) may require swapping before searches will appear.
-    </p>
+    <div class="row">
+        <p class="col-md-8 lead"><g:message code="admin.import.links.lead"/></p>
+        <p class="col-md-4 well"><g:message code="admin.import.swap"/></p>
+    </div>
 
     <div>
-        <button id="denormalise-taxa" onclick="javascript:denormaliseTaxa()" class="btn btn-primary">Denormalise Taxa</button>
+        <button id="denormalise-taxa" onclick="javascript:denormaliseTaxa()" class="btn btn-primary import-button"><g:message code="admin.button.denormalise"/></button>
     </div>
     <div>
-        <button id="build-link-identifiers" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary">Build Link Identifiers</button>
+        <button id="build-link-identifiers" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary import-button"><g:message code="admin.button.buildlinks"/></button>
     </div>
     <div>
-        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary">Load All Images</button>
+        <button id="load-images" onclick="javascript:loadImages()" class="btn btn-primary import-button"><g:message code="admin.button.loadimagesall"/></button>
     </div>
     <div>
-        <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary">Load Preferred Images</button>
+        <button id="load-preferred-images" onclick="javascript:loadPreferredImages()" class="btn btn-primary import-button"><g:message code="admin.button.loadimagespref"/></button>
     </div>
     <div>
-        <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary">Remove orphaned synonyms</button>
+        <button id="dangling-synonyms" onclick="javascript:removeDanglingSynonyms()" class="btn btn-primary import-button"><g:message code="admin.button.removeorphans"/></button>
     </div>
     <div>
-        <input type="checkbox" id="use-online" name="use-online"/> Use online index
+        <button id="build-favourites" onclick="javascript:buildFavourites()" class="btn btn-primary import-button"><g:message code="admin.button.buildfavourites"/></button>
+    </div>
+    <div>
+        <button id="build-weights" onclick="javascript:buildWeights()" class="btn btn-primary import-button"><g:message code="admin.button.buildweights"/></button>
+    </div>
+    <div>
+        <button id="build-suggest-index" onclick="javascript:buildSuggestIndex()" class="btn btn-primary import-button"><g:message code="admin.button.buildsuggestindex"/></button>
+    </div>
+    <div>
+        <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 
-    <div class="well import-info alert-info hide" style="margin-top:20px;">
-        <p></p>
-        <div class="progress hide">
-            <div class="progress-bar" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                <span class="sr-only"><span class="percent">0</span>% Complete</span>
-            </div>
-        </div>
-        <div id="import-info-web-socket"></div>
-    </div>
+    <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
 
-    <r:script>
+    <asset:script type="text/javascript">
+        function buildSuggestIndex(){
+            loadInfo("${createLink(controller:'import', action:'buildSuggestIndex')}?online=" + $('#use-online').is(':checked'));
+        }
+        function buildFavourites(){
+            loadInfo("${createLink(controller:'import', action:'buildFavourites')}?online=" + $('#use-online').is(':checked'));
+        }
+        function buildWeights(){
+            loadInfo("${createLink(controller:'import', action:'buildWeights')}?online=" + $('#use-online').is(':checked'));
+        }
         function denormaliseTaxa(){
-            $.get("${createLink(controller:'import', action:'denormaliseTaxa')}?online=" + $('#use-online').is(':checked'), function( data ) {
-              if(data.success){
-                $('.import-info p').html('Build successfully started....')
-                $('#start-import').prop('disabled', true);
-              } else {
-                $('.import-info p').html('Build failed. Check file path...')
-              }
-              $('.import-info').removeClass('hide');
-              $('.progress').removeClass('hide');
-            });
+            loadInfo("${createLink(controller:'import', action:'denormaliseTaxa')}?online=" + $('#use-online').is(':checked'));
         }
 
         function removeDanglingSynonyms(){
-            $.get("${createLink(controller:'import', action:'deleteDanglingSynonyms')}?online=" + $('#use-online').is(':checked'), function( data ) {
-              if(data.success){
-                $('.import-info p').html('Delete successfully started....')
-                $('#start-import').prop('disabled', true);
-              } else {
-                $('.import-info p').html('Build failed. Check file path...')
-              }
-              $('.import-info').removeClass('hide');
-              $('.progress').removeClass('hide');
-            });
+            loadInfo("${createLink(controller:'import', action:'deleteDanglingSynonyms')}?online=" + $('#use-online').is(':checked'));
         }
 
         function buildLinkIdentifiers(){
-            $.get("${createLink(controller:'import', action:'buildLinkIdentifiers')}?online=" + $('#use-online').is(':checked'), function( data ) {
-              if(data.success){
-                $('.import-info p').html('Build successfully started....')
-                $('#start-import').prop('disabled', true);
-              } else {
-                $('.import-info p').html('Build failed. Check file path...')
-              }
-              $('.import-info').removeClass('hide');
-              $('.progress').removeClass('hide');
-            });
+            loadInfo("${createLink(controller:'import', action:'buildLinkIdentifiers')}?online=" + $('#use-online').is(':checked'));
         }
 
         function loadImages(){
-            $.get("${createLink(controller:'import', action:'loadImages')}?online=" + $('#use-online').is(':checked'), function( data ) {
-              if(data.success){
-                $('.import-info p').html('Import successfully started....')
-                $('#start-import').prop('disabled', true);
-              } else {
-                $('.import-info p').html('Import failed. Check file path...')
-              }
-              $('.import-info').removeClass('hide');
-              $('.progress').removeClass('hide');
-            });
+            loadInfo("${createLink(controller:'import', action:'loadImages')}?online=" + $('#use-online').is(':checked'));
         }
 
         function loadPreferredImages(){
-            $.get("${createLink(controller:'import', action:'loadPreferredImages')}?online=" + $('#use-online').is(':checked'), function( data ) {
-              if(data.success){
-                $('.import-info p').html('Import successfully started....')
-                $('#start-import').prop('disabled', true);
-              } else {
-                $('.import-info p').html('Import failed. Check file path...')
-              }
-              $('.import-info').removeClass('hide');
-              $('.progress').removeClass('hide');
-            });
+            loadInfo("${createLink(controller:'import', action:'loadPreferredImages')}?online=" + $('#use-online').is(':checked'));
         }
-    </r:script>
-
-    <r:script>
-        $(function() {
-            var socket = new SockJS("${createLink(uri: '/stomp')}");
-            var client = Stomp.over(socket);
-            client.connect({}, function() {
-                client.subscribe("/topic/import-feedback", function(message) {
-                    var msg = $.trim(message.body);
-                    if ($.isNumeric(msg)) {
-                        // update progress bar
-                        console.log('msg', msg);
-                        $('.progress-bar ').css('width', msg + '%').attr('aria-valuenow', msg);
-                        $('.progress-bar span.percent').html(msg);
-                    } else {
-                        // just a message
-                        $("#import-info-web-socket").append('<br/>' + message.body);
-                    }
-                });
-            });
-        });
-    </r:script>
+    </asset:script>
 </div>
 </body>
 </html>
