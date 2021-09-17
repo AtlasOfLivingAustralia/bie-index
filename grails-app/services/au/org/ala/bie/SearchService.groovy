@@ -480,9 +480,24 @@ class SearchService {
         model
     }
 
-    Map getLongProfileForName(String name){
+    Map getLongProfileForName(String name, boolean includeVernacular){
         name = Encoder.escapeSolr(name)
-        def response = indexService.search(true, '"' + name + '"', [ "idxtype:${IndexDocType.TAXON.name()}" ])
+        def query = "scientificName:\"${name}\" OR nameComplete:\"${name}\""
+        if (includeVernacular)
+            query = query + " OR commonName:\"${name}\""
+        def response = indexService.query(
+                true,
+                query,
+                [ "idxtype:${IndexDocType.TAXON.name()}" ],
+                1,
+                0,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true
+        )
         def model = [:]
         if (response.results.numFound > 0) {
             def result = response.results.get(0)
@@ -517,7 +532,6 @@ class SearchService {
                 ]
 
         }
-
         model
     }
 
