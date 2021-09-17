@@ -20,7 +20,6 @@ import org.apache.solr.common.params.SolrParams
  * The interface to SOLR based logic.
  */
 class IndexService implements GrailsConfigurationAware {
-    def grailsApplication
     def liveSolrClient
     def offlineSolrClient
     def updatingLiveSolrClient
@@ -30,18 +29,21 @@ class IndexService implements GrailsConfigurationAware {
     SolrQuery suggestTemplate
     List<String> searchFq
     String searchDefType
+    String searchBoost
     List<String> searchQf
 
     @Override
     void setConfiguration(Config config) {
         def search = config.solr.search
+        searchBoost = search.boost
+        searchDefType = search.defType
         searchTemplate = new SolrQuery()
         search.fq.each { searchTemplate.addFilterQuery(it) }
-        searchTemplate.set('defType', search.defType)
+        searchTemplate.set('defType', searchDefType)
         searchTemplate.set('qf', search.qf.join(' '))
         search.bq.each { searchTemplate.add('bq', it) }
         searchTemplate.set('q.alt', search.qAlt)
-        searchTemplate.set('boost', search.boost)
+        searchTemplate.set('boost', searchBoost)
         if (search.hl.hl as Boolean) {
             searchTemplate.highlightFields = (search.hl.fl as String).split(',')
             searchTemplate.highlightSimplePre = search.hl.simple.pre
@@ -169,25 +171,38 @@ class IndexService implements GrailsConfigurationAware {
      * @param sort sort field
      * @param dir Sort direction
      * @param cursor Cursor mark if paginating
+     * @param useBoost Use the search boost functionality
+     * @param useDefType Use the default defType
      *
      * @return The query result
      */
-    QueryResponse query(boolean online, String q, List fq = [], Integer rows = 10, Integer start = 0, String context = null, String sort = null, String dir = 'asc', String cursor = null) {
+    QueryResponse query(boolean online, String q, List fq = [], Integer rows = 10, Integer start = 0, String context = null, String sort = null, String dir = 'asc', String cursor = null, boolean useBoost = false, boolean useDefType = false) {
         def query = new SolrQuery(q)
 
-        if (context)
+        if (context) {
             query.add(context(context))
-        if (fq)
+        }
+        if (fq) {
             fq.each { query.addFilterQuery(it) }
-        if (rows)
+        }
+        if (rows) {
             query.setRows(rows)
-        if (start)
+        }
+        if (start) {
             query.setStart(start)
+        }
         if (sort) {
             query.sort = new SolrQuery.SortClause(sort, dir == 'desc' ? SolrQuery.ORDER.desc : SolrQuery.ORDER.asc)
         }
-        if (cursor)
+        if (cursor) {
             query.set(CursorMarkParams.CURSOR_MARK_PARAM, cursor)
+        }
+        if (useBoost) {
+            query.set('boost', searchBoost)
+        }
+        if (useDefType) {
+            query.set("defType", searchDefType)
+        }
         return this.query(query, online)
     }
 
