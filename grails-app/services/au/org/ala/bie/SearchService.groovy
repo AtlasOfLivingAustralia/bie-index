@@ -359,10 +359,22 @@ class SearchService {
      */
     def lookupTaxonByName(String taxonName, String kingdom, Boolean useOfflineIndex = false){
         taxonName = Encoder.escapeSolr(taxonName)
-        def q = "+commonNameExact:\"${taxonName}\" OR +scientificName:\"${taxonName}\" OR +nameComplete:\"${taxonName} OR +exact_text:\"${taxonName}\""
+        def q = "scientificName:\"${taxonName}\" OR nameComplete:\"${taxonName}\" OR commonName:\"${taxonName}\""
         if (kingdom)
             q = "(${q}) AND rk_kingdom:\"${ Encoder.escapeSolr(kingdom) }\""
-        def response = indexService.search(!useOfflineIndex, q, [ "idxtype:${ IndexDocType.TAXON.name() }" ], [], 0, 1)
+        def response = indexService.query(
+                !useOfflineIndex,
+                q,
+                [ "idxtype:${IndexDocType.TAXON.name()}" ],
+                1,
+                0,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true
+        )
         if (response.results.isEmpty()) {
             q = "+scientificName:\"${taxonName}\" OR +nameComplete:\"${taxonName}\""
             response = indexService.query(!useOfflineIndex, q, [ "idxtype:${ IndexDocType.TAXONVARIANT.name() }" ], 1, 0)
@@ -469,7 +481,20 @@ class SearchService {
      */
     def getProfileForName(String name){
         name = Encoder.escapeSolr(name)
-        def response = indexService.search(true, '"' + name + '"', [ "idxtype:${IndexDocType.TAXON.name()}" ])
+        def query = "scientificName:\"${name}\" OR nameComplete:\"${name}\" OR commonName:\"${name}\""
+        def response = indexService.query(
+                true,
+                query,
+                [ "idxtype:${IndexDocType.TAXON.name()}" ],
+                  10,
+                0,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true
+        )
         def model = []
 
         if (response.results.numFound > 0) {
