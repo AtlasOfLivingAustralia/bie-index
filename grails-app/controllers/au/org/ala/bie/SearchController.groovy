@@ -188,13 +188,13 @@ class SearchController implements GrailsConfigurationAware {
         if (!req) {
             response.sendError(400, "Body could not be parsed or was empty")
         }
-        boolean includeVernacular = req.optBoolean('vernacular')
+        boolean includeVernacular = req.optBoolean('vernacular', true)
         List<String> names = req['names']
         List result = []
 
         names.eachWithIndex { name, idx ->
             log.debug "$idx. Looking up name: ${name}"
-            result.add(searchService.getLongProfileForName(name))
+            result.add(searchService.getLongProfileForName(name, includeVernacular))
         }
 
         render result as JSON

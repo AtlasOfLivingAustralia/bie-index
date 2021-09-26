@@ -519,7 +519,8 @@ paths:
       summary: Bulk search for species by name
       description: >
         Retrieve taxon information for a list of vernacular or scientific names.
-        This operation can be used to retrieve large lists of taxa
+        This operation can be used to retrieve large lists of taxa.
+        By default, the operation searches for both vernacular names and scientific names.
       tags:
       - bulk
       requestBody:
@@ -531,7 +532,7 @@ paths:
                 vernacular:
                   type: boolean
                   description: Look up via vernacular names as well as scientific names
-                  default: false
+                  default: true
                 names:
                   type: array
                   description: The list of names to search for
