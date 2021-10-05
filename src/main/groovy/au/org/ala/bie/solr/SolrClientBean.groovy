@@ -29,6 +29,8 @@ class SolrClientBean {
     int queueSize = 10
     /** The number of threads for updatable clients */
     int threadCount = 4
+    /** The socket timeout in milliseconds */
+    int timeout = 300000;
 
     /**
      * Default constructor
@@ -44,11 +46,12 @@ class SolrClientBean {
      * @param queueSize The queue size
      * @param threadCount The thread count
      */
-    SolrClientBean(String clientType, String connection, int queueSize, int threadCount) {
+    SolrClientBean(String clientType, String connection, int queueSize, int threadCount, int timeout) {
         this.clientType = clientType
         this.connection = connection
         this.queueSize = queueSize
         this.threadCount = threadCount
+        this.timeout = timeout
     }
 
     /**
@@ -57,19 +60,31 @@ class SolrClientBean {
      * @return
      */
     SolrClient buildClient() {
+        def client = null
         switch (clientType) {
             case ClientType.UPDATE:
                 def builder = new ConcurrentUpdateSolrClient.Builder(connection)
                 builder.withQueueSize(queueSize)
                 builder.withThreadCount(threadCount)
-                return builder.build();
+                builder.withSocketTimeout(timeout)
+                client = builder.build()
+                // Required to get read timeout to be set
+                client.client.setSoTimeout(timeout)
+                break
             case ClientType.ZOOKEEPER:
                 def builder = new CloudSolrClient.Builder(connection.split(',') as List)
-                return builder.build();
+                builder.withSocketTimeout(timeout)
+                client = builder.build();
+                break
             default:
                 def builder = new HttpSolrClient.Builder(connection)
-                return builder.build();
+                builder.withSocketTimeout(timeout)
+                client = builder.build();
+                // Required to get read timeout to be set
+                client.client.setSoTimeout(timeout)
+                break
         }
+        return client
     }
 
     void setClientType(String name) {
