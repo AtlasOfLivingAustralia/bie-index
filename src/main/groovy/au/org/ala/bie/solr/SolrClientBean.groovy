@@ -80,8 +80,6 @@ class SolrClientBean {
                 def builder = new HttpSolrClient.Builder(connection)
                 builder.withSocketTimeout(timeout)
                 client = builder.build();
-                // Required to get read timeout to be set
-                client.client.setSoTimeout(timeout)
                 break
         }
         return client
