@@ -48,6 +48,7 @@ import java.text.SimpleDateFormat
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream
 
 /**
@@ -106,7 +107,8 @@ class ImportService implements GrailsConfigurationAware {
     static ACCEPTED_STATUS = TaxonomicType.values().findAll({ it.accepted }).collect({ "taxonomicStatus:${it.term}" }).join(' OR ')
     // Synonym status
     static SYNONYM_STATUS = TaxonomicType.values().findAll({ it.synonym }).collect({ "taxonomicStatus:${it.term}" }).join(' OR ')
-
+    // A pattern indicating that we have a URL embedded in an anchor. Yuk
+    static SOURCE_IN_ANCHOR = Pattern.compile(/<[Aa] [^>]*[Hh][Rr][Ee][Ff]\s*=\s*"([^"]+)"[^>]*>.*<\/[Aa]>/)
 
     def indexService, searchService, biocacheService
     def listService, layerService, collectoryService, wordpressService, knowledgeBaseService
@@ -947,7 +949,11 @@ class ImportService implements GrailsConfigurationAware {
 
     private boolean addVernacularName(String taxonID, String name, String kingdom, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, String provenance, Map additional, List buffer, Object defaultStatus) {
         def taxonDoc = null
-
+        if (source) { // Extract URL from anchor if needed
+            def sia = SOURCE_IN_ANCHOR.matcher(source)
+            if (sia.matches())
+                source = sia.group(1)
+        }
         if (taxonID)
             taxonDoc = searchService.lookupTaxon(taxonID, true)
         if (!taxonDoc && name)

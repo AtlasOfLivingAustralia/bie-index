@@ -205,16 +205,19 @@ solr:
       connection: http://localhost:8983/solr/bie
       queueSize: 10
       threadCount: 4
+      timeout: 120000
     updatingLive:
       type: UPDATE
       connection: http://localhost:8983/solr/bie
       queueSize: 10
       threadCount: 4
+      timeout: 300000
     offline:
       type: UPDATE
       connection: http://localhost:8983/solr/bie-offline
       queueSize: 10
       threadCount: 4
+      timeout: 300000
     search:
       qf:
         - exact_text
