@@ -284,34 +284,40 @@ class SearchService {
         }
     }
 
+    private queryChildConcepts(q, fqs, queryString, children) {
+        def response = indexService.query(true, q, fqs, 1000, 0, queryString)
+        def taxa = response.results
+        taxa.each { taxon ->
+            children << [
+                    guid         : taxon.guid,
+                    parentGuid   : taxon.parentGuid,
+                    name         : taxon.scientificName,
+                    nameComplete : taxon.nameComplete ?: taxon.scientificName,
+                    nameFormatted: taxon.nameFormatted,
+                    author       : taxon.scientificNameAuthorship,
+                    rank         : taxon.rank,
+                    rankID       : taxon.rankID
+            ]
+        }
+    }
 
     def getChildConcepts(taxonID, queryString, within, unranked){
         def baseTaxon = lookupTaxon(taxonID)
         def baseRankID = baseTaxon?.rankID ?: -1
         def baseFq = "idxtype:${IndexDocType.TAXON.name()}"
         def fqs = [ baseFq ]
-        if (baseRankID > 0 && within) {
-            fqs << "rankID:[${unranked ? -1 : baseRankID + 1} TO ${baseRankID + within}]"
-        }
         def q = "parentGuid:\"${ Encoder.escapeSolr(taxonID) }\""
-        def response = indexService.query(true, q, fqs, 1000, 0, queryString)
-        if (response.results.numFound == 0) {
-            response = indexService.query(true, q, [ baseFq ], 1000, 0, queryString)
-        }
         def children = []
-        def taxa = response.results
-        taxa.each { taxon ->
-            children << [
-                    guid:taxon.guid,
-                    parentGuid: taxon.parentGuid,
-                    name: taxon.scientificName,
-                    nameComplete: taxon.nameComplete ?: taxon.scientificName,
-                    nameFormatted: taxon.nameFormatted,
-                    author: taxon.scientificNameAuthorship,
-                    rank: taxon.rank,
-                    rankID:taxon.rankID
-            ]
+
+        if (baseRankID > 0 && within) {
+             fqs << "rankID:[${unranked ? -1 : baseRankID + 1} TO ${baseRankID + within}]"
         }
+
+        this.queryChildConcepts(q, fqs, queryString, children)
+        if (unranked && baseRankID > 0 && within)  // Long running bug in SOLR unable to handle (- +) subqueries
+            this.queryChildConcepts(q, [ baseFq, "-rankID:*"], queryString, children)
+        if (children.isEmpty() && fqs.size() > 1)
+            this.queryChildConcepts(q, [ baseFq ], queryString, children)
         children.sort { c1, c2 ->
             def r1 = c1.rankID
             def r2 = c2.rankID
@@ -353,10 +359,22 @@ class SearchService {
      */
     def lookupTaxonByName(String taxonName, String kingdom, Boolean useOfflineIndex = false){
         taxonName = Encoder.escapeSolr(taxonName)
-        def q = "+commonNameExact:\"${taxonName}\" OR +scientificName:\"${taxonName}\" OR +nameComplete:\"${taxonName} OR +exact_text:\"${taxonName}\""
+        def q = "scientificName:\"${taxonName}\" OR nameComplete:\"${taxonName}\" OR commonName:\"${taxonName}\""
         if (kingdom)
             q = "(${q}) AND rk_kingdom:\"${ Encoder.escapeSolr(kingdom) }\""
-        def response = indexService.search(!useOfflineIndex, q, [ "idxtype:${ IndexDocType.TAXON.name() }" ], [], 0, 1)
+        def response = indexService.query(
+                !useOfflineIndex,
+                q,
+                [ "idxtype:${IndexDocType.TAXON.name()}" ],
+                1,
+                0,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true
+        )
         if (response.results.isEmpty()) {
             q = "+scientificName:\"${taxonName}\" OR +nameComplete:\"${taxonName}\""
             response = indexService.query(!useOfflineIndex, q, [ "idxtype:${ IndexDocType.TAXONVARIANT.name() }" ], 1, 0)
@@ -463,7 +481,20 @@ class SearchService {
      */
     def getProfileForName(String name){
         name = Encoder.escapeSolr(name)
-        def response = indexService.search(true, '"' + name + '"', [ "idxtype:${IndexDocType.TAXON.name()}" ])
+        def query = "scientificName:\"${name}\" OR nameComplete:\"${name}\" OR commonName:\"${name}\""
+        def response = indexService.query(
+                true,
+                query,
+                [ "idxtype:${IndexDocType.TAXON.name()}" ],
+                  10,
+                0,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true
+        )
         def model = []
 
         if (response.results.numFound > 0) {
@@ -480,9 +511,24 @@ class SearchService {
         model
     }
 
-    Map getLongProfileForName(String name){
+    Map getLongProfileForName(String name, boolean includeVernacular){
         name = Encoder.escapeSolr(name)
-        def response = indexService.search(true, '"' + name + '"', [ "idxtype:${IndexDocType.TAXON.name()}" ])
+        def query = "scientificName:\"${name}\" OR nameComplete:\"${name}\""
+        if (includeVernacular)
+            query = query + " OR commonName:\"${name}\""
+        def response = indexService.query(
+                true,
+                query,
+                [ "idxtype:${IndexDocType.TAXON.name()}" ],
+                1,
+                0,
+                null,
+                null,
+                null,
+                null,
+                true,
+                true
+        )
         def model = [:]
         if (response.results.numFound > 0) {
             def result = response.results.get(0)
@@ -517,7 +563,6 @@ class SearchService {
                 ]
 
         }
-
         model
     }
 

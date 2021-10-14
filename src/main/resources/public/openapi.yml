@@ -3,7 +3,6 @@ info:
   title: "ALA BIE service"
   description: "Web services for the Biological Information Explorer (BIE)"
   version: "1.0"
-  termsOfServices: "http://www.ala.org.au/"
   contact:
     name: "ALA Support"
     url: "http://www.ala.org.au/"
@@ -48,6 +47,7 @@ paths:
         required: false
       responses:
         200:
+          description: 'Search results'
           content:
             application/json:
               schema:
@@ -86,6 +86,7 @@ paths:
         required: false
       responses:
         200:
+          description: 'Search results'        
           content:
             application/json:
               schema:
@@ -127,20 +128,18 @@ paths:
   /taxon/{id}:
     get:
       summary: Alternative form of /species/{id}
-      tags:
-        - lookup
-  /species/{id}:
-    get:
-      summary: Get detailed information about a taxon
-      description: Get all available infomation about a taxon, including classification and alternative representations
-      tags:
-      - lookup
       parameters:
-      - $ref: '#/components/parameters/idParam'
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Numeric ID of the taxon      
       responses:
         404:
           description: The identifier was not found
         200:
+          description: 'Species info in JSON'        
           content:
             application/json:
               schema:
@@ -154,7 +153,7 @@ paths:
                     deprecated: true
                     description: Unused
                     items:
-                      type: null
+                      type: string
                   classification:
                     type: object
                     description: >
@@ -194,25 +193,122 @@ paths:
                     deprecated: true
                     description: Unused
                     items:
-                      type: null
+                      type: string
                   habitats:
                     type: array
                     deprecated: true
                     description: Unused
                     items:
-                      type: null
+                      type: string
                   simpleProperties:
                     type: array
                     deprecated: true
                     description: Unused
                     items:
-                      type: null
+                      type: string
                   images:
                     type: array
                     deprecated: true
                     description: Unused
                     items:
-                      type: null
+                      type: string
+                  identifiers:
+                    type: array
+                    description: All the identifiers that can be used to refer to this taxon
+                    items:
+                      $ref: '#/components/schemas/Identifier'
+                  variants:
+                    type: array
+                    description: Alternative sources for the base taxon concept (including itself)
+                    items:
+                      $ref: '#/components/schemas/TaxonConcept'          
+      tags:
+        - lookup
+  /species/{id}:
+    get:
+      summary: Get detailed information about a taxon
+      description: Get all available infomation about a taxon, including classification and alternative representations
+      tags:
+      - lookup
+      parameters:
+      - $ref: '#/components/parameters/idParam'
+      responses:
+        404:
+          description: The identifier was not found
+        200:
+          description: 'Species info in JSON'        
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  taxonConcept:
+                    description: Information about the base taxon concept
+                    $ref: '#/components/schemas/TaxonConcept'
+                  taxonName:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: string
+                  classification:
+                    type: object
+                    description: >
+                      The higher-order classification for the base taxon concept.
+                      Each higher-order rank has a name, given by the rank and a GUID, given by rankGuid.
+                      eg. kingdom: 'Plantae', kingdomGuid: 'http://id.biodiversity.org.au/node/apni/9443092'
+                    additionalProperties:
+                      type: string
+                  synonyms:
+                    type: array
+                    description: All synonyms that have this taxon as an accepted concept
+                    items:
+                      $ref: '#/components/schemas/TaxonConcept'
+                  commonNames:
+                    type: array
+                    description: All the common names that a taxon is known by
+                    items:
+                      $ref: '#/components/schemas/CommonName'
+                  imageIdentifier:
+                    type: string
+                    format: url
+                    description: The identifier of a representative image
+                  conservationStatuses:
+                    type: object
+                    description: Conservation status, keyed by the source of the conservation designation, eg. Qld
+                    additionalProperties:
+                      type: object
+                      properties:
+                        dr:
+                          type: string
+                          description: The data resource identifier for the list that is the source of the status
+                        status:
+                          type: string
+                          description: The status term
+                  extantStatuses:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: string
+                  habitats:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: string
+                  simpleProperties:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: string
+                  images:
+                    type: array
+                    deprecated: true
+                    description: Unused
+                    items:
+                      type: string
                   identifiers:
                     type: array
                     description: All the identifiers that can be used to refer to this taxon
@@ -235,6 +331,7 @@ paths:
         404:
           description: The identifier was not found
         200:
+          description: 'Classification info in JSON'                
           content:
             application/json:
               schema:
@@ -277,6 +374,7 @@ paths:
         404:
           description: The identifier was not found
         200:
+          description: 'Child concepts list in JSON'                        
           content:
             application/json:
               schema:
@@ -325,6 +423,7 @@ paths:
           type: string
       responses:
         200:
+          description: 'Image seearch list in JSON'                                
           content:
             application/json:
               schema:
@@ -347,6 +446,7 @@ paths:
         404:
           description: If the name is not found
         200:
+          description: 'GUID name lookup results in JSON'
           content:
             application/json:
               schema:
@@ -388,6 +488,7 @@ paths:
         404:
           description: If there is no image for the supplied id and showNoImage=false
         302:
+          description: Redirect to image location
           headers:
             Location:
               description: The location of the image
@@ -406,6 +507,7 @@ paths:
         404:
           description: If the taxon identifier is not found
         200:
+          description: Short profile for taxon
           content:
             application/json:
               schema:
@@ -429,6 +531,7 @@ paths:
             type: string
       responses:
         200:
+          description: List of short profile for taxa        
           content:
             application/json:
               schema:
@@ -458,6 +561,7 @@ paths:
         404:
           description: If a guid is not found
         200:
+          description: List of short profile for taxa        
           content:
             application/json:
               schema:
@@ -519,7 +623,8 @@ paths:
       summary: Bulk search for species by name
       description: >
         Retrieve taxon information for a list of vernacular or scientific names.
-        This operation can be used to retrieve large lists of taxa
+        This operation can be used to retrieve large lists of taxa.
+        By default, the operation searches for both vernacular names and scientific names.
       tags:
       - bulk
       requestBody:
@@ -531,7 +636,7 @@ paths:
                 vernacular:
                   type: boolean
                   description: Look up via vernacular names as well as scientific names
-                  default: false
+                  default: true
                 names:
                   type: array
                   description: The list of names to search for
@@ -541,6 +646,7 @@ paths:
         400:
           description: On an invalid request
         200:
+          description: List of long profiles for taxa        
           content:
             application/json:
               schema:
@@ -559,15 +665,15 @@ paths:
       - name: fields
         description: A list of fields to download
         in: query
-        style: simple
+        style: form
         schema:
           type: array
           items:
             type: string
         required: false
-        default: guid,rank,scientificName,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName
       responses:
         200:
+          description: Zipped file containing CSV        
           content:
             text/csv:
               schema:
@@ -583,6 +689,7 @@ paths:
         404:
           description: If the species group configuration is not found
         200:
+          description: JSON for species groups and subgroups
           content:
             application/json:
               schema:
@@ -620,6 +727,7 @@ paths:
         500:
           description: If unable to connect to the solr index
         200:
+          description: List of indexed fields in JSON        
           content:
             application/json:
               schema:
@@ -637,7 +745,7 @@ paths:
                       type: string
                       description: The name of the field
                     numberDistinctValues:
-                      type: null
+                      type: integer
                       description: Always null
                     stored:
                       type: boolean
@@ -650,6 +758,7 @@ paths:
       - metadata
       responses:
         200:
+          description: A list of ranks in JSON
           content:
             application/json:
               schema:
@@ -694,6 +803,7 @@ paths:
         500:
           description: If unable to connect to the solr index
         200:
+          description: A list of habitats in JSON        
           content:
             application/json:
               schema:
@@ -702,7 +812,7 @@ paths:
                   searchResults:
                     type: object
                     items:
-                      type: null
+                      type: string
   /habitats/tree:
     get:
       summary: Get a tree of habitats
@@ -714,6 +824,7 @@ paths:
         500:
           description: If unable to connect to the solr index
         200:
+          description: A tree structure of habitats in JSON                
           content:
             application/json:
               schema:
@@ -721,17 +832,20 @@ paths:
                 properties:
                   searchResults:
                     type: object
-  /habitat/{guid}:
+  /habitat/{id}:
     get:
       summary: Get a habitat description
       description: Gets a description of a habitat. Currently, this will just return an empty value
       deprecated: true
       tags:
       - metadata
+      parameters:
+      - $ref: '#/components/parameters/idParam'      
       responses:
         500:
           description: If unable to connect to the solr index
         200:
+          description: A habitat description in JSON
           content:
             application/json:
               schema:
@@ -740,18 +854,21 @@ paths:
                   searchResults:
                     type: object
                     items:
-                      type: null
-  /habitat/ids/{guid}:
+                      type: string
+  /habitat/ids/{id}:
     get:
       summary: Get a the identifiers associated with a habitat
       description: Gets a set of habitat ids. Currently, this will just return an empty value
       deprecated: true
       tags:
       - metadata
+      parameters:
+      - $ref: '#/components/parameters/idParam'        
       responses:
         500:
           description: If unable to connect to the solr index
         200:
+          description: A habitat description in JSON
           content:
             application/json:
               schema:
@@ -760,7 +877,7 @@ paths:
                   searchResults:
                     type: object
                     items:
-                      type: null
+                      type: string
   /admin/import/importAll:
     get:
       summary: Import all features
@@ -775,6 +892,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -789,6 +907,7 @@ paths:
       - apiKey: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -811,6 +930,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -826,6 +946,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -843,6 +964,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -860,6 +982,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -877,6 +1000,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -894,6 +1018,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -909,6 +1034,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -926,6 +1052,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -943,6 +1070,7 @@ paths:
         - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -960,6 +1088,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -977,6 +1106,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -994,6 +1124,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1014,6 +1145,7 @@ paths:
         - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1031,6 +1163,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1048,6 +1181,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1066,6 +1200,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1085,6 +1220,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1102,6 +1238,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1119,6 +1256,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1139,13 +1277,13 @@ paths:
       - name: clear_index
         in: query
         description: Clear the offline index before loading
-        default: false
         schema:
           type: boolean
       security:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1162,6 +1300,7 @@ paths:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1175,16 +1314,13 @@ paths:
       tags:
       - admin
       parameters:
-      - name: id
-        description: The job identifier
-        schema:
-          type: string
-          format: uuid
+      - $ref: '#/components/parameters/idParam'          
       - $ref: '#/components/parameters/formatParam'
       security:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1198,16 +1334,13 @@ paths:
       tags:
       - admin
       parameters:
-      - name: id
-        description: The job identifier
-        schema:
-          type: string
-          format: uuid
+      - $ref: '#/components/parameters/idParam'          
       - $ref: '#/components/parameters/formatParam'
       security:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1221,16 +1354,13 @@ paths:
       tags:
       - admin
       parameters:
-      - name: id
-        description: The job identifier
-        schema:
-          type: string
-          format: uuid
+      - $ref: '#/components/parameters/idParam'          
       - $ref: '#/components/parameters/formatParam'
       security:
       - cas: []
       responses:
         200:
+          description: JSON response indicating job status
           content:
             application/json:
               schema:
@@ -1303,7 +1433,6 @@ components:
                   properties:
                     id:
                       type: string
-                      style: uuid
                       description: An internal, index-specific identifier. Best ignored
                     guid:
                       type: string
@@ -1495,12 +1624,10 @@ components:
           type: string
           format: url
           description: A link to a representative thumnail image, if available
-          required: false
         imageUrl:
           type: string
           format: url
           description: A link to a representative image, if available
-          required: false
     LongProfile:
       type: object
       description: A description of essential information about a taxon
@@ -1893,7 +2020,7 @@ components:
       name: format
       in: path
       description: Optional response format
-      required: false
+      required: true
       schema:
         type: string
         enum:
@@ -1933,7 +2060,7 @@ components:
         type: array
         items:
           type: string
-      style: simple
+      style: form
     idParam:
       name: 'id'
       in: path

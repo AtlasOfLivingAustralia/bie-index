@@ -1,6 +1,6 @@
 package au.org.ala.bie.solr
 
-import grails.util.CacheEntry
+
 import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.impl.CloudSolrClient
 import org.apache.solr.client.solrj.impl.ConcurrentUpdateSolrClient
@@ -29,6 +29,8 @@ class SolrClientBean {
     int queueSize = 10
     /** The number of threads for updatable clients */
     int threadCount = 4
+    /** The socket timeout in milliseconds */
+    int timeout = 300000;
 
     /**
      * Default constructor
@@ -44,11 +46,12 @@ class SolrClientBean {
      * @param queueSize The queue size
      * @param threadCount The thread count
      */
-    SolrClientBean(String clientType, String connection, int queueSize, int threadCount) {
+    SolrClientBean(String clientType, String connection, int queueSize, int threadCount, int timeout) {
         this.clientType = clientType
         this.connection = connection
         this.queueSize = queueSize
         this.threadCount = threadCount
+        this.timeout = timeout
     }
 
     /**
@@ -57,21 +60,29 @@ class SolrClientBean {
      * @return
      */
     SolrClient buildClient() {
-        def builder
+        def client = null
         switch (clientType) {
             case ClientType.UPDATE:
-                builder = new ConcurrentUpdateSolrClient.Builder(connection)
+                def builder = new ConcurrentUpdateSolrClient.Builder(connection)
                 builder.withQueueSize(queueSize)
                 builder.withThreadCount(threadCount)
-                break;
+                builder.withSocketTimeout(timeout)
+                client = builder.build()
+                // Required to get read timeout to be set
+                client.client.setSoTimeout(timeout)
+                break
             case ClientType.ZOOKEEPER:
-                builder = new CloudSolrClient.Builder()
-                builder.withZkHost(connection)
-                break;
+                def builder = new CloudSolrClient.Builder(connection.split(',') as List)
+                builder.withSocketTimeout(timeout)
+                client = builder.build();
+                break
             default:
-                builder = new HttpSolrClient.Builder(connection)
+                def builder = new HttpSolrClient.Builder(connection)
+                builder.withSocketTimeout(timeout)
+                client = builder.build();
+                break
         }
-        return builder.build()
+        return client
     }
 
     void setClientType(String name) {
