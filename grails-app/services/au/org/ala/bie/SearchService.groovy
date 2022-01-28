@@ -74,17 +74,25 @@ class SearchService {
         if (!taxon.image || taxon.image.isEmpty()) {
             return null
         }
-        if (type == 'thumbnail') {
-            return MessageFormat.format(grailsApplication.config.images.service.thumbnail, taxon.image)
-        } else if (type == 'small') {
-            return MessageFormat.format(grailsApplication.config.images.service.small, taxon.image)
-        } else if (type == 'large') {
-            return MessageFormat.format(grailsApplication.config.images.service.large, taxon.image)
-        } else {
-            return MessageFormat.format(grailsApplication.config.images.service.large, taxon.image)
-        }
+        return formatImage(taxon.image, type)
     }
 
+    def formatImage(String imageId, String type) {
+        if (!imageId)
+            return null
+        if (type == 'thumbnail') {
+            return MessageFormat.format(grailsApplication.config.images.service.thumbnail, imageId)
+        } else if (type == 'small') {
+            return MessageFormat.format(grailsApplication.config.images.service.small, imageId)
+        } else if (type == 'large') {
+            return MessageFormat.format(grailsApplication.config.images.service.large, imageId)
+        } else if (type == 'metadata') {
+            return MessageFormat.format(grailsApplication.config.images.service.metadata, imageId)
+        } else {
+            return MessageFormat.format(grailsApplication.config.images.service.large, imageId)
+        }
+
+    }
 
     /**
      * General search service.

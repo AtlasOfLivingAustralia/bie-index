@@ -13,6 +13,7 @@ class UrlMappings {
         "/species/image/thumbnail/$id**"(controller: "search", action: "imageLinkSearch") { imageType = "thumbnail" }
         "/species/image/small/$id**"(controller: "search", action: "imageLinkSearch") { imageType = "small" }
         "/species/image/large/$id**"(controller: "search", action: "imageLinkSearch") { imageType = "large" }
+        "/species/image/bulk"(controller: "search", action: "bulkImageLookup")
         "/species/lookup/bulk(.$format)?"(controller: "search", action: "speciesLookupBulk")
         "/species/shortProfile/$id**"(controller: "search", action: "shortProfile")
         "/species/shortProfile/$id**.json"(controller: "search", action: "shortProfile")

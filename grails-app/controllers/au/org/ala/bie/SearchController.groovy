@@ -59,6 +59,38 @@ class SearchController implements GrailsConfigurationAware {
     }
 
     /**
+     * Bulk lookup of image information for a list of
+     * taxon GUIDs
+     */
+    // Documented in apenapi.yml
+    def bulkImageLookup() {
+        final locales = [request.locale, defaultLocale]
+        final req = request.getJSON()
+        if (!req) {
+            response.sendError(400, "Body could not be parsed or was empty")
+        }
+        def result = []
+        req.each { guid ->
+            def taxon = searchService.getTaxon(guid, locales)
+            def imageId = taxon?.imageIdentifier
+            def image = null
+            if (imageId) {
+                image = [
+                        imageId: imageId,
+                        thumbnail: searchService.formatImage(imageId, 'thumbnail'),
+                        small: searchService.formatImage(imageId, 'small'),
+                        large: searchService.formatImage(imageId, 'large'),
+                        metadata: searchService.formatImage(imageId, 'metadata')
+                ]
+            }
+            result << image
+        }
+
+        render result as JSON
+
+    }
+
+    /**
      * Returns a redirect to an image of the appropriate type
      */
     // Documented in openapi.yml
