@@ -495,6 +495,45 @@ paths:
               schema:
                 type: string
                 format: url
+  /species/image/bulk:
+    post:
+      summary: Get a list of images for a list of taxon identifiers
+      description: Return a list of "hero shot" preferred image identifiers and links for each taxon specified by the guid or null for no image
+      tags:
+        - bulk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                description: The guids to look up
+      responses:
+        400:
+          description: If the request is not a list of guids or is empty
+        200:
+          description: Images
+          content:
+            application/json:
+              schema:
+                type: array
+                description: An array of either nulls for not found or packages of image information
+                items:
+                  type: object
+                  properties:
+                    imageId:
+                      type: string
+                      description: The image identifier
+                    thumbnail:
+                      type: string
+                      description: The URL of the thumbnail version of the image
+                    small:
+                      type: string
+                      description: The URL of the small version of the image
+                    large:
+                      type: string
+                      description: The URL of the large version of the imag
   /species/shortProfile/{id}:
     get:
       summary: Get a short description of a taxon
