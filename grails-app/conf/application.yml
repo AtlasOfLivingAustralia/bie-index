@@ -169,6 +169,8 @@ lists:
   service: https://lists.ala.org.au/ws
   items: /speciesListItems/{0}?includeKVP=true
 # If attribution entry is null, the default is used
+naming:
+  service: https://namematching-ws.ala.org.au
 attribution:
   default: National Species Lists
   common:

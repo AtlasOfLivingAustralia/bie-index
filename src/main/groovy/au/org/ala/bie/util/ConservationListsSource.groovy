@@ -15,6 +15,11 @@ class ConservationListsSource {
 
     def defaultSourceField = 'status'
     def defaultKingdomField = 'kingdom'
+    def defaultPhylumField = 'phylum'
+    def defaultClassField = 'class'
+    def defaultOrderField = 'order'
+    def defaultFamilyField = 'family'
+    def defaultRankField = 'rank'
     def lists = []
 
     /**
@@ -32,6 +37,11 @@ class ConservationListsSource {
             def config = slurper.parse(source)
             defaultSourceField = config?.defaultSourceField ?: 'status'
             defaultKingdomField = config?.defaultKingdomField ?: 'kingdom'
+            defaultPhylumField = config?.defaultPhylumField ?: 'phylum'
+            defaultClassField = config?.defaultClassField ?: 'class'
+            defaultOrderField = config?.defaultOrderField ?: 'order'
+            defaultFamilyField = config?.defaultFamilyField ?: 'family'
+            defaultRankField = config?.defaultRankField ?: 'rank'
             lists = config?.lists ?: []
             log.info("Loaded " + lists.size() + " lists")
         } catch (Exception ex) {
