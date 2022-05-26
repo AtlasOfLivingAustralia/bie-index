@@ -88,6 +88,11 @@ class ImportService implements GrailsConfigurationAware {
             DwcTerm.vernacularName,
             ALATerm.nameID,
             DwcTerm.kingdom,
+            DwcTerm.phylum,
+            DwcTerm.class_,
+            DwcTerm.order,
+            DwcTerm.family,
+            DwcTerm.taxonRank,
             ALATerm.status,
             DcTerm.language,
             DcTerm.source,
@@ -110,7 +115,7 @@ class ImportService implements GrailsConfigurationAware {
     // A pattern indicating that we have a URL embedded in an anchor. Yuk
     static SOURCE_IN_ANCHOR = Pattern.compile(/<[Aa] [^>]*[Hh][Rr][Ee][Ff]\s*=\s*"([^"]+)"[^>]*>.*<\/[Aa]>/)
 
-    def indexService, searchService, biocacheService
+    def indexService, searchService, biocacheService, nameService
     def listService, layerService, collectoryService, wordpressService, knowledgeBaseService
 
     def speciesGroupService
@@ -148,6 +153,7 @@ class ImportService implements GrailsConfigurationAware {
     Object commonStatus
     Object legislatedStatus
     Object preferredStatus
+    Object deprecatedStatus
     Object favouritesConfiguration
 
 
@@ -182,10 +188,13 @@ class ImportService implements GrailsConfigurationAware {
         weightMax = config.getProperty("import.priority.max", Double, 5.0)
         weightNorm = config.getProperty("import.priority.norm", Double, 4000.0)
         weightBuilder = new WeightBuilder(getConfigFile(config.import.weightConfigUrl))
-        vernacularNameStatus = getConfigFile(config.import.vernacularName.statusUrl).collectEntries { e -> [(e.status): e] }
+        def vernacularNameConfig = getConfigFile(config.import.vernacularName.statusUrl)
+        vernacularNameStatus = vernacularNameConfig.collectEntries { e -> [(e.status): e] }
+        vernacularNameConfig.each { e -> e.alias.each { a -> vernacularNameStatus.put(a, e) } }
         commonStatus = vernacularNameStatus.get(config.import.vernacularName.common)
         legislatedStatus = vernacularNameStatus.get(config.import.vernacularName.legislated)
         preferredStatus = vernacularNameStatus.get(config.import.vernacularName.preferred)
+        deprecatedStatus = vernacularNameStatus.get(config.import.vernacularName.deprecated)
         favouritesConfiguration = getConfigFile(config.import.favouritesConfigUrl)
     }
 
@@ -643,6 +652,11 @@ class ImportService implements GrailsConfigurationAware {
     def importConservationSpeciesLists() throws Exception {
         def defaultSourceField = conservationListsSource.defaultSourceField
         def defaultKingdomField = conservationListsSource.defaultKingdomField
+        def defaultPhylumField = conservationListsSource.defaultPhylumField
+        def defaultClassField = conservationListsSource.defaultClassField
+        def defaultOrderField = conservationListsSource.defaultOrderField
+        def defaultFamilyField = conservationListsSource.defaultFamilyField
+        def defaultRankField = conservationListsSource.defaultRankField
         def lists = conservationListsSource.lists
         Integer listNum = 0
 
@@ -653,11 +667,16 @@ class ImportService implements GrailsConfigurationAware {
             String solrField = resource.field ?: "conservationStatus_s"
             String sourceField = resource.sourceField ?: defaultSourceField
             String kingdomField = resource.kingdomField ?: defaultKingdomField
-            if (uid && solrField) {
+            String phylumField = resource.phylumField ?: defaultPhylumField
+            String classField = resource.classField ?: defaultClassField
+            String orderField = resource.orderField ?: defaultOrderField
+            String familyField = resource.familyField ?: defaultFamilyField
+            String rankField = resource.rankField ?: defaultRankField
+             if (uid && solrField) {
                 log("Loading list from: " + uid)
                 try {
-                    def list = listService.get(uid, [sourceField, kingdomField])
-                    updateDocsWithConservationStatus(list, sourceField, solrField, uid)
+                    def list = listService.get(uid, [sourceField, kingdomField, phylumField, classField, orderField, familyField, rankField])
+                    updateDocsWithConservationStatus(list, sourceField, solrField, uid, kingdomField, phylumField, classField, orderField, familyField, rankField)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -679,6 +698,11 @@ class ImportService implements GrailsConfigurationAware {
             String vernacularNameField = resource.vernacularNameField ?: config.defaultVernacularNameField
             String nameIdField = resource.nameIdField ?: config.defaultNameIdField
             String kingdomField = resource.kingdomField ?: config.defaultKingdomField
+            String phylumField = resource.phylumField ?: config.defaultPhylumField
+            String classField = resource.classField ?: config.defaultClassField
+            String orderField = resource.orderField ?: config.defaultOrderField
+            String familyField = resource.familyField ?: config.defaultFamilyField
+            String rankField = resource.rankField ?: config.defaultRankField
             String statusField = resource.statusField ?: config.defaultStatusField
             String languageField = resource.languageField ?: config.defaultLanguageField
             String sourceField = resource.sourceField ?: config.defaultSourceField
@@ -700,6 +724,11 @@ class ImportService implements GrailsConfigurationAware {
                     (vernacularNameField) : DwcTerm.vernacularName,
                     (nameIdField)         : ALATerm.nameID,
                     (kingdomField)        : DwcTerm.kingdom,
+                    (phylumField)         : DwcTerm.phylum,
+                    (classField)          : DwcTerm.class_,
+                    (orderField)          : DwcTerm.order,
+                    (familyField)         : DwcTerm.family,
+                    (rankField)           : DwcTerm.taxonRank,
                     (statusField)         : ALATerm.status,
                     (languageField)       : DcTerm.language,
                     (sourceField)         : DcTerm.source,
@@ -823,7 +852,7 @@ class ImportService implements GrailsConfigurationAware {
      * @param solrFieldName
      * @return
      */
-    private updateDocsWithConservationStatus(List list, String jsonFieldName, String solrFieldName, String drUid) {
+    private updateDocsWithConservationStatus(List list, String jsonFieldName, String solrFieldName, String drUid, String kingdomField, String phylumField, String classField, String orderField, String familyField, String rankField) {
         if (list.size() > 0) {
             def totalDocs = list.size()
             def buffer = []
@@ -842,7 +871,16 @@ class ImportService implements GrailsConfigurationAware {
                     taxonDoc = searchService.lookupTaxonByPreviousIdentifier(item.lsid, true)
                 }
                 if (!taxonDoc && item.name) {
-                    taxonDoc = searchService.lookupTaxonByName(item.name, item.kingdom, true)
+                    def kingdom = kingdomField ? item.getAt(kingdomField) : null
+                    def phylum = phylumField ? item.getAt(phylumField) : null
+                    def class_ = classField ? item.getAt(classField) : null
+                    def order = orderField ? item.getAt(orderField) : null
+                    def family = familyField ? item.getAt(familyField) : null
+                    def rank = rankField ? item.getAt(rankField) : null
+                    def lsid = nameService.search(item.name, kingdom, phylum, class_, order, family, rank)
+                    if (lsid) {
+                        taxonDoc = searchService.lookupTaxon(lsid, true)
+                    }
                 }
 
                 if (taxonDoc) {
@@ -871,7 +909,7 @@ class ImportService implements GrailsConfigurationAware {
                     // set conservationStatus facet
                     def fieldValue = item[jsonFieldName]
                     doc[solrFieldName] = fieldValue
-                    log.debug "new name doc = ${doc}"
+                    log.info "New name doc = ${doc}"
                     buffer << doc
                     log("No existing taxon found for ${item.name}, so has been added as ${doc["guid"]}")
                     unmatchedTaxaCount++
@@ -897,6 +935,7 @@ class ImportService implements GrailsConfigurationAware {
             def totalDocs = list.size()
             def buffer = []
             def unmatchedTaxaCount = 0
+            def loaded = [] as Set
 
             updateProgressBar2(100, 0)
             log("Updating vernacular names from ${uid}")
@@ -904,6 +943,11 @@ class ImportService implements GrailsConfigurationAware {
             def vernacularNameField = getField(mapping, DwcTerm.vernacularName)
             def nameIdField = getField(mapping, ALATerm.nameID)
             def kingdomField = getField(mapping, DwcTerm.kingdom)
+            def phylumField = getField(mapping, DwcTerm.phylum)
+            def classField = getField(mapping, DwcTerm.class_)
+            def orderField = getField(mapping, DwcTerm.order)
+            def familyField = getField(mapping, DwcTerm.family)
+            def rankField = getField(mapping, DwcTerm.taxonRank)
             def statusField = getField(mapping, ALATerm.status)
             def languageField = getField(mapping, DcTerm.language)
             def sourceField = getField(mapping, DcTerm.source)
@@ -915,7 +959,13 @@ class ImportService implements GrailsConfigurationAware {
                 def vernacularName = item[vernacularNameField]
                 def nameId = item[nameIdField]
                 def kingdom = kingdomField ? item[kingdomField] : null
-                def status = vernacularNameStatus[item[statusField] ?: defaultStatus]
+                def phylum = phylumField ? item[phylumField] : null
+                def class_ = classField ? item[classField] : null
+                def order = orderField ? item[orderField] : null
+                def family = familyField ? item[familyField] : null
+                def rank = rankField ? item[rankField] : null
+                def status = statusField ? item[statusField] : null
+                status = status ? vernacularNameStatus[status] : null
                 def language = item[languageField] ?: defaultLanguage
                 def source = item[sourceField]
                 def taxonRemarks = item[taxonRemarksField]
@@ -929,8 +979,28 @@ class ImportService implements GrailsConfigurationAware {
                     a
                 })
 
-                if (!addVernacularName(item.lsid, item.name, kingdom, vernacularName, nameId, status, language, source, uid, taxonRemarks, provenance, additional, buffer, commonStatus))
+                if (!addVernacularName(
+                        item.lsid,
+                        item.name,
+                        kingdom,
+                        phylum,
+                        class_,
+                        order,
+                        family,
+                        rank,
+                        vernacularName,
+                        nameId,
+                        status,
+                        language,
+                        source, uid,
+                        taxonRemarks,
+                        provenance,
+                        additional,
+                        buffer,
+                        loaded,
+                        commonStatus)) {
                     unmatchedTaxaCount++
+                }
 
                 if (i > 0) {
                     updateProgressBar2(totalDocs, i)
@@ -939,15 +1009,15 @@ class ImportService implements GrailsConfigurationAware {
             log("Committing names to SOLR...")
             if (!buffer.isEmpty())
                 indexService.indexBatch(buffer)
+            log("Unmatched names for " + uid + ": " + unmatchedTaxaCount)
             log("Ensure denormalisation is re-run")
         } else {
             log("JSON not an array or has no elements - exiting")
         }
-
     }
 
 
-    private boolean addVernacularName(String taxonID, String name, String kingdom, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, String provenance, Map additional, List buffer, Object defaultStatus) {
+    private boolean addVernacularName(String taxonID, String name, String kingdom, String phylum, String class_, String order, String family, String rank, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, String provenance, Map additional, List buffer, Set loaded, Object defaultStatus) {
         def taxonDoc = null
         if (source) { // Extract URL from anchor if needed
             def sia = SOURCE_IN_ANCHOR.matcher(source)
@@ -956,17 +1026,26 @@ class ImportService implements GrailsConfigurationAware {
         }
         if (taxonID)
             taxonDoc = searchService.lookupTaxon(taxonID, true)
-        if (!taxonDoc && name)
-            taxonDoc = searchService.lookupTaxonByName(name, kingdom, true)
+        if (!taxonDoc && name) {
+            taxonID = nameService.search(name, kingdom, phylum, class_, order, family, rank)
+            if (taxonID)
+                taxonDoc = searchService.lookupTaxon(taxonID, true)
+        }
         if (!taxonDoc) {
             log.warn("Can't find matching taxon document for ${taxonID} for ${vernacularName}, skipping")
             return false
         }
         def capitaliser = TitleCapitaliser.create(language ?: commonNameDefaultLanguage)
         vernacularName = capitaliser.capitalise(vernacularName)
+        def key = taxonDoc.guid + "|" + vernacularName + "|" + language
+        if (loaded.contains(key)) {
+            log "Duplicate name for " + taxonID + ", " + name + ": " + vernacularName + " in " + language
+            return true
+        }
+        loaded.add(key)
         def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
         def provenanceList = provenance?.split("\\|").collect({ it.trim() })
-        def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, true)
+        def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, language, true)
         def priority = status?.priority ?: defaultStatus.priority
         if (vernacularDoc) {
             // do a SOLR doc (atomic) update
@@ -1182,6 +1261,10 @@ class ImportService implements GrailsConfigurationAware {
         for (Record record : archiveFile) {
             String taxonID = record.id()
             String vernacularName = record.value(DwcTerm.vernacularName)
+            if (StringUtils.isBlank(vernacularName)) {
+                log("Invalid vernacular name for taxon " + taxonID + " ...skipping")
+                continue
+            }
             String nameID = record.value(ALATerm.nameID)
             Object status = vernacularNameStatus.get(record.value(ALATerm.status))
             String language = record.value(DcTerm.language) ?: commonNameDefaultLanguage
@@ -2154,11 +2237,11 @@ class ImportService implements GrailsConfigurationAware {
                 if (s == 0 && commonLanguages) {
                     def s1 = commonLanguages.contains(n1.language) ? 1 : 0
                     def s2 = commonLanguages.contains(n2.language) ? 1 : 0
-                    s = s2 - s1
+                    s = s1 - s2
                 }
                 s
             }
-            def single = commonNames.find({ !commonLanguages || commonLanguages.contains(it.language)})?.name
+            def single = commonNames.find({ it.status != deprecatedStatus.status && (!commonLanguages || commonLanguages.contains(it.language))})?.name
             def names = new LinkedHashSet(commonNames.collect { it.name })
             update["commonName"] = [set: names]
             update["commonNameExact"] = [set: names]
