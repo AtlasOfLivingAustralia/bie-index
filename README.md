@@ -209,6 +209,11 @@ An example vernacular name list configuration is
   "defaultVernacularNameField": "name",
   "defaultNameIdField": "nameID",
   "defaultKingdomField": "kingdom",
+  "defaultPhylumField": "phylum",
+  "defaultClassField": "class",
+  "defaultOrderField": "order",
+  "defaultFamilyField": "family",
+  "defaultRankField": "rank",
   "defaultStatusField": "status",
   "defaultLanguageField": "language",
   "defaultsourceField": "source",
@@ -252,6 +257,12 @@ The `uid` holds the list identifier to load.
 
 **Avoid using vernacularName or commonName as the vernacular name field** 
 The list server treats these in a special way, causing problems when attempting to retrieve the names.
+
+### Deprecated Names
+
+Names with a status of `deprecated` appear last in lists of names and will not be used as the "headline"
+vernacular name.
+They are generally names that are now offensive or doubtful.
 
 ## Conservation Status Lists
 

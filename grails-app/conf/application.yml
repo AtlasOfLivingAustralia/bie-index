@@ -259,4 +259,5 @@ import:
     common: common
     legislated: legislated
     preferred: preferred
+    deprecated: deprecated
 

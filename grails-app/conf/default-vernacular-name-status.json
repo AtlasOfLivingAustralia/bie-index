@@ -36,5 +36,17 @@
     "alias": [],
     "description": "A locally used common name",
     "priority": 100
+  },
+  {
+    "status": "local",
+    "alias": [],
+    "description": "A locally used common name",
+    "priority": 100
+  },
+  {
+    "status": "deprecated",
+    "alias": [],
+    "description": "An offensive, questionable or otherwise condemned name",
+    "priority": 1
   }
 ]

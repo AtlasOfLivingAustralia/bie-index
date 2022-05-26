@@ -153,6 +153,7 @@ class ImportService implements GrailsConfigurationAware {
     Object commonStatus
     Object legislatedStatus
     Object preferredStatus
+    Object deprecatedStatus
     Object favouritesConfiguration
 
 
@@ -193,6 +194,7 @@ class ImportService implements GrailsConfigurationAware {
         commonStatus = vernacularNameStatus.get(config.import.vernacularName.common)
         legislatedStatus = vernacularNameStatus.get(config.import.vernacularName.legislated)
         preferredStatus = vernacularNameStatus.get(config.import.vernacularName.preferred)
+        deprecatedStatus = vernacularNameStatus.get(config.import.vernacularName.deprecated)
         favouritesConfiguration = getConfigFile(config.import.favouritesConfigUrl)
     }
 
@@ -962,7 +964,8 @@ class ImportService implements GrailsConfigurationAware {
                 def order = orderField ? item[orderField] : null
                 def family = familyField ? item[familyField] : null
                 def rank = rankField ? item[rankField] : null
-                def status = vernacularNameStatus[item[statusField] ?: defaultStatus]
+                def status = statusField ? item[statusField] : null
+                status = status ? vernacularNameStatus[status] : null
                 def language = item[languageField] ?: defaultLanguage
                 def source = item[sourceField]
                 def taxonRemarks = item[taxonRemarksField]
@@ -2234,11 +2237,11 @@ class ImportService implements GrailsConfigurationAware {
                 if (s == 0 && commonLanguages) {
                     def s1 = commonLanguages.contains(n1.language) ? 1 : 0
                     def s2 = commonLanguages.contains(n2.language) ? 1 : 0
-                    s = s2 - s1
+                    s = s1 - s2
                 }
                 s
             }
-            def single = commonNames.find({ !commonLanguages || commonLanguages.contains(it.language)})?.name
+            def single = commonNames.find({ it.status != deprecatedStatus.status && (!commonLanguages || commonLanguages.contains(it.language))})?.name
             def names = new LinkedHashSet(commonNames.collect { it.name })
             update["commonName"] = [set: names]
             update["commonNameExact"] = [set: names]
