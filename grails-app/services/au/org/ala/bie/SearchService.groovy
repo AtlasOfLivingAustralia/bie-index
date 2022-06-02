@@ -417,13 +417,15 @@ class SearchService {
      *
      * @param taxonID The taxon identifier
      * @param name The vernacular name
+     * @param language The language code
      * @param useOfflineIndex
      * @return
      */
-    def lookupVernacular(String taxonID, String vernacularName, Boolean useOfflineIndex = false){
+    def lookupVernacular(String taxonID, String vernacularName, String language, Boolean useOfflineIndex = false){
         taxonID = Encoder.escapeSolr(taxonID)
         vernacularName = Encoder.escapeSolr(vernacularName)
-        def response = indexService.query(!useOfflineIndex, "taxonGuid:\"${taxonID}\"", [ "idxtype:${ IndexDocType.COMMON.name() }", "name:\"${vernacularName}\"" ], 1, 0)
+        language = Encoder.escapeSolr(language)
+        def response = indexService.query(!useOfflineIndex, "taxonGuid:\"${taxonID}\"", [ "idxtype:${ IndexDocType.COMMON.name() }", "name:\"${vernacularName}\"", "language:\"${language}\"" ], 1, 0)
         return response.results.isEmpty() ? null : response.results.get(0)
     }
 
