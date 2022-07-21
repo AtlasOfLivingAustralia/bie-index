@@ -1,198 +1,198 @@
 ---
 
 grails:
-    profile: web
-    config:
-        locations:
-            - file:///data/bie-index/config/bie-index-config.properties
-            - file:///data/bie-index/config/bie-index-config.yml
-            - file:///data/bie-index/config/bie-index-config.groovy
-    codegen:
-        defaultPackage: au.org.ala.bie
-    spring:
-        transactionManagement:
-            proxies: false
-    gorm:
-        # Whether to autowire entities.
-        # Disabled by default for performance reasons.
-        autowire: false
-        reactor:
-            # Whether to translate GORM events into Reactor events
-            # Disabled by default for performance reasons
-            events: false
+  profile: web
+  config:
+    locations:
+      - file:///data/bie-index/config/bie-index-config.properties
+      - file:///data/bie-index/config/bie-index-config.yml
+      - file:///data/bie-index/config/bie-index-config.groovy
+  codegen:
+    defaultPackage: au.org.ala.bie
+  spring:
+    transactionManagement:
+      proxies: false
+  gorm:
+    # Whether to autowire entities.
+    # Disabled by default for performance reasons.
+    autowire: false
+    reactor:
+      # Whether to translate GORM events into Reactor events
+      # Disabled by default for performance reasons
+      events: false
 info:
-    app:
-        name: '@info.app.name@'
-        version: '@info.app.version@'
-        grailsVersion: '@info.app.grailsVersion@'
+  app:
+    name: '@info.app.name@'
+    version: '@info.app.version@'
+    grailsVersion: '@info.app.grailsVersion@'
 spring:
-    main:
-        banner-mode: "off"
-    groovy:
-        template:
-            check-template-location: false
-    jmx:
-        unique-names: true
-    devtools:
-        restart:
-            exclude:
-                - grails-app/views/**
-                - grails-app/i18n/**
-                - grails-app/conf/**
+  main:
+    banner-mode: "off"
+  groovy:
+    template:
+      check-template-location: false
+  jmx:
+    unique-names: true
+  devtools:
+    restart:
+      exclude:
+        - grails-app/views/**
+        - grails-app/i18n/**
+        - grails-app/conf/**
 
 management:
-    endpoints:
-        enabled-by-default: false
+  endpoints:
+    enabled-by-default: false
 
 ---
 grails:
-    mime:
-        disable:
-            accept:
-                header:
-                    userAgents:
-                        - Gecko
-                        - WebKit
-                        - Presto
-                        - Trident
-        types:
-            all: '*/*'
-            atom: application/atom+xml
-            css: text/css
-            csv: text/csv
-            form: application/x-www-form-urlencoded
-            html:
-                - text/html
-                - application/xhtml+xml
-            js: text/javascript
-            json:
-                - application/json
-                - text/json
-            multipartForm: multipart/form-data
-            pdf: application/pdf
-            rss: application/rss+xml
-            text: text/plain
-            hal:
-                - application/hal+json
-                - application/hal+xml
-            xml:
-                - text/xml
-                - application/xml
-    urlmapping:
-        cache:
-            maxsize: 1000
-    controllers:
-        defaultScope: singleton
-    converters:
-        encoding: UTF-8
-    views:
-        default:
-            codec: html
-        gsp:
-            encoding: UTF-8
-            htmlcodec: xml
-            codecs:
-                expression: html
-                scriptlets: html
-                taglib: none
-                staticparts: none
+  mime:
+    disable:
+      accept:
+        header:
+          userAgents:
+            - Gecko
+            - WebKit
+            - Presto
+            - Trident
+    types:
+      all: '*/*'
+      atom: application/atom+xml
+      css: text/css
+      csv: text/csv
+      form: application/x-www-form-urlencoded
+      html:
+        - text/html
+        - application/xhtml+xml
+      js: text/javascript
+      json:
+        - application/json
+        - text/json
+      multipartForm: multipart/form-data
+      pdf: application/pdf
+      rss: application/rss+xml
+      text: text/plain
+      hal:
+        - application/hal+json
+        - application/hal+xml
+      xml:
+        - text/xml
+        - application/xml
+  urlmapping:
+    cache:
+      maxsize: 1000
+  controllers:
+    defaultScope: singleton
+  converters:
+    encoding: UTF-8
+  views:
+    default:
+      codec: html
+    gsp:
+      encoding: UTF-8
+      htmlcodec: xml
+      codecs:
+        expression: html
+        scriptlets: html
+        taglib: none
+        staticparts: none
 endpoints:
-    jmx:
-        unique-names: true
+  jmx:
+    unique-names: true
 
 ---
 #Required so that the gbif-ecat library does not bugger up initialisation from its internal application.properties
 app:
-    dataDir: /tmp/gbif-ecat
+  dataDir: /tmp/gbif-ecat
 search:
-    highlight:
-        join: <br>
+  highlight:
+    join: <br>
 autocomplete:
-    legacy: false
+  legacy: false
 biocache:
-    base: https://biocache.ala.org.au
-    service: https://biocache.ala.org.au/ws
-    search: /occurrences/search
-    occurrenceCount:
-        path: /occurrences/taxaCount?guids={0}&separator={1}
-        enabled: true
-        # List of filters
-        filterQuery:
-            - geospatial_kosher:true
-    image:
-        path: /occurrences/search?q=${0}+AND+multimedia:Image&pageSize=5&facet=false
-        enabled: true
-        # List of filters
-        filterQuery:
-            - geospatial_kosher:true
+  base: https://biocache.ala.org.au
+  service: https://biocache.ala.org.au/ws
+  search: /occurrences/search
+  occurrenceCount:
+    path: /occurrences/taxaCount?guids={0}&separator={1}
+    enabled: true
+    # List of filters
+    filterQuery:
+      - geospatial_kosher:true
+  image:
+    path: /occurrences/search?q=${0}+AND+multimedia:Image&pageSize=5&facet=false
+    enabled: true
+    # List of filters
+    filterQuery:
+      - geospatial_kosher:true
 collectory:
-    base: https://collections.ala.org.au
-    service: https://collections.ala.org.au/ws
-    resources: /{0}
-    # A list of uids for the national species list datasets
-    nationalSpeciesDatsets:
-    #- dr2699 - dr2700 -dr2702 -dr2704 -dr2703 -dr3118
+  base: https://collections.ala.org.au
+  service: https://collections.ala.org.au/ws
+  resources: /{0}
+  # A list of uids for the national species list datasets
+  nationalSpeciesDatsets:
+  #- dr2699 - dr2700 -dr2702 -dr2704 -dr2703 -dr3118
 layers:
-    service: https://spatial.ala.org.au/ws
-    layers: /layers
-    layer: /layer/{0}?enabledOnly=false
-    objects: /objects/csv/cl{0}
-    gazetteerId: 2123
-    temporaryFilePattern: /tmp/objects_{0}.csv.gz
+  service: https://spatial.ala.org.au/ws
+  layers: /layers
+  layer: /layer/{0}?enabledOnly=false
+  objects: /objects/csv/cl{0}
+  gazetteerId: 2123
+  temporaryFilePattern: /tmp/objects_{0}.csv.gz
 images:
-    # URL of image configuration file
-    config: /default-image-lists.json
-    base: https://images.ala.org.au
-    service:
-        base:
-        thumbnail: https://images.ala.org.au/image/proxyImageThumbnail?imageId={0}
-        large: https://images.ala.org.au/image/proxyImage?imageId={0}
-        small: https://images.ala.org.au/image/proxyImageThumbnailLarge?imageId={0}
-        metadata: https://images.ala.org.au/ws/image/{0}
-    index: true
+  # URL of image configuration file
+  config: /default-image-lists.json
+  base: https://images.ala.org.au
+  service:
+    base:
+    thumbnail: https://images.ala.org.au/image/proxyImageThumbnail?imageId={0}
+    large: https://images.ala.org.au/image/proxyImage?imageId={0}
+    small: https://images.ala.org.au/image/proxyImageThumbnailLarge?imageId={0}
+    metadata: https://images.ala.org.au/ws/image/{0}
+  index: true
 wordPress:
-    service: https://www.ala.org.au
-    sitemap: /xmlsitemap.xml
-    index: index.xml
-    page: /?page_id={0}
-    timeout: 10000
-    validateTLS: false
-    titleSelector: head > title
-    contentSelector: body main
-    idSelector: head > meta[name=id]
-    shortLinkSelector: head > link[rel=shortlink]
-    excludedLocations:
-        - .*/category/.*
-    excludedCategories:
-        - button
-    contentOnlyParams: ?content-only=1&categories=1
+  service: https://www.ala.org.au
+  sitemap: /xmlsitemap.xml
+  index: index.xml
+  page: /?page_id={0}
+  timeout: 10000
+  validateTLS: false
+  titleSelector: head > title
+  contentSelector: body main
+  idSelector: head > meta[name=id]
+  shortLinkSelector: head > link[rel=shortlink]
+  excludedLocations:
+    - .*/category/.*
+  excludedCategories:
+    - button
+  contentOnlyParams: ?content-only=1&categories=1
 knowledgeBase:
-    service: https://support.ala.org.au
-    sitemap: /support/solutions
-    sectionSelector: section.article-list .list-lead > a
-    articleCssSelector: .article-title a.c-link
+  service: https://support.ala.org.au
+  sitemap: /support/solutions
+  sectionSelector: section.article-list .list-lead > a
+  articleCssSelector: .article-title a.c-link
 lists:
-    service: https://lists.ala.org.au/ws
-    items: /speciesListItems/{0}?includeKVP=true
+  service: https://lists.ala.org.au/ws
+  items: /speciesListItems/{0}?includeKVP=true
 # If attribution entry is null, the default is used
 naming:
-    service: https://namematching-ws.ala.org.au
+  service: https://namematching-ws.ala.org.au
 attribution:
-    default: National Species Lists
-    common:
-    identifier:
-    synonym:
+  default: National Species Lists
+  common:
+  identifier:
+  synonym:
 commonName:
-    # Acceptable vernacular names to appear in autocomplete and primary name eg en,en-AU,en-CA,en-GB,en-US (leave empty for any language)
-    languages:
-    defaultLanguage: en
+  # Acceptable vernacular names to appear in autocomplete and primary name eg en,en-AU,en-CA,en-GB,en-US (leave empty for any language)
+  languages:
+  defaultLanguage: en
 security:
-    apikey:
-        serviceUrl: 'https://auth.ala.org.au/apikey/ws/check?apikey='
-    cas:
-        appServerName: https://bie.ala.org.au/ws
-        uriFilterPattern: "/admin.*,/alaAdmin.*"
-        uriExclusionFilterPattern: "/images.*,/css.*,/js.*,.*json,/help/.*"
+  apikey:
+    serviceUrl: 'https://auth.ala.org.au/apikey/ws/check?apikey='
+  cas:
+    appServerName: https://bie.ala.org.au/ws
+    uriFilterPattern: "/admin.*,/alaAdmin.*"
+    uriExclusionFilterPattern: "/images.*,/css.*,/js.*,.*json,/help/.*"
 # Location of conservation lists
 conservationListsUrl: /default-conservation-lists.json
 # Location of vernacular name lists (null for default)
@@ -208,66 +208,66 @@ additionalResultFields: ""
 
 # SOLR additional params and connections
 solr:
-    live:
-        type: HTTP
-        connection: http://localhost:8983/solr/bie
-        queueSize: 10
-        threadCount: 4
-        timeout: 120000
-    updatingLive:
-        type: UPDATE
-        connection: http://localhost:8983/solr/bie
-        queueSize: 10
-        threadCount: 4
-        timeout: 300000
-    offline:
-        type: UPDATE
-        connection: http://localhost:8983/solr/bie-offline
-        queueSize: 10
-        threadCount: 4
-        timeout: 300000
-    search:
-        qf:
-            - exact_text
-            - text
-            - content^0.2
-        bq:
-        fq:
-            - NOT idxtype:IDENTIFIER
-            - NOT idxtype:TAXONVARIANT
-        defType: edismax
-        qAlt: text:*
-        hl:
-            hl: true
-            fl: "*"
-            simple:
-                pre: <b>
-                post: </b>
-        boost: searchWeight
-    suggest:
+  live:
+    type: HTTP
+    connection: http://localhost:8983/solr/bie
+    queueSize: 10
+    threadCount: 4
+    timeout: 120000
+  updatingLive:
+    type: UPDATE
+    connection: http://localhost:8983/solr/bie
+    queueSize: 10
+    threadCount: 4
+    timeout: 300000
+  offline:
+    type: UPDATE
+    connection: http://localhost:8983/solr/bie-offline
+    queueSize: 10
+    threadCount: 4
+    timeout: 300000
+  search:
+    qf:
+      - exact_text
+      - text
+      - content^0.2
+    bq:
+    fq:
+      - NOT idxtype:IDENTIFIER
+      - NOT idxtype:TAXONVARIANT
+    defType: edismax
+    qAlt: text:*
+    hl:
+      hl: true
+      fl: "*"
+      simple:
+        pre: <b>
+        post: </b>
+    boost: searchWeight
+  suggest:
 
 skin:
-    layout: main
-    orgNameLong: Atlas of Living Australia
-useLegacyAuto: true
+  layout: main
+  orgNameLong: Atlas of Living Australia
+useLegacyAuto: false
 import:
-    sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,suggest-index
-    taxonomy:
-        dir: /data/bie/import
-    priority:
-        norm: 4000
-        min: 0.25
-        max: 5.0
-    weightConfigUrl: /default-weights.json
-    favouritesConfigUrl: /default-favourites.json
-    vernacularName:
-        statusUrl: /default-vernacular-name-status.json
-        common: common
-        legislated: legislated
-        preferred: preferred
-        deprecated: deprecated
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,suggest-index
+  taxonomy:
+    dir: /data/bie/import
+  priority:
+    norm: 4000
+    min: 0.25
+    max: 5.0
+  weightConfigUrl: /default-weights.json
+  favouritesConfigUrl: /default-favourites.json
+  vernacularName:
+    statusUrl: /default-vernacular-name-status.json
+    common: common
+    legislated: legislated
+    preferred: preferred
+    deprecated: deprecated
 
 headerAndFooter:
-    baseURL: "https://www.ala.org.au/commonui-bs3-2019"
-    version: "2"
+  baseURL: "https://www.ala.org.au/commonui-bs3-2019"
+  version: "2"
 
