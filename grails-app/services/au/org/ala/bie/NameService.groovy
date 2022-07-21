@@ -17,7 +17,6 @@ package au.org.ala.bie
 import au.org.ala.bie.util.Encoder
 import grails.config.Config
 import grails.core.support.GrailsConfigurationAware
-import grails.transaction.Transactional
 import groovy.json.JsonSlurper
 
 class NameService implements GrailsConfigurationAware {

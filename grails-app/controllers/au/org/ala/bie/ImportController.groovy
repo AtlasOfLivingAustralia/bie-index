@@ -84,8 +84,8 @@ class ImportController {
     def importAll(){
         def job = execute(
                 "importDwca,importCollectory,deleteDanglingSynonyms,importLayers,importLocalities,importRegions,importHabitats,importHabitats," +
-                    "importWordPressPages,importOccurrences,importConsevationSpeciesLists,buildVernacularSpeciesLists,buildLinkIdentifiers" +
-                    "denormaliseTaxa,loadImages,importKnowledgeBase",
+                        "importWordPressPages,importOccurrences,importConsevationSpeciesLists,buildVernacularSpeciesLists,buildLinkIdentifiers" +
+                        "denormaliseTaxa,loadImages,importKnowledgeBase",
                 "admin.button.importall",
                 { importService.importAll() })
         asJson(job.status())
@@ -223,7 +223,7 @@ class ImportController {
 
     }
 
-     /**
+    /**
      * Import/index Conservation Species Lists
      *
      * @return

@@ -12,7 +12,7 @@
  */
 package au.org.ala.bie.util
 
-import groovy.util.logging.Log4j
+import groovy.util.logging.Slf4j
 
 import java.text.FieldPosition
 import java.text.MessageFormat
@@ -23,7 +23,7 @@ import java.text.MessageFormat
  *
  * @author "Nick dos Remedios <Nick.dosRemedios@csiro.au>"
  */
-@Log4j
+@Slf4j
 class Encoder {
     static SOLR_ESCAPE = ~/([+\-&|!(){}\[\]\^"~*?:\\])/
 

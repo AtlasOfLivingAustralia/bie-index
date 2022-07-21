@@ -1,13 +1,13 @@
 package au.org.ala.bie
 
-import grails.test.mixin.TestFor
+
+import grails.testing.services.ServiceUnitTest
 import spock.lang.Specification
 
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
  */
-@TestFor(KnowledgeBaseService)
-class KnowledgeBaseServiceSpec extends Specification {
+class KnowledgeBaseServiceSpec extends Specification implements ServiceUnitTest<KnowledgeBaseService>{
 
     static List pages = []
     static String firstPageUrl = ""

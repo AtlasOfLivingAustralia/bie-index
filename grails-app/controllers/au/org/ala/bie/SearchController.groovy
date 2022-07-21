@@ -1,9 +1,22 @@
 package au.org.ala.bie
 
+import au.ala.org.ws.security.RequireApiKey
+import au.org.ala.plugins.openapi.Path
 import grails.config.Config
 import grails.converters.JSON
 import grails.core.support.GrailsConfigurationAware
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.parameters.RequestBody
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import org.apache.solr.common.SolrException
+
+import javax.ws.rs.Produces
+
+import static io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
+import static io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY
 
 /**
  * A set of JSON based search web services.
@@ -30,6 +43,31 @@ class SearchController implements GrailsConfigurationAware {
      * @return
      */
     // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "search",
+            operationId = "Get higher classifications of a taxon",
+            summary = "Get higher classifications of taxon with the supplied GUID",
+            description = "Provides a list of higher taxa for the requested taxon. Note, this service does not currently support JSONP (use of callback param) but this is planned for a future release.",
+            parameters = [
+                    @Parameter(
+                            name = "id",
+                            in = PATH,
+                            description = "The guid of a specific taxon, data resource, layer etc. Since guids can be URLs but can also be interpolated into paths, a http:// or https:// prefix may be converted into http:/ or https:/ by the tomcat container. A supplied guid of, eg. https:/id.biodiversity.org.au/node/apni/50587232 will be converted into https://id.biodiversity.org.au/node/apni/50587232",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+    @Path("/classification/{id}")
+    @Produces("application/json")
     def classification(){
         if(!params.id){
             response.sendError(404, "Please provide a GUID")
@@ -50,7 +88,52 @@ class SearchController implements GrailsConfigurationAware {
      *
      * @return
      */
-    // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "search",
+            operationId = "Search for a taxon with images",
+            summary = "Search for a taxon with images",
+            description = "Return a list of taxa which correspond to a specific taxon id and which have images available",
+            parameters = [
+                    @Parameter(
+                            name = "id",
+                            in = PATH,
+                            description = "The guid of a specific taxon, data resource, layer etc. Since guids can be URLs but can also be interpolated into paths, a http:// or https:// prefix may be converted into http:/ or https:/ by the tomcat container. A supplied guid of, eg. https:/id.biodiversity.org.au/node/apni/50587232 will be converted into https://id.biodiversity.org.au/node/apni/50587232",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "start",
+                            in = QUERY,
+                            description = "The records offset, to enable paging",
+                            schema = @Schema(implementation = Integer),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "rows",
+                            in = QUERY,
+                            description = "The number of records to return, to enable paging",
+                            schema = @Schema(implementation = Integer),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "qc",
+                            in = QUERY,
+                            description = "Solr query context, passed on to the search engine",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    )
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+    @Path("/imagSearch/{id}")
+    @Produces("application/json")
     def imageSearch(){
         def start = params.start as Integer
         def rows = params.rows as Integer
@@ -116,7 +199,46 @@ class SearchController implements GrailsConfigurationAware {
      *
      * @return
      */
-    // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "search",
+            operationId = "Get the child concepts of a taxon",
+            summary = "Get the child concepts of a taxon with the supplied GUID",
+            description = "Return the taxon concepts that are direct children of the specified taxon",
+            parameters = [
+                    @Parameter(
+                            name = "id",
+                            in = PATH,
+                            description = "The guid of a specific taxon, data resource, layer etc. Since guids can be URLs but can also be interpolated into paths, a http:// or https:// prefix may be converted into http:/ or https:/ by the tomcat container. A supplied guid of, eg. https:/id.biodiversity.org.au/node/apni/50587232 will be converted into https://id.biodiversity.org.au/node/apni/50587232",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "within",
+                            in = QUERY,
+                            description = "Get children within this rank range",
+                            schema = @Schema(implementation = Integer, defaultValue = "200"),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "unranked",
+                            in = QUERY,
+                            description = "Include unranked children",
+                            schema = @Schema(implementation = Boolean, defaultValue = "True"),
+                            required = false
+                    ),
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+
+    @Path("/childConcepts/{id}")
+    @Produces("application/json")
     def childConcepts(){
         def taxonID = params.id
         if(!taxonID) {
@@ -131,6 +253,36 @@ class SearchController implements GrailsConfigurationAware {
     }
 
     // Documented in openapi.yml
+    /**
+     *
+     * @return
+     */
+    @Operation(
+            method = "GET",
+            tags = "search",
+            operationId = "Look up a taxon guid by name",
+            summary = "Look up a taxon guid by name",
+            description = "Return a list of taxa which correspond to a specific taxon id and which have images available",
+            parameters = [
+                    @Parameter(
+                            name = "name",
+                            in = PATH,
+                            description = "The name to search the taxon guid",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+
+    @Path("/guid/{name}")
+    @Produces("application/json")
     def guid(){
         if(params.name == 'favicon') return; //not sure why this is happening....
         if(!params.name){
@@ -163,14 +315,46 @@ class SearchController implements GrailsConfigurationAware {
         }
     }
 
-    // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "search",
+            operationId = "Bulk species lookup",
+            summary = "Batch lookup of multiple taxon names",
+            description = "Search for multiple names with individual name queries and return short profiles for each name",
+            parameters = [
+                    @Parameter(
+                            name = "q",
+                            in = QUERY,
+                            description = "Query string",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "callback",
+                            in = QUERY,
+                            description = "Name of callback function to wrap JSON output in. Provided for JSONP cross-domain requests",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    ),
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+
+    @Path("/guid/batch")
+    @Produces("application/json")
     def getSpeciesForNames() {
         def result = params.list('q').collectEntries { [(it): searchService.getProfileForName(it) ] } ?: null
         if (!result)
             respond result
         else
             asJsonP(params,result)
-     }
+    }
 
     // Documented in openapi.yml
     def bulkGuidLookup(){
@@ -191,9 +375,35 @@ class SearchController implements GrailsConfigurationAware {
      *
      * @return
      */
-    // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "search",
+            operationId = "Look up a species by guid for a taxon",
+            summary = "Look up a species by guid for the taxon",
+            description = "Return a list of of species matching the provided guid",
+            parameters = [
+                    @Parameter(
+                            name = "id",
+                            in = PATH,
+                            description = "The guid for the taxon concept",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+
+    @Path("/species/{id}")
+    @Produces("application/json")
     def taxon(){
         def guid = regularise(params.id)
+        log.warn(guid)
         def locales = [request.locale, defaultLocale]
         if(guid == 'favicon') return; //not sure why this is happening....
         if(!guid){
@@ -214,7 +424,31 @@ class SearchController implements GrailsConfigurationAware {
         }
     }
 
-    // Documented in openapi.yml
+
+    @Operation(
+            method = "POST",
+            tags = "bulk",
+            operationId = "Bulk species lookup - revised JSON input ",
+            summary = "Batch lookup of multiple taxon names",
+            description = "Retrieve taxon information for a list of vernacular or scientific names. This operation can be used to retrieve large lists of taxa. By default, the operation searches for both vernacular names and scientific names. Requires a JSON map as a post body. The JSON map must contain a \"names\" key that is the list of scientific names. json {\"names\":[\"Macropus rufus\",\"Macropus greyi\"]} This service will return a list of results. This differs from the original bulk species lookup by including a null value when a name could not be located. To allow the lookup to consider common names, include a \"vernacular\":true value in the JSON map: json {\"names\":[\"Grevillea\"],\"vernacular\":true}",
+            requestBody = @RequestBody(
+                    description = " The JSON map object the list of names",
+                    required = true,
+                    content = @Content(
+                            mediaType = 'application/json'
+                    )
+            ),
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+
+    @Path("/species/lookup/bulk")
+    @Produces("application/json")
     def speciesLookupBulk() {
         final req = request.getJSON()
         if (!req) {
@@ -238,7 +472,53 @@ class SearchController implements GrailsConfigurationAware {
      *
      * @return
      */
-    // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "bulk",
+            operationId = "Download the results of a species search",
+            summary = "Download the results of a species search",
+            description = "Search the BIE and return the taxonomic results of the search in tabular form",
+            parameters = [
+                    @Parameter(
+                            name = "q",
+                            in = QUERY,
+                            description = "Query of the form field:value e.g. q=genus:Macropus or a free text search e.g. q=Macropus",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "fq",
+                            in = QUERY,
+                            description = "Filters to be applied to the original query. These are additional params of the form fq=INDEXEDFIELD:VALUE e.g. fq=rank:kingdom. See http://bie.ala.org.au/ws/indexFields for all the fields that a queryable.",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "fields",
+                            in = QUERY,
+                            description = "A comma separated list of SOLR fields to include in the download. Fields can be included in the download if they have been stored. See index fields listing. Default fields: taxonConceptID,rank,scientificName,establishmentMeans,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "file",
+                            in = QUERY,
+                            description = "The name of the file to be downloaded. Default: 'species.csv'",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results as CSV file",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+
+    @Path("/download")
+    @Produces("text/csv")
     def download(){
         if (!params.q?.trim()) {
             response.sendError(400, "A q parameter is required")
@@ -256,7 +536,60 @@ class SearchController implements GrailsConfigurationAware {
      *
      * @return
      */
-    // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "search",
+            operationId = "Autocomplete search",
+            summary = "Autocomplete search",
+            description = "Used to provide a list of scientific and common names that can be used to automatically complete a supplied partial name.",
+            parameters = [
+                    @Parameter(
+                            name = "q",
+                            in = QUERY,
+                            description = "The value to auto complete e.g. q=Mac",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "idxType",
+                            in = QUERY,
+                            description = "The index type to limit . Values include: * TAXON * REGION * COLLECTION * INSTITUTION * DATASET",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "kingdom",
+                            in = QUERY,
+                            description = "The higher-order taxonomic rank to limit the result",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "geoOnly",
+                            in = QUERY,
+                            description = " (Not Implemented) Limit value to limit result with geospatial occurrence records",
+                            schema = @Schema(implementation = Boolean),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "limit",
+                            in = QUERY,
+                            description = "The maximum number of results to return (default = 10)",
+                            schema = @Schema(implementation = Integer),
+                            required = false
+                    )
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+
+    @Path("/search/auto{format}")
+    @Produces("application/json")
     def auto(){
         def limit = params.limit?.toInteger()
         def idxType = params.idxType
@@ -283,7 +616,74 @@ class SearchController implements GrailsConfigurationAware {
      *
      * @return
      */
-    // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "search",
+            operationId = "Search the BIE",
+            summary = "Search the BIE",
+            description = "Search the BIE by solr query  or free text search",
+            parameters = [
+                    @Parameter(
+                            name = "q",
+                            in = QUERY,
+                            description = "Primary search  query for the form field:value e.g. q=rk_genus:Macropus or freee text e.g q=Macropus",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "fq",
+                            in = QUERY,
+                            description = "Filters to be applied to the original query. These are additional params of the form fq=INDEXEDFIELD:VALUE e.g. fq=rank:kingdom. See http://bie.ala.org.au/ws/indexFields for all the fields that a queryable.",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "start",
+                            in = QUERY,
+                            description = "The records offset, to enable paging",
+                            schema = @Schema(implementation = Integer),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "pageSize",
+                            in = QUERY,
+                            description = "The number of records to return",
+                            schema = @Schema(implementation = Integer),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "sort",
+                            in = QUERY,
+                            description = "The field  on which to sort the records list",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "dir",
+                            in = QUERY,
+                            description = "Sort direction 'asc' or 'desc'",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    ),
+                    @Parameter(
+                            name = "facets",
+                            in = QUERY,
+                            description = "Comma separated list of fields to display facets for. Available fields listed http://bie.ala.org.au/ws/indexFields.",
+                            schema = @Schema(implementation = String),
+                            required = false
+                    )
+            ],
+            responses = [
+                    @ApiResponse(
+                            description = "Search results",
+                            responseCode = "200"
+                    )
+            ]
+
+    )
+
+    @Path("/search{format}")
+    @Produces("application/json")
     def search(){
         try {
             def facets = []

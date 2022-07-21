@@ -1,18 +1,6 @@
 package au.org.ala.bie
 
-import au.org.ala.bie.search.FacetResult
-import au.org.ala.bie.search.FieldResult
-import au.org.ala.bie.search.IndexedTypes
-import au.org.ala.bie.search.SearchCollectionDTO
-import au.org.ala.bie.search.SearchDTO
-import au.org.ala.bie.search.SearchDataProviderDTO
-import au.org.ala.bie.search.SearchDatasetDTO
-import au.org.ala.bie.search.SearchInstitutionDTO
-import au.org.ala.bie.search.SearchLayerDTO
-import au.org.ala.bie.search.SearchRegionDTO
-import au.org.ala.bie.search.SearchResultsDTO
-import au.org.ala.bie.search.SearchTaxonConceptDTO
-import au.org.ala.bie.search.SearchWordpressDTO
+import au.org.ala.bie.search.*
 import org.apache.commons.lang.StringUtils
 import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.SolrServerException
