@@ -132,7 +132,7 @@ class SearchController implements GrailsConfigurationAware {
             ]
 
     )
-    @Path("/imagSearch/{id}")
+    @Path("/imageSearch/{id}")
     @Produces("application/json")
     def imageSearch(){
         def start = params.start as Integer
