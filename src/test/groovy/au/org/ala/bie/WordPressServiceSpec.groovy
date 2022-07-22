@@ -50,11 +50,6 @@ class WordPressServiceSpec extends Specification implements  ServiceUnitTest<Wor
 
             count++
         }
-
-        log.info "resources is ${pages.size()} in size"
-        log.info "first page URL = ${firstPageUrl}"
-        log.info "random page URL = ${randomPageUrl}"
-        log.info "random page Map = ${randomPageMap}"
     }
 
     def cleanup() {

@@ -26,11 +26,6 @@ class KnowledgeBaseServiceSpec extends Specification implements ServiceUnitTest<
         randomNum = rand.nextInt(10)
         randomPageUrl = pages.get(randomNum)
         randomPageMap = service.getResource(randomPageUrl)
-
-        log.info "resources is ${pages.size()} in size"
-        log.info "first page URL = ${firstPageUrl}"
-        log.info "random page URL = ${randomPageUrl}"
-        log.info "random page Map = ${randomPageMap}"
     }
 
     def cleanup() {
