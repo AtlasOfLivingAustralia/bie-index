@@ -1,7 +1,7 @@
 dist: trusty
 language: groovy
 jdk:
-- oraclejdk11
+- openjdk11
 sudo: false
 branches:
   only:
@@ -25,5 +25,6 @@ after_success:
 
 env:
   global:
+  - JAVA_TOOL_OPTIONS=-Dhttps.protocols=TLSv1.2
   - secure: M5RdnCEQHqRvytpOCDWhxSw6oOZLGYODdhHkmCy+5z8zKLWYchwcCSOdGgmEGU9oeEndg1erPKXuvRlpjWHq2VnaFh2EVg8rA82LoB4PkOzqwmCevLdTL6R+ePO/ZHoZo2PoLSbGHV38RkhFI+GTa9s+4/JZjNrm45a2eJx+GaU=
   - secure: G9qlN6dGDN4RF+137R3lOAXQnTY0uhbt69TyPnaFUFlhUo/ngonaHkULCtDWujcmqkwoWh8QqybmO2XpG78cicFmzcrruQmDVqj2mi7VikDp722rLbSkop44E3xPVNAS1NAb9nyKyZlPMxmxncAA5O6TA//UPtsjIn1HrENJJ/o=

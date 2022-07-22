@@ -1,5 +1,4 @@
 ---
-
 grails:
   profile: web
   config:
@@ -15,7 +14,7 @@ grails:
   gorm:
     # Whether to autowire entities.
     # Disabled by default for performance reasons.
-    autowire: false
+    #  autowire: false
     reactor:
       # Whether to translate GORM events into Reactor events
       # Disabled by default for performance reasons
@@ -33,12 +32,12 @@ spring:
       check-template-location: false
   jmx:
     unique-names: true
-  devtools:
-    restart:
-      exclude:
-        - grails-app/views/**
-        - grails-app/i18n/**
-        - grails-app/conf/**
+    devtools:
+        restart:
+            exclude:
+                - grails-app/views/**
+                - grails-app/i18n/**
+                - grails-app/conf/**
 
 management:
   endpoints:
@@ -96,6 +95,7 @@ grails:
         scriptlets: html
         taglib: none
         staticparts: none
+  serverURL: http://localhost:8080
 endpoints:
   jmx:
     unique-names: true
@@ -187,12 +187,18 @@ commonName:
   languages:
   defaultLanguage: en
 security:
-  apikey:
-    serviceUrl: 'https://auth.ala.org.au/apikey/ws/check?apikey='
   cas:
-    appServerName: https://bie.ala.org.au/ws
-    uriFilterPattern: "/admin.*,/alaAdmin.*"
-    uriExclusionFilterPattern: "/images.*,/css.*,/js.*,.*json,/help/.*"
+    enabled: false
+  oidc:
+    enabled: true
+    discoveryUri: https://auth-test.ala.org.au/cas/oidc/.well-known
+    scope: openid,profile,email,ala,roles, user_defined
+  #        allowUnsignedIdTokens: true
+  jwt:
+    enabled: true
+    discoveryUri: https://auth-test.ala.org.au/cas/oidc/.well-known
+    fallbackToLegacyBehaviour: true
+
 # Location of conservation lists
 conservationListsUrl: /default-conservation-lists.json
 # Location of vernacular name lists (null for default)
@@ -270,4 +276,3 @@ import:
 headerAndFooter:
   baseURL: "https://www.ala.org.au/commonui-bs3-2019"
   version: "2"
-
