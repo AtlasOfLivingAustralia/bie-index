@@ -102,6 +102,7 @@ dependencies {
     testCompile "org.seleniumhq.selenium:selenium-support:3.14.0"
     testRuntime "org.seleniumhq.selenium:selenium-chrome-driver:3.14.0"
     testRuntime "org.seleniumhq.selenium:selenium-firefox-driver:3.14.0"
+    testCompile 'org.springframework:spring-messaging:5.3.22'
 
     compile 'com.github.davidmoten:rxjava-file:0.4'
     compile 'io.reactivex:rxgroovy:1.0.3'
