@@ -1,7 +1,7 @@
 package au.org.ala.bie
 
 import com.google.common.io.Resources
-import grails.test.mixin.TestFor
+import grails.testing.services.ServiceUnitTest
 import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.impl.XMLResponseParser
 import org.apache.solr.client.solrj.response.QueryResponse
@@ -10,8 +10,7 @@ import spock.lang.Specification
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
  */
-@TestFor(IndexService)
-class IndexServiceSpec extends Specification {
+class IndexServiceSpec extends Specification implements ServiceUnitTest<IndexService> {
 
     SolrClient liveSolrClient
 

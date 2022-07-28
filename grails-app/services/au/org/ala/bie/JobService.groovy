@@ -1,7 +1,6 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.util.Job
-import grails.transaction.Transactional
 
 class JobService {
     static scope = "singleton"

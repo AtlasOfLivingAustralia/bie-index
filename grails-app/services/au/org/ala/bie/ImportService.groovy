@@ -23,7 +23,6 @@ import au.org.ala.names.model.ALAParsedName
 import au.org.ala.names.model.RankType
 import au.org.ala.names.model.TaxonomicType
 import au.org.ala.vocab.ALATerm
-import grails.async.PromiseList
 import grails.config.Config
 import grails.core.support.GrailsConfigurationAware
 import groovy.json.JsonParserType
@@ -42,12 +41,8 @@ import org.gbif.dwca.io.ArchiveFile
 import org.gbif.dwca.record.Record
 import org.gbif.dwca.record.StarRecord
 import org.gbif.nameparser.PhraseNameParser
-import org.jsoup.select.Elements
 
 import java.text.SimpleDateFormat
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream
 

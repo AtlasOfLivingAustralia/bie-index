@@ -2,7 +2,7 @@ package au.org.ala.bie
 
 import au.org.ala.bie.util.ConservationListsSource
 import com.google.common.io.Resources
-import grails.test.mixin.TestFor
+import grails.testing.services.ServiceUnitTest
 import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.SolrServerException
 import org.apache.solr.client.solrj.impl.XMLResponseParser
@@ -13,8 +13,7 @@ import spock.lang.Unroll
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
  */
-@TestFor(SolrSearchService)
-class SolrSearchServiceSpec extends Specification {
+class SolrSearchServiceSpec extends Specification implements ServiceUnitTest<SolrSearchService> {
 
     SolrClient liveSolrClient
     ConservationListsSource conservationListsSource
