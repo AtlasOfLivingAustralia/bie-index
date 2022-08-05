@@ -1,7 +1,6 @@
 package au.org.ala.bie
 
-import au.org.ala.bie.search.SearchResultsDTO
-import grails.test.mixin.TestFor
+import grails.testing.web.controllers.ControllerUnitTest
 import org.grails.web.json.JSONArray
 import org.grails.web.json.JSONObject
 import spock.lang.Specification
@@ -9,8 +8,7 @@ import spock.lang.Specification
 /**
  * See the API for {@link grails.test.mixin.web.ControllerUnitTestMixin} for usage instructions
  */
-@TestFor(SearchController)
-class SearchControllerSpec extends Specification {
+class SearchControllerSpec extends Specification implements ControllerUnitTest<SearchController> {
 
     SearchService searchService
     SolrSearchService solrSearchService

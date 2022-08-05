@@ -1,11 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.search.AutoCompleteDTO
-import au.org.ala.bie.util.Encoder
 import grails.converters.JSON
-import groovy.json.JsonSlurper
-import org.apache.solr.client.solrj.response.Group
-import org.apache.solr.client.solrj.response.GroupCommand
 import org.apache.solr.client.solrj.response.Suggestion
 import org.apache.solr.client.solrj.util.ClientUtils
 

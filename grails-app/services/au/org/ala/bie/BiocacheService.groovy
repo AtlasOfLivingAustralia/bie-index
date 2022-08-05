@@ -1,9 +1,7 @@
 package au.org.ala.bie
 
-import au.org.ala.bie.search.IndexDocType
+
 import au.org.ala.bie.util.Encoder
-import grails.converters.JSON
-import grails.transaction.Transactional
 import groovy.json.JsonSlurper
 
 /**

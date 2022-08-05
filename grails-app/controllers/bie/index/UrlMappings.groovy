@@ -58,7 +58,7 @@ class UrlMappings {
 
         "/logout/logout" (controller: 'misc', action: 'logout')
 
-        "/"(view: "/index")
+        "/"(redirect: "/openapi")
         "500"(view: '/error')
     }
 }

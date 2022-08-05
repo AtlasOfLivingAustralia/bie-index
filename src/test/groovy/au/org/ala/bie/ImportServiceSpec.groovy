@@ -1,6 +1,6 @@
 package au.org.ala.bie
 
-import grails.test.mixin.TestFor
+import grails.testing.services.ServiceUnitTest
 import org.gbif.api.exception.UnparsableException
 import org.gbif.api.vocabulary.NameType
 import org.springframework.messaging.core.MessageSendingOperations
@@ -10,8 +10,8 @@ import spock.lang.Specification
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
  */
-@TestFor(ImportService)
-class ImportServiceSpec extends Specification {
+
+class ImportServiceSpec extends Specification implements ServiceUnitTest<ImportService> {
     ImportService importService
 
     def setup() {

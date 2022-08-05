@@ -13,14 +13,13 @@
 
 package au.org.ala.bie
 
-import grails.test.mixin.TestFor
+import grails.testing.services.ServiceUnitTest
 import spock.lang.Specification
 
 /**
  * See the API for {@link grails.test.mixin.services.ServiceUnitTestMixin} for usage instructions
  */
-@TestFor(WordpressService)
-class WordPressServiceSpec extends Specification {
+class WordPressServiceSpec extends Specification implements  ServiceUnitTest<WordpressService> {
 
     static List pages = []
     static String firstPageUrl = ""
@@ -51,11 +50,6 @@ class WordPressServiceSpec extends Specification {
 
             count++
         }
-
-        log.info "resources is ${pages.size()} in size"
-        log.info "first page URL = ${firstPageUrl}"
-        log.info "random page URL = ${randomPageUrl}"
-        log.info "random page Map = ${randomPageMap}"
     }
 
     def cleanup() {

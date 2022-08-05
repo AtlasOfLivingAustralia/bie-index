@@ -1,13 +1,12 @@
 package au.org.ala.bie
 
-import grails.test.mixin.TestFor
+import grails.testing.web.controllers.ControllerUnitTest
 import spock.lang.Specification
 
 /**
  * See the API for {@link grails.test.mixin.web.ControllerUnitTestMixin} for usage instructions
  */
-@TestFor(ImportController)
-class ImportControllerSpec extends Specification {
+class ImportControllerSpec extends Specification implements  ControllerUnitTest<ImportController> {
 
     def setup() {
     }

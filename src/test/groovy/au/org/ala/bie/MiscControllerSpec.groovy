@@ -1,11 +1,11 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.search.IndexFieldDTO
-import grails.test.mixin.TestFor
+
+import grails.testing.web.controllers.ControllerUnitTest
 import spock.lang.Specification
 
-@TestFor(MiscController)
-class MiscControllerSpec extends Specification {
+class MiscControllerSpec extends Specification implements ControllerUnitTest<MiscController> {
 
     IndexService indexService
 

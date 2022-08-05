@@ -1,11 +1,11 @@
 package au.org.ala.bie
 
+
 import au.org.ala.bie.indexing.RankedName
 import au.org.ala.bie.indexing.SubGroup
 import au.org.ala.bie.util.Files
 import com.google.common.io.Resources
 import groovy.json.JsonSlurper
-
 import rx.Subscription
 
 import javax.annotation.PostConstruct

@@ -5,11 +5,8 @@ import au.org.ala.bie.search.IndexFieldDTO
 import au.org.ala.bie.util.Encoder
 import grails.config.Config
 import grails.core.support.GrailsConfigurationAware
-import groovy.json.JsonSlurper
 import org.apache.solr.client.solrj.SolrQuery
-import org.apache.solr.client.solrj.SolrResponse
 import org.apache.solr.client.solrj.response.QueryResponse
-import org.apache.solr.client.solrj.response.SuggesterResponse
 import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.SolrInputDocument
 import org.apache.solr.common.params.CursorMarkParams
