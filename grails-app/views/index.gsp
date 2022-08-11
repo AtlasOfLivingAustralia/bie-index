@@ -12,6 +12,6 @@
 </head>
 
 <body>
-    Welcome to Bie Index. Please refer to <a href="/openapi"> Api Specifications</a> for usage.
+    Welcome to Bie Index. Please refer to <a href="/ws/openapi"> Api Specifications</a> for usage.
 </body>
 </html>
