@@ -18,6 +18,8 @@ import au.org.ala.plugins.openapi.Path
 import grails.converters.JSON
 import au.org.ala.web.AlaSecured
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.headers.Header
+import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 
@@ -89,23 +91,6 @@ class ImportController {
     }
 
 
-    @Operation(
-            method = "GET",
-            tags = "admin",
-            operationId = "Import all features",
-            summary = "Import all features",
-            security = [@SecurityRequirement(name = 'openIdConnect')],
-            description = "Imports all information into the BIE offline index. The definition of \"all\" depends on the configuration of the service but usually includes importing dataset descriptions, spatial layers, taxonomies, etc. and then searching for images, denormalising synonyms and the like.",
-            responses = [
-                    @ApiResponse(
-                            description = "JSON response indicating job status",
-                            responseCode = "200"
-                    )
-            ]
-
-    )
-    @Path("/admin/import/importAll")
-    @Produces("application/json")
     def importAll(){
         def job = execute(
                 "importDwca,importCollectory,deleteDanglingSynonyms,importLayers,importLocalities,importRegions,importHabitats,importHabitats," +
@@ -121,23 +106,6 @@ class ImportController {
      *
      * @return
      */
-    @Operation(
-            method = "GET",
-            tags = "admin",
-            operationId = "Import all darwin core archive",
-            summary = "Import all darwin core archive",
-            security = [@SecurityRequirement(name = 'openIdConnect')],
-            description = "Imports all the darwin core archives found in a server-configured directory into the offline index",
-            responses = [
-                    @ApiResponse(
-                            description = "JSON response indicating job status",
-                            responseCode = "200"
-                    )
-            ]
-
-    )
-    @Path("/admin/import/importAllDwCA")
-    @Produces("application/json")
     def importAllDwcA() {
         if(new File(grailsApplication.config..getProperty('import.taxonomy.dir')).exists()){
             def job = execute("importDwca", "admin.button.importalldwca", { importService.importAllDwcA() })

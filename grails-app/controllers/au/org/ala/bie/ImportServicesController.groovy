@@ -5,12 +5,14 @@ import au.org.ala.plugins.openapi.Path
 import grails.converters.JSON
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.headers.Header
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 
 import javax.ws.rs.Produces
 
+import static io.swagger.v3.oas.annotations.enums.ParameterIn.HEADER
 import static io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
 
 /**
@@ -30,12 +32,20 @@ class ImportServicesController {
             tags = "admin webservices",
             operationId = "Import all features via web service",
             summary = "Import all features via web service",
+            parameters = [
+                    @Parameter(name = "Authorization", in = HEADER, schema = @Schema(implementation = String), required = true)
+            ],
             security = [@SecurityRequirement(name = 'openIdConnect')],
             description = "Imports all information into the BIE offline index. The definition of \"all\" depends on the configuration of the service but usually includes importing dataset descriptions, spatial layers, taxonomies, etc. and then searching for images, denormalising synonyms and the like.",
             responses = [
                     @ApiResponse(
                             description = "JSON response indicating job status",
-                            responseCode = "200"
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                            ]
                     )
             ]
 
@@ -70,12 +80,18 @@ class ImportServicesController {
                         description = "The job Id",
                         schema = @Schema(implementation = String),
                         required = true
-                    )
+                    ),
+                    @Parameter(name = "Authorization", in = HEADER, schema = @Schema(implementation = String), required = true)
             ],
             responses = [
                     @ApiResponse(
                             description = "JSON response indicating job status",
-                            responseCode = "200"
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                            ]
                     )
             ]
     )
