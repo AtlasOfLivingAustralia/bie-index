@@ -12,7 +12,6 @@ buildscript {
 }
 
 version "1.8-SNAPSHOT"
-group "au.org.ala"
 
 apply plugin:"eclipse"
 apply plugin:"idea"
