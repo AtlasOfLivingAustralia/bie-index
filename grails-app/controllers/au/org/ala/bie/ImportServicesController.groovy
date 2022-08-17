@@ -18,7 +18,6 @@ import static io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
 /**
  * A controller for managing imoort via web service rather than UI
  */
-@RequireApiKey
 class ImportServicesController {
     def importService
     def jobService
@@ -50,8 +49,9 @@ class ImportServicesController {
             ]
 
     )
-    @Path("/admin/services/all")
+    @Path("/api/services/all")
     @Produces("application/json")
+    @RequireApiKey(roles = ['ROLE_ADMIN'])
     def all() {
         def job = execute(
                 "importDwca,importCollectory,deleteDanglingSynonyms,importLayers,importLocalities,importRegions,importHabitats,importHabitats," +
@@ -95,8 +95,9 @@ class ImportServicesController {
                     )
             ]
     )
-    @Path("/admin/services/status/{id}")
+    @Path("/api/services/status/{id}")
     @Produces("application/json")
+    @RequireApiKey(roles = ['ROLE_ADMIN'])
     def status() {
         def id = params.id
         def status = jobService.get(id)?.status() ?: notFoundStatus(id)

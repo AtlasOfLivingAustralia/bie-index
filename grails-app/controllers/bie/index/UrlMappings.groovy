@@ -45,7 +45,7 @@ class UrlMappings {
 
         "/admin/import/$action?/$id?(.$format)?"(controller: "import")
 
-        "/admin/services/$action/$id?"(controller: "importServices")
+        "/api/services/$action/$id?"(controller: "importServices")
 
         "/admin/job(.$format)?"(controller: "job", action: "index")
         "/admin/job/$id(.$format)?"(controller: "job", action: "status")
