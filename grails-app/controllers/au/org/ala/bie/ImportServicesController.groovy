@@ -76,6 +76,7 @@ class ImportServicesController {
                         in = PATH,
                         description = "The job Id",
                         schema = @Schema(implementation = String),
+                        example = "40eafb24-5fde-11ed-9b6a-0242ac120002",
                         required = true
                     )
             ],
