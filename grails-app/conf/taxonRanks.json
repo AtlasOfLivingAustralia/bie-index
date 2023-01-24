@@ -21,6 +21,14 @@
     },
     {
         "branch": null,
+        "notes": "The basal rank is called ‘realm’ in virus taxonomy, rather than ‘domain’ (as in other taxonomies), reflecting a complex interrelation between virus taxonomy and its counterparts for cellular organisms.  https://www.nature.com/articles/s41564-020-0709-x",
+        "otherNames": [],
+        "rank": "realm",
+        "rankGroup": "kingdom",
+        "rankID": 900
+    },
+    {
+        "branch": null,
         "notes": null,
         "otherNames": [
             "regnum"
@@ -66,9 +74,41 @@
             "subdivision (botany)",
             "subphylum"
         ],
-        "rank": "subplylum",
+        "rank": "subphylum",
         "rankGroup": "phylum",
         "rankID": 2200
+    },
+	{
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "infraphylum",
+        "rankGroup": "phylum",
+        "rankID": 2300
+    },
+	{
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "parvphylum",
+        "rankGroup": "phylum",
+        "rankID": 2400
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "gigaclass",
+        "rankGroup": "class",
+        "rankID": 2600
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "megaclass",
+        "rankGroup": "class",
+        "rankID": 2700
     },
     {
         "branch": null,
@@ -117,6 +157,14 @@
         "rank": "subinfraclass",
         "rankGroup": "class",
         "rankID": 3370
+    },
+    {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "subterclass",
+        "rankGroup": "class",
+        "rankID": 3380
     },
     {
         "branch": "zoology",
@@ -221,6 +269,14 @@
         "rankID": 4400
     },
     {
+        "branch": null,
+        "notes": null,
+        "otherNames": [],
+        "rank": "nanorder",
+        "rankGroup": "order",
+        "rankID": 4410
+    },
+    {
         "branch": "zoology",
         "notes": null,
         "otherNames": [
@@ -261,7 +317,7 @@
         "rankID": 4465
     },
     {
-        "branch": "zoology",
+        "branch": "zooology",
         "notes": null,
         "otherNames": [
             "section"
@@ -291,6 +347,13 @@
         "rankID": 4500
     },
     {
+        "branch": null,
+        "notes": "See https://en.wiktionary.org/wiki/epifamily",
+        "otherNames": [],
+        "rank": "epifamily",
+        "rankGroup": "family",
+        "rankID": 4750
+    },{
         "branch": null,
         "notes": null,
         "otherNames": [
