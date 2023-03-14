@@ -9,11 +9,13 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.headers.Header
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import org.apache.solr.common.SolrException
 
+import javax.ws.rs.Path
 import javax.ws.rs.Produces
 
 import static io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
@@ -382,7 +384,44 @@ class SearchController implements GrailsConfigurationAware {
             asJsonP(params,result)
     }
 
-    // Documented in openapi.yml
+
+    @Operation(
+            method = "POST",
+            tags = "bulk",
+            operationId = "Bulk species lookup -  with GUID ",
+            summary = "Bulk retrieval of species by identifier(s)",
+            description = "Retrieve taxon information for a list of identifiers. This operation can be used to retrieve large lists of taxa",
+            requestBody = @RequestBody(
+                    description = " The JSON map object the list of GUIDS",
+                    required = true,
+                    content = [
+                            @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = Object),
+                                    examples = [
+                                            @ExampleObject(
+                                                    value = "[\"https://id.biodiversity.org.au/taxon/apni/51311261\",\"https://id.biodiversity.org.au/taxon/apni/51370813\"]"
+                                            )
+                                    ]
+                            )
+                    ]
+            ),
+            responses = [
+                    @ApiResponse(
+                            description = "List of species info",
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                            ]
+                    )
+            ]
+
+    )
+
+    @Path("/species/guids/bulklookup")
+    @Produces("application/json")
     def bulkGuidLookup(){
         def guidList = request.JSON
         if(!(guidList in List) || guidList == null){
