@@ -673,7 +673,7 @@ class SearchController implements GrailsConfigurationAware {
 
     )
 
-    @Path("/search/auto{format}")
+    @Path("/search/auto")
     @Produces("application/json")
     def auto(){
         def limit = params.limit?.toInteger()
