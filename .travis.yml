@@ -8,7 +8,7 @@ branches:
   - develop
   - hotfix
   - 1.4.2.1
-  - feature/oidcIntegration2
+  - feature/grails5
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
