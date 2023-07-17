@@ -31,9 +31,6 @@ class ImportServicesController {
             tags = "admin webservices",
             operationId = "Import all features via web service",
             summary = "Import all features via web service",
-            parameters = [
-                    @Parameter(name = "Authorization", in = HEADER, schema = @Schema(implementation = String), required = true)
-            ],
             security = [@SecurityRequirement(name = 'openIdConnect')],
             description = "Imports all information into the BIE offline index. The definition of \"all\" depends on the configuration of the service but usually includes importing dataset descriptions, spatial layers, taxonomies, etc. and then searching for images, denormalising synonyms and the like.",
             responses = [
@@ -79,9 +76,9 @@ class ImportServicesController {
                         in = PATH,
                         description = "The job Id",
                         schema = @Schema(implementation = String),
+                        example = "40eafb24-5fde-11ed-9b6a-0242ac120002",
                         required = true
-                    ),
-                    @Parameter(name = "Authorization", in = HEADER, schema = @Schema(implementation = String), required = true)
+                    )
             ],
             responses = [
                     @ApiResponse(

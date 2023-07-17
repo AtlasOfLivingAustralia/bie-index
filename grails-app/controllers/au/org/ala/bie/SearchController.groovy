@@ -1,7 +1,5 @@
 package au.org.ala.bie
 
-import au.ala.org.ws.security.RequireApiKey
-import au.org.ala.plugins.openapi.Path
 import grails.config.Config
 import grails.converters.JSON
 import grails.core.support.GrailsConfigurationAware
@@ -48,7 +46,7 @@ class SearchController implements GrailsConfigurationAware {
     // Documented in openapi.yml
     @Operation(
             method = "GET",
-            tags = "search",
+            tags = "Search",
             operationId = "Get higher classifications of a taxon",
             summary = "Get higher classifications of taxon with the supplied GUID",
             description = "Provides a list of higher taxa for the requested taxon. Note, this service does not currently support JSONP (use of callback param) but this is planned for a future release.",
@@ -58,6 +56,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = PATH,
                             description = "The guid of a specific taxon, data resource, layer etc. Since guids can be URLs but can also be interpolated into paths, a http:// or https:// prefix may be converted into http:/ or https:/ by the tomcat container. A supplied guid of, eg. https:/id.biodiversity.org.au/node/apni/50587232 will be converted into https://id.biodiversity.org.au/node/apni/50587232",
                             schema = @Schema(implementation = String),
+                            example = "https://id.biodiversity.org.au/node/apni/2905748",
                             required = true
                     ),
             ],
@@ -98,7 +97,7 @@ class SearchController implements GrailsConfigurationAware {
      */
     @Operation(
             method = "GET",
-            tags = "search",
+            tags = "Search",
             operationId = "Search for a taxon with images",
             summary = "Search for a taxon with images",
             description = "Return a list of taxa which correspond to a specific taxon id and which have images available",
@@ -108,6 +107,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = PATH,
                             description = "The guid of a specific taxon, data resource, layer etc. Since guids can be URLs but can also be interpolated into paths, a http:// or https:// prefix may be converted into http:/ or https:/ by the tomcat container. A supplied guid of, eg. https:/id.biodiversity.org.au/node/apni/50587232 will be converted into https://id.biodiversity.org.au/node/apni/50587232",
                             schema = @Schema(implementation = String),
+                            example = "https://id.biodiversity.org.au/node/apni/2905748",
                             required = true
                     ),
                     @Parameter(
@@ -115,6 +115,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The records offset, to enable paging",
                             schema = @Schema(implementation = Integer),
+                            example = "1",
                             required = false
                     ),
                     @Parameter(
@@ -122,6 +123,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The number of records to return, to enable paging",
                             schema = @Schema(implementation = Integer),
+                            example = "5",
                             required = false
                     ),
                     @Parameter(
@@ -129,6 +131,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "Solr query context, passed on to the search engine",
                             schema = @Schema(implementation = String),
+                            example = "",
                             required = false
                     )
             ],
@@ -214,7 +217,7 @@ class SearchController implements GrailsConfigurationAware {
      */
     @Operation(
             method = "GET",
-            tags = "search",
+            tags = "Search",
             operationId = "Get the child concepts of a taxon",
             summary = "Get the child concepts of a taxon with the supplied GUID",
             description = "Return the taxon concepts that are direct children of the specified taxon",
@@ -224,6 +227,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = PATH,
                             description = "The guid of a specific taxon, data resource, layer etc. Since guids can be URLs but can also be interpolated into paths, a http:// or https:// prefix may be converted into http:/ or https:/ by the tomcat container. A supplied guid of, eg. https:/id.biodiversity.org.au/node/apni/50587232 will be converted into https://id.biodiversity.org.au/node/apni/50587232",
                             schema = @Schema(implementation = String),
+                            example  = "https://id.biodiversity.org.au/node/apni/2905748",
                             required = true
                     ),
                     @Parameter(
@@ -277,7 +281,7 @@ class SearchController implements GrailsConfigurationAware {
      */
     @Operation(
             method = "GET",
-            tags = "search",
+            tags = "Search",
             operationId = "Look up a taxon guid by name",
             summary = "Look up a taxon guid by name",
             description = "Return a list of taxa which correspond to a specific taxon id and which have images available",
@@ -287,6 +291,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = PATH,
                             description = "The name to search the taxon guid",
                             schema = @Schema(implementation = String),
+                            example = "kangaroo",
                             required = true
                     ),
             ],
@@ -340,7 +345,7 @@ class SearchController implements GrailsConfigurationAware {
 
     @Operation(
             method = "GET",
-            tags = "search",
+            tags = "Search",
             operationId = "Bulk species lookup",
             summary = "Batch lookup of multiple taxon names",
             description = "Search for multiple names with individual name queries and return short profiles for each name",
@@ -350,6 +355,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "Query string",
                             schema = @Schema(implementation = String),
+                            example = "kangaroo",
                             required = true
                     ),
                     @Parameter(
@@ -357,6 +363,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "Name of callback function to wrap JSON output in. Provided for JSONP cross-domain requests",
                             schema = @Schema(implementation = String),
+                            example = "handleResponse",
                             required = false
                     ),
             ],
@@ -442,7 +449,7 @@ class SearchController implements GrailsConfigurationAware {
      */
     @Operation(
             method = "GET",
-            tags = "search",
+            tags = "Search",
             operationId = "Look up a species by guid for a taxon",
             summary = "Look up a species by guid for the taxon",
             description = "Return a list of of species matching the provided guid",
@@ -452,6 +459,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = PATH,
                             description = "The guid for the taxon concept",
                             schema = @Schema(implementation = String),
+                            example  = "https://id.biodiversity.org.au/node/apni/2905748",
                             required = true
                     ),
             ],
@@ -504,9 +512,17 @@ class SearchController implements GrailsConfigurationAware {
             requestBody = @RequestBody(
                     description = " The JSON map object the list of names",
                     required = true,
-                    content = @Content(
-                            mediaType = 'application/json'
-                    )
+                    content = [
+                            @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = Object),
+                                    examples = [
+                                            @ExampleObject(
+                                                    value = "{\"names\":[\"Grevillea\"],\"vernacular\":true}"
+                                            )
+                                    ]
+                            )
+                    ]
             ),
             responses = [
                     @ApiResponse(
@@ -618,7 +634,7 @@ class SearchController implements GrailsConfigurationAware {
      */
     @Operation(
             method = "GET",
-            tags = "search",
+            tags = "Search",
             operationId = "Autocomplete search",
             summary = "Autocomplete search",
             description = "Used to provide a list of scientific and common names that can be used to automatically complete a supplied partial name.",
@@ -628,6 +644,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The value to auto complete e.g. q=Mac",
                             schema = @Schema(implementation = String),
+                            example = "Mac",
                             required = true
                     ),
                     @Parameter(
@@ -635,6 +652,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The index type to limit . Values include: * TAXON * REGION * COLLECTION * INSTITUTION * DATASET",
                             schema = @Schema(implementation = String),
+                            example = "TAXON",
                             required = false
                     ),
                     @Parameter(
@@ -642,6 +660,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The higher-order taxonomic rank to limit the result",
                             schema = @Schema(implementation = String),
+                            example = "plantae",
                             required = false
                     ),
                     @Parameter(
@@ -649,6 +668,8 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = " (Not Implemented) Limit value to limit result with geospatial occurrence records",
                             schema = @Schema(implementation = Boolean),
+                            example = "false",
+                            hidden = true,
                             required = false
                     ),
                     @Parameter(
@@ -656,6 +677,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The maximum number of results to return (default = 10)",
                             schema = @Schema(implementation = Integer),
+                            example = "10",
                             required = false
                     )
             ],
@@ -672,7 +694,6 @@ class SearchController implements GrailsConfigurationAware {
             ]
 
     )
-
     @Path("/search/auto")
     @Produces("application/json")
     def auto(){
@@ -703,7 +724,7 @@ class SearchController implements GrailsConfigurationAware {
      */
     @Operation(
             method = "GET",
-            tags = "search",
+            tags = "Search",
             operationId = "Search the BIE",
             summary = "Search the BIE",
             description = "Search the BIE by solr query  or free text search",
@@ -711,15 +732,17 @@ class SearchController implements GrailsConfigurationAware {
                     @Parameter(
                             name = "q",
                             in = QUERY,
-                            description = "Primary search  query for the form field:value e.g. q=rk_genus:Macropus or freee text e.g q=Macropus",
+                            description = "Primary search  query for the form field:value e.g. q=rk_genus:Macropus or freee text e.g q=gum",
                             schema = @Schema(implementation = String),
+                            example = "gum",
                             required = true
                     ),
                     @Parameter(
                             name = "fq",
                             in = QUERY,
-                            description = "Filters to be applied to the original query. These are additional params of the form fq=INDEXEDFIELD:VALUE e.g. fq=rank:kingdom. See http://bie.ala.org.au/ws/indexFields for all the fields that a queryable.",
+                            description = "Filters to be applied to the original query. These are additional params of the form fq=INDEXEDFIELD:VALUE  See http://bie.ala.org.au/ws/indexFields for all the fields that a queryable.",
                             schema = @Schema(implementation = String),
+                            example = "imageAvailable:\"true\"",
                             required = false
                     ),
                     @Parameter(
@@ -727,6 +750,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The records offset, to enable paging",
                             schema = @Schema(implementation = Integer),
+                            example = "0",
                             required = false
                     ),
                     @Parameter(
@@ -734,13 +758,15 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The number of records to return",
                             schema = @Schema(implementation = Integer),
+                            example = "5",
                             required = false
                     ),
                     @Parameter(
                             name = "sort",
                             in = QUERY,
-                            description = "The field  on which to sort the records list",
+                            description = "The field to sort the records by: i.e.  -  acceptedConceptName, score, scientificName, commonNameSingle, rank",
                             schema = @Schema(implementation = String),
+                            example = "commonNameSingle",
                             required = false
                     ),
                     @Parameter(
@@ -748,6 +774,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "Sort direction 'asc' or 'desc'",
                             schema = @Schema(implementation = String),
+                            example = "desc",
                             required = false
                     ),
                     @Parameter(
@@ -755,6 +782,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "Comma separated list of fields to display facets for. Available fields listed http://bie.ala.org.au/ws/indexFields.",
                             schema = @Schema(implementation = String),
+                            example = "datasetName,commonNameExact",
                             required = false
                     )
             ],
@@ -772,7 +800,7 @@ class SearchController implements GrailsConfigurationAware {
 
     )
 
-    @Path("/search{format}")
+    @Path("/search")
     @Produces("application/json")
     def search(){
         try {
