@@ -1,14 +1,11 @@
 package au.org.ala.bie
 
-import au.ala.org.ws.security.RequireApiKey
-import au.org.ala.plugins.openapi.Path
 import grails.config.Config
 import grails.converters.JSON
 import grails.core.support.GrailsConfigurationAware
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.headers.Header
-import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.media.Schema
@@ -16,6 +13,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import org.apache.solr.common.SolrException
 
+import javax.ws.rs.Path
 import javax.ws.rs.Produces
 
 import static io.swagger.v3.oas.annotations.enums.ParameterIn.PATH
@@ -393,7 +391,44 @@ class SearchController implements GrailsConfigurationAware {
             asJsonP(params,result)
     }
 
-    // Documented in openapi.yml
+
+    @Operation(
+            method = "POST",
+            tags = "bulk",
+            operationId = "Bulk species lookup -  with GUID ",
+            summary = "Bulk retrieval of species by identifier(s)",
+            description = "Retrieve taxon information for a list of identifiers. This operation can be used to retrieve large lists of taxa",
+            requestBody = @RequestBody(
+                    description = " The JSON map object the list of GUIDS",
+                    required = true,
+                    content = [
+                            @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = Object),
+                                    examples = [
+                                            @ExampleObject(
+                                                    value = "[\"https://id.biodiversity.org.au/taxon/apni/51311261\",\"https://id.biodiversity.org.au/taxon/apni/51370813\"]"
+                                            )
+                                    ]
+                            )
+                    ]
+            ),
+            responses = [
+                    @ApiResponse(
+                            description = "List of species info",
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                            ]
+                    )
+            ]
+
+    )
+
+    @Path("/species/guids/bulklookup")
+    @Produces("application/json")
     def bulkGuidLookup(){
         def guidList = request.JSON
         if(!(guidList in List) || guidList == null){
@@ -538,17 +573,15 @@ class SearchController implements GrailsConfigurationAware {
                     @Parameter(
                             name = "q",
                             in = QUERY,
-                            description = "Query of the form field:value e.g. q=genus:Macropus or a free text search e.g. q=gum",
+                            description = "Query of the form field:value e.g. q=genus:Macropus or a free text search e.g. q=Macropus",
                             schema = @Schema(implementation = String),
-                            example = "gum",
                             required = true
                     ),
                     @Parameter(
                             name = "fq",
                             in = QUERY,
-                            description = "Filters to be applied to the original query. These are additional params of the form fq=INDEXEDFIELD:VALUE. See http://bie.ala.org.au/ws/indexFields for all the fields that a queryable.",
+                            description = "Filters to be applied to the original query. These are additional params of the form fq=INDEXEDFIELD:VALUE e.g. fq=rank:kingdom. See http://bie.ala.org.au/ws/indexFields for all the fields that a queryable.",
                             schema = @Schema(implementation = String),
-                            example = "imageAvailable:\"true\"",
                             required = false
                     ),
                     @Parameter(
@@ -556,7 +589,6 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "A comma separated list of SOLR fields to include in the download. Fields can be included in the download if they have been stored. See index fields listing. Default fields: taxonConceptID,rank,scientificName,establishmentMeans,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName",
                             schema = @Schema(implementation = String),
-                            example = "taxonConceptID,rank,scientificName,establishmentMeans,rk_genus,rk_family,rk_order",
                             required = true
                     ),
                     @Parameter(
@@ -564,7 +596,6 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "The name of the file to be downloaded. Default: 'species.csv'",
                             schema = @Schema(implementation = String),
-                            example = "exmaple_species.csv",
                             required = true
                     ),
             ],
