@@ -97,7 +97,7 @@ class SearchControllerSpec extends Specification implements ControllerUnitTest<S
 //                return new SearchResultsDTO(totalRecords: result.size(), searchResults: [result[guid]])
 //        }
         names.size() * searchService.getLongProfileForName(_, _) >> {
-            String name, boolean vernacular ->
+            String name, boolean includeVernacular ->
                 return [totalRecords: result.size(), searchResults: [result[name]]]
         }
 
