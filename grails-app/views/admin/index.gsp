@@ -24,5 +24,30 @@
         <li><g:link controller="alaAdmin" action="index"><g:message code="admin.ala.label"/></g:link> <g:message code="admin.ala.lead"/></li>
     </ul>
 </div>
+
+<div>
+    <table class="table-bordered table">
+        <thead>
+        <tr>
+            <th>Index</th>
+            <th>Documents</th>
+            <th>Version</th>
+            <th>Path</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>bie</td><td>${info.response.status.bie.index.numDocs}</td><td>${info.response.status.bie.index.version}</td><td>${info.response.status.bie.instanceDir}</td>
+        </tr>
+        <tr>
+            <td>bie-offline</td><td>${info.response.status['bie-offline'].index.numDocs}</td><td>${info.response.status['bie-offline'].index.version}</td><td>${info.response.status['bie-offline'].instanceDir}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<div>
+    <button id="start-import-swap" onclick="javascript:loadInfo('${createLink(controller:'import', action:'swap')}')" class="btn btn-primary import-button"><g:message code="admin.button.swap"/></button>
+</div>
+
 </body>
 </html>

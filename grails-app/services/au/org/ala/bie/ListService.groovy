@@ -2,12 +2,14 @@ package au.org.ala.bie
 
 import au.org.ala.bie.util.Encoder
 import groovy.json.JsonSlurper
+import org.apache.http.entity.ContentType
 
 /**
  * Interface to the list servers
  */
 class ListService {
     def grailsApplication
+    def webService
 
     /**
      * Get the contents of a list
@@ -43,5 +45,18 @@ class ListService {
             }
             result
         }
+    }
+
+    def add(listDr, name, guid, extraField, extraValue) {
+        def url = new URL(grailsApplication.config.lists.service + grailsApplication.config.lists.add)
+        def data = [druid: listDr, guid: guid, rawScientificName: name]
+        data[extraField] = extraValue
+        webService.get(url.toString(), data, ContentType.APPLICATION_JSON, true, false, [:])
+    }
+
+    def remove(listDr, guid) {
+        def url = new URL(grailsApplication.config.lists.service + grailsApplication.config.lists.remove)
+
+        webService.get(url.toString(), [druid: listDr, guid: guid], ContentType.APPLICATION_JSON, true, false, [:])
     }
 }

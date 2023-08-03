@@ -38,7 +38,10 @@
     </div>
 
     <div>
-        <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importOccurrences')}')" class="btn btn-primary import-button"><g:message code="admin.button.loadoccurrence"/></button>
+        <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importOccurrences')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.loadoccurrence"/></button>
+    </div>
+    <div>
+        <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 
     <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>

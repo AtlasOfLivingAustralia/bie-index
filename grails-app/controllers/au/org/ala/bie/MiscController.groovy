@@ -1,15 +1,27 @@
 package au.org.ala.bie
 
+import au.ala.org.ws.security.RequireApiKey
+import au.org.ala.plugins.openapi.Path
 import grails.converters.JSON
 import grails.converters.XML
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.headers.Header
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import org.apache.http.HttpStatus
+
+import javax.ws.rs.Produces
 
 import static grails.web.http.HttpHeaders.CONTENT_DISPOSITION
 import static grails.web.http.HttpHeaders.LAST_MODIFIED
+import static io.swagger.v3.oas.annotations.enums.ParameterIn.HEADER
+import static io.swagger.v3.oas.annotations.enums.ParameterIn.QUERY
 
 class MiscController {
 
-    def speciesGroupService, indexService, bieAuthService, importService
+    def speciesGroupService, indexService, bieAuthService, importService, imageService, wikiUrlService
 
     def speciesGroups() {
         try {
@@ -82,5 +94,108 @@ class MiscController {
         model as JSON
     }
 
+    @Operation(
+            method = "GET",
+            tags = "admin webservices",
+            operationId = "setImages",
+            summary = "Set the preferred and hidden images for a taxon",
+            security = [@SecurityRequirement(name = 'openIdConnect')],
+            parameters= [
+                    @Parameter(
+                            name = "name",
+                            in = QUERY,
+                            description = "Scientific Name",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "guid",
+                            in = QUERY,
+                            description = "Taxon ID",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "prefer",
+                            in = QUERY,
+                            description = "Comma delimited preferred Image IDs",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "hide",
+                            in = QUERY,
+                            description = "Comma delimited hidden Image IDs",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(name = "Authorization", in = HEADER, schema = @Schema(implementation = String), required = true)
+            ],
+            responses = [
+                    @ApiResponse(
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                            ]
+                    )
+            ]
+    )
+    @Path("/api/setImages")
+    @Produces("application/json")
+    @RequireApiKey
+    def setImages() {
+        imageService.prefer(params.name, params.guid, params.prefer)
+        imageService.hide(params.name, params.guid, params.hide)
+    }
 
+
+    @Operation(
+            method = "GET",
+            tags = "admin webservices",
+            operationId = "setWikiUrl",
+            summary = "Set the preferred wiki URL for a taxon",
+            security = [@SecurityRequirement(name = 'openIdConnect')],
+            parameters= [
+                    @Parameter(
+                            name = "name",
+                            in = QUERY,
+                            description = "Scientific Name",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "guid",
+                            in = QUERY,
+                            description = "Taxon ID",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(
+                            name = "url",
+                            in = QUERY,
+                            description = "URL",
+                            schema = @Schema(implementation = String),
+                            required = true
+                    ),
+                    @Parameter(name = "Authorization", in = HEADER, schema = @Schema(implementation = String), required = true)
+            ],
+            responses = [
+                    @ApiResponse(
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                            ]
+                    )
+            ]
+    )
+    @Path("/api/setUrl")
+    @Produces("application/json")
+    @RequireApiKey
+    def setWikiUrl() {
+        wikiUrlService.add(params.name, params.guid, params.url)
+    }
 }
