@@ -48,6 +48,9 @@
 <div>
     <button id="start-import-swap" onclick="javascript:loadInfo('${createLink(controller:'import', action:'swap')}')" class="btn btn-primary import-button"><g:message code="admin.button.swap"/></button>
 </div>
+<div>
+    <g:render template="../import/status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
+</div>
 
 </body>
 </html>

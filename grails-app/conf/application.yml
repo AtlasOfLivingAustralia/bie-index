@@ -274,8 +274,8 @@ skin:
 useLegacyAuto: false
 import:
   sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,swap
-  sequenceDaily: conservation-lists,wordpress,knowledgebase,favourites,images,occurrences,hidden-images,wiki-urls,suggest-index,swap
-  sequenceWeekly: layers,regions,localities,suggest-index,swap
+  sequenceDaily: conservation-lists,wordpress,knowledgebase,favourites,suggest-index,swap
+  sequenceWeekly: images,hidden-images,wiki-urls,occurrences,layers,regions,localities,suggest-index,swap
   # run daily sequence on this hour
   dailyRunHour: 2
   # run weekly sequence on this day (6 == Saturday)

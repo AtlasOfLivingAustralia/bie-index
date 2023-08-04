@@ -55,7 +55,7 @@ class ImportServicesController {
                         "importWordPressPages,importOccurrences,importConsevationSpeciesLists,buildVernacularSpeciesLists,buildLinkIdentifiers" +
                         "denormaliseTaxa,loadImages,",
                 "admin.button.importall",
-                { importService.importAll() })
+                { importService.importAll(importService.importSequence, false) })
         asJson(job.status())
     }
 

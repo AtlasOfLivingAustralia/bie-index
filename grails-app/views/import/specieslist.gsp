@@ -44,6 +44,12 @@
         <button id="start-vernacular-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importVernacularSpeciesLists')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importlistvernacular"/></button>
     </div>
     <div>
+        <button id="start-hidden-images-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importHiddenImages')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importlisthiddenimages"/></button>
+    </div>
+    <div>
+        <button id="start-wiki-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importWikiUrls')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importlistwiki"/></button>
+    </div>
+    <div>
         <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 

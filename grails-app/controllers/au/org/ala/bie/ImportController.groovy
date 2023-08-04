@@ -273,6 +273,19 @@ class ImportController {
 
     }
 
+    def importWikiUrls(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("buildWikiUrls", "admin.button.importlistwiki", { importService.loadWikiUrls(online) })
+        asJson (job.status())
+    }
+
+    def importHiddenImages(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("buildHiddenImages", "admin.button.importlisthiddenimages", { importService.loadHiddenImages(online) })
+        asJson (job.status())
+
+    }
+
     // Documented in openapi.yml
     def buildLinkIdentifiers() {
         def online = params.getBoolean('online', false)
