@@ -10,7 +10,7 @@ class WikiUrlService {
         def wikiLists = importService.getWikiUrlLists()
 
         // add to lists
-        listService.add(wikiLists[0].uid, name, guid, 'url', url)
+        listService.add(wikiLists[0].uid, name, guid, wikiLists[0].wikiUrl, url)
 
         def obj = [taxonID: guid, name: '', url: url]
         def map = [:]
