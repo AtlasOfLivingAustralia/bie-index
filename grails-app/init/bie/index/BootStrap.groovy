@@ -25,7 +25,7 @@ class BootStrap {
         threadPoolTaskScheduler.scheduleAtFixedRate(new Runnable() {
             @Override
             void run() {
-                importService.importAll(importService.importWeeklySequence)
+                importService.importAll(importService.importWeeklySequence, false)
             }
         }, weeklyStart, 7*24*60*60*1000)
 
@@ -37,7 +37,7 @@ class BootStrap {
         threadPoolTaskScheduler.scheduleAtFixedRate(new Runnable() {
             @Override
             void run() {
-                importService.importAll(importService.importDailySequence)
+                importService.importAll(importService.importDailySequence, false)
             }
         }, dailyStart, 24*60*60*1000)
     }
