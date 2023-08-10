@@ -49,9 +49,10 @@ class ListService {
 
     def add(listDr, name, guid, extraField, extraValue) {
         def url = new URL(grailsApplication.config.lists.service + grailsApplication.config.lists.add)
-        def data = [druid: listDr, guid: guid, rawScientificName: name]
-        data[extraField] = extraValue
-        webService.get(url.toString(), data, ContentType.APPLICATION_JSON, true, false, [:])
+        def query = [druid: listDr]
+        def body = [guid: guid, rawScientificName: name]
+        body[extraField] = extraValue
+        webService.post(url.toString(), body, query, ContentType.APPLICATION_JSON, true, false, [:])
     }
 
     def remove(listDr, guid) {

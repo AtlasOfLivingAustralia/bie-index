@@ -17,29 +17,31 @@ class BootStrap {
                 "classpath:messages"
         )
 
-        Date weeklyStart = new Date(hours: Integer.parseInt(Holders.config.import.dailyRunHour as String))
-        while(weeklyStart.day != Integer.parseInt(Holders.config.import.weeklyRunDay as String) || weeklyStart.before(new Date())) {
-            weeklyStart = DateUtils.addDays(weeklyStart, 1)
-        }
-
-        threadPoolTaskScheduler.scheduleAtFixedRate(new Runnable() {
-            @Override
-            void run() {
-                importService.importAll(importService.importWeeklySequence, false)
+        if (Holders.config.import.enableTasks) {
+            Date weeklyStart = new Date(hours: Integer.parseInt(Holders.config.import.dailyRunHour as String))
+            while (weeklyStart.day != Integer.parseInt(Holders.config.import.weeklyRunDay as String) || weeklyStart.before(new Date())) {
+                weeklyStart = DateUtils.addDays(weeklyStart, 1)
             }
-        }, weeklyStart, 7*24*60*60*1000)
 
-        Date dailyStart = new Date(hours: Integer.parseInt(Holders.config.import.dailyRunHour as String))
-        while(dailyStart.before(new Date())) {
-            dailyStart = DateUtils.addDays(dailyStart, 1)
-        }
+            threadPoolTaskScheduler.scheduleAtFixedRate(new Runnable() {
+                @Override
+                void run() {
+                    importService.importAll(importService.importWeeklySequence, false)
+                }
+            }, weeklyStart, 7 * 24 * 60 * 60 * 1000)
 
-        threadPoolTaskScheduler.scheduleAtFixedRate(new Runnable() {
-            @Override
-            void run() {
-                importService.importAll(importService.importDailySequence, false)
+            Date dailyStart = new Date(hours: Integer.parseInt(Holders.config.import.dailyRunHour as String))
+            while (dailyStart.before(new Date())) {
+                dailyStart = DateUtils.addDays(dailyStart, 1)
             }
-        }, dailyStart, 24*60*60*1000)
+
+            threadPoolTaskScheduler.scheduleAtFixedRate(new Runnable() {
+                @Override
+                void run() {
+                    importService.importAll(importService.importDailySequence, false)
+                }
+            }, dailyStart, 24 * 60 * 60 * 1000)
+        }
     }
     def destroy = {
     }

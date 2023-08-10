@@ -182,8 +182,8 @@ knowledgeBase:
 lists:
   service: https://lists.ala.org.au/ws
   items: /speciesListItems/{0}?includeKVP=true&max={1}&offset={2}
-  add: /createRecord
-  remove: /deleteRecord
+  add: /createItem
+  remove: /deleteItem
 # If attribution entry is null, the default is used
 naming:
   service: https://namematching-ws.ala.org.au
@@ -276,6 +276,8 @@ import:
   sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,swap
   sequenceDaily: conservation-lists,wordpress,knowledgebase,favourites,suggest-index,swap
   sequenceWeekly: images,hidden-images,wiki-urls,occurrences,layers,regions,localities,suggest-index,swap
+  # enable daily and weekly tasks
+  enableTasks: false
   # run daily sequence on this hour
   dailyRunHour: 2
   # run weekly sequence on this day (6 == Saturday)
