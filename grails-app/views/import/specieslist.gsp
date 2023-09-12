@@ -38,10 +38,19 @@
     </div>
 
     <div>
-        <button id="start-conservation-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importConservationSpeciesLists')}')" class="btn btn-primary import-button"><g:message code="admin.button.importlistconservation"/></button>
+        <button id="start-conservation-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importConservationSpeciesLists')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importlistconservation"/></button>
     </div>
     <div>
-        <button id="start-vernacular-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importVernacularSpeciesLists')}')" class="btn btn-primary import-button"><g:message code="admin.button.importlistvernacular"/></button>
+        <button id="start-vernacular-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importVernacularSpeciesLists')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importlistvernacular"/></button>
+    </div>
+    <div>
+        <button id="start-hidden-images-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importHiddenImages')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importlisthiddenimages"/></button>
+    </div>
+    <div>
+        <button id="start-wiki-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importWikiUrls')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importlistwiki"/></button>
+    </div>
+    <div>
+        <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 
     <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>

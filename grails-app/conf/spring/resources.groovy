@@ -1,5 +1,6 @@
 import au.org.ala.bie.solr.SolrClientBean
 import au.org.ala.bie.util.ConservationListsSource
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 
 // Place your Spring DSL code here
 beans = {
@@ -24,5 +25,14 @@ beans = {
             application.config.solr.updatingLive.threadCount as Integer,
             application.config.solr.updatingLive.timeout as Integer
     )
+    adminSolrClient(SolrClientBean,
+            application.config.solr.admin.type,
+            application.config.solr.admin.connection,
+            application.config.solr.admin.queueSize as Integer,
+            application.config.solr.admin.threadCount as Integer,
+            application.config.solr.admin.timeout as Integer
+    )
     conservationListsSource(ConservationListsSource, application.config.conservationListsUrl)
+
+    threadPoolTaskScheduler(ThreadPoolTaskScheduler)
 }

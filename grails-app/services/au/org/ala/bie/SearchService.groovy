@@ -469,7 +469,7 @@ class SearchService {
         def response = indexService.query(!useOfflineIndex, "taxonGuid:\"${taxonID}\"", [ "idxtype:${ IndexDocType.IDENTIFIER.name() }" ], GET_ALL_SIZE)
         return response.results
     }
-    
+
     /**
      * Retrieve details of all name vairants attached to a taxon.
      *
@@ -656,12 +656,14 @@ class SearchService {
                        family: doc.rk_family,
                        genus: doc.rk_genus,
                        datasetName: doc.datasetName,
-                       datasetID: doc.datasetID
+                       datasetID: doc.datasetID,
+                       wikiUrl: doc.wikiUrl_s,
+                       hiddenImages: doc.hiddenImages_s
                ]
                if(doc.image){
-                   taxon.put("thumbnailUrl", MessageFormat.format(grailsApplication.config.images.service.thumbnail, doc.image))
-                   taxon.put("smallImageUrl", MessageFormat.format(grailsApplication.config.images.service.small, doc.image))
-                   taxon.put("largeImageUrl", MessageFormat.format(grailsApplication.config.images.service.large, doc.image))
+                   taxon.put("thumbnailUrl", MessageFormat.format(grailsApplication.config.images.service.thumbnail, doc.image.split(',')[0]))
+                   taxon.put("smallImageUrl", MessageFormat.format(grailsApplication.config.images.service.small, doc.image.split(',')[0]))
+                   taxon.put("largeImageUrl", MessageFormat.format(grailsApplication.config.images.service.large, doc.image.split(',')[0]))
                }
                 if (doc.linkIdentifier)
                     taxon.put("linkIdentifier", doc.linkIdentifier)
@@ -725,7 +727,7 @@ class SearchService {
         // retrieve any variants
         response = indexService.query(true, "taxonGuid:\"${encGuid}\"", [ "idxtype:${IndexDocType.TAXONVARIANT.name()}"], GET_ALL_SIZE)
         def variants = response.results
-        
+
         //Dataset index
         def datasetMap = [:]
         def taxonDatasetURL = getDataset(taxon.datasetID, datasetMap)?.guid
@@ -815,6 +817,8 @@ class SearchService {
                     ]
                 },
                 imageIdentifier: taxon.image,
+                wikiUrl: taxon.wikiUrl_s,
+                hiddenImages: taxon.hiddenImages_s,
                 conservationStatuses:conservationStatus,
                 extantStatuses: [],
                 habitats: [],
@@ -871,7 +875,7 @@ class SearchService {
             model.taxonConcept["acceptedConceptID"] = taxon.acceptedConceptID
         if (taxon.acceptedConceptName)
             model.taxonConcept["acceptedConceptName"] = taxon.acceptedConceptName
-        
+
         if(getAdditionalResultFields()) {
             def doc = [:]
             getAdditionalResultFields().each { field ->
@@ -882,7 +886,7 @@ class SearchService {
 
             model << doc
         }
-        
+
         model
     }
 

@@ -58,6 +58,9 @@ class UrlMappings {
 
         "/logout/logout" (controller: 'misc', action: 'logout')
 
+        "/api/setImages" (controller: 'misc', action: 'setImages')
+        "/api/setUrl" (controller: 'misc', action: 'setWikiUrl')
+
         "/"(view: "/index")
 
         "500"(view: '/error')
