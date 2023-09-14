@@ -1,0 +1,19 @@
+version: '3.7'
+
+services:
+
+  bie-solr:
+    image: sbdi/bie-solr-dev
+    build:
+      context: docker/solr8
+    ports:
+      - 8983:8983
+
+  bie-index:
+    image: sbdi/bie-index-dev
+    build:
+      context: .
+    ports:
+      - 8080:8080
+    volumes:
+      - ./sbdi/data/config/bie-index-config.yml:/data/bie-index/config/bie-index-config.yml

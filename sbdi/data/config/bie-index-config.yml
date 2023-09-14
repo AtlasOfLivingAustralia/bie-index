@@ -1,0 +1,160 @@
+grails:
+  serverURL: http://localhost:8080
+  cors:
+    enabled: true
+serverName: http://localhost:8080
+# CAS Config
+security:
+  cas:
+    casServerName:   https://auth.biodiversitydata.se
+    uriFilterPattern:   /admin,/admin/*,/alaAdmin*
+    uriExclusionFilterPattern:   /admin/indexFields
+    appServerName:   http://localhost:8080
+    casServerUrlPrefix:   https://auth.biodiversitydata.se/cas
+    loginUrl:   https://auth.biodiversitydata.se/cas/login
+    logoutUrl:   https://auth.biodiversitydata.se/cas/logout
+    contextPath:
+    bypass:   false
+    enabled: true
+    authCookieName:
+  oidc:
+    enabled: false
+    clientId:
+    secret:
+    discoveryUri:
+  jwt:
+    enabled: false
+    discoveryUri:
+  apikey:
+    serviceUrl: https://auth.biodiversitydata.se/apikey/ws/check?apikey=
+disableCAS: false
+userDetails:
+  url: https://auth.biodiversitydata.se/userdetails/
+biocache:
+  base: https://records.biodiversitydata.se
+  service: https://records.biodiversitydata.se/ws
+collectory:
+  base: https://collections.biodiversitydata.se
+  service: https://collections.biodiversitydata.se/ws
+  # A list of uids for the national species list datasets
+  nationalSpeciesDatsets:
+layers:
+  service: https://spatial.biodiversitydata.se/ws
+  gazetteerId:
+images:
+  # URL of image configuration file
+  config: file:///data/bie-index/config/image-lists.json
+  base: {{ image_base_url | default('https://images.ala.org.au') }}
+  service:
+    base: https://images.biodiversitydata.se
+    thumbnail: https://images.biodiversitydata.se/image/proxyImageThumbnail?imageId={0}
+    large: https://images.biodiversitydata.se/image/proxyImage?imageId={0}
+    small: https://images.biodiversitydata.se/image/proxyImageThumbnailLarge?imageId={0}
+    metadata: https://images.biodiversitydata.se/ws/image/{0}
+  index: true
+knowledgeBase:
+  service:
+  sitemap:
+  sectionSelector:
+  articleCssSelector:
+wordPress:
+  service: https://biodiversitydata.se
+  sitemap: /sitemap.xml
+  index: index.xml
+  page: /?page_id={0}
+  excludedLocations:
+    - .*/category/.*
+  excludedCategories:
+  - button
+  contentOnlyParams: ?content-only=1&categories=1
+lists:
+  service: https://lists.biodiversitydata.se/ws
+  items: /speciesListItems/{0}?includeKVP=true&max={1}&offset={2}
+  add: /createItem
+  remove: /deleteItem
+#naming:
+  #service:
+attribution:
+  default: National Species Lists
+  common: National Species Lists
+commonName:
+  # Acceptable vernacular names to appear in autocomplete and primary name eg en,en-AU,en-CA,en-GB,en-US (leave empty for any language)
+  languages:
+  defaultLanguage: sv
+# Location of conservation lists
+conservationListsUrl: file:///data/bie-index/config/conservation-lists.json
+# Location of vernacular name lists (null for default)
+vernacularListsUrl: file:///data/bie-index/config/vernacular-lists.json
+localityKeywordsUrl: file:///data/bie-index/config/locality-keywords.json
+#nationalSpeciesDatasets: dr2699,dr2700,dr2702,dr2704,dr2703,dr3118
+nationalSpeciesDatasets: ""
+defaultDownloadFields: guid,rank,scientificName,scientificNameAuthorship,taxonomicStatus,establishmentMeans,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName,parentGuid,acceptedConceptName,acceptedConceptID
+hiddenImages:
+  # URL of hidden images configuration file
+  #config: file://{{ data_dir }}/bie-index/config/hidden-images-lists.json
+  config:
+wiki:
+  # URL of wiki configuration file
+  #config: file://{{ data_dir }}/bie-index/config/wiki-lists.json
+  config:
+solr:
+  admin:
+    connection: http://localhost:8983/solr
+    type: HTTP
+    queueSize: 10
+    threadCount: 4
+  live:
+    connection: http://localhost:8983/solr/bie
+    type: HTTP
+    queueSize: 10
+    threadCount: 4
+  updatingLive:
+    connection: http://localhost:8983/solr/bie
+    type: UPDATE
+    queueSize: 10
+    threadCount: 4
+  offline:
+    connection: http://localhost:8983/solr/bie-offline
+    type: UPDATE
+    queueSize: 10
+    threadCount: 4
+  search:
+    qf:
+      - exact_text
+      - text
+      - content^0.2
+    boost: searchWeight
+    defType: edismax
+    qAlt: text:*
+skin:
+  layout: main
+  fluidLayout: false
+  orgNameLong: Swedish Biodiversity Data Infrastructure
+  favicon: https://static.biodiversitydata.se/favicon.ico
+  homeUrl: https://tools.biodiversitydata.se
+headerAndFooter:
+  baseURL: https://static.biodiversitydata.se
+  version: 2
+useLegacyAuto: false
+import:
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,link-identifiers,images,occurrences
+  sequenceDaily:
+  sequenceWeekly:
+  dailyRunHour:
+  weeklyRunDay:
+  enableTasks: false
+  taxonomy:
+    dir: /data/bie/import
+ala:
+  baseURL: https://biodiversitydata.se
+bie:
+  baseURL: https://species.biodiversitydata.se
+  searchPath: /search
+openapi:
+  components:
+    security:
+      oauth2:
+        baseUrl:
+        authorizationUrl:
+        refreshUrl:
+        tokenUrl:
