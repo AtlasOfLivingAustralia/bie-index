@@ -3,11 +3,17 @@ version: '3.7'
 services:
 
   bie-solr:
-    image: sbdi/bie-solr-dev
-    build:
-      context: docker/solr8
+    image: ghcr.io/biodiversitydata-se/bie-solr:1.0.0
+    #image: sbdi/bie-solr-dev
+    environment:
+      SOLR_HEAP: 4g
+      SOLR_OPTS: "-Dlog4j2.formatMsgNoLookups=true"
+    #build:
+    #  context: ../bie-solr
     ports:
       - 8983:8983
+    volumes:
+      - data_bie_solr:/var/solr
 
   bie-index:
     image: sbdi/bie-index-dev
@@ -17,3 +23,11 @@ services:
       - 8080:8080
     volumes:
       - ./sbdi/data/config/bie-index-config.yml:/data/bie-index/config/bie-index-config.yml
+
+volumes:
+  data_bie_solr:
+    #driver: local
+    #driver_opts:
+    #  type: none
+    #  o: bind
+    #  device: /data/bie-index/data_bie_solr
