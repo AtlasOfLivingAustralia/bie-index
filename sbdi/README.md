@@ -34,3 +34,12 @@ Current version: 1.0.1. Enter the new version (or press Enter for 1.0.2):
 Updating to version 1.0.2
 Tag 1.0.2 created and pushed.
 ```
+
+## Build search index
+
+The solr search index can be built from scratch in the following way from the /admin page:
+
+* Select **DwCA Import** and import the [GBIF Backbone Taxonomy](https://www.gbif.org/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c) (~5h)
+* Select **Create Links** and run:
+  * **Build search and suggest weights** (~7h)
+  * **Build solr suggestion index** (~15min, application will throw a read timeout exception but indexing will continue to run on Solr)
