@@ -327,16 +327,14 @@ class SearchService {
         if (children.isEmpty() && fqs.size() > 1)
             this.queryChildConcepts(q, [ baseFq ], queryString, children)
         children.sort { c1, c2 ->
-            def r1 = c1.rankID
-            def r2 = c2.rankID
-            if (r1 != null && r2 != null) {
-                if (r1 <= 0 && r2 > 0)
-                    return 10000
-                if (r2 <= 0 && r1 > 0)
-                    return -10000
-                if (r2 != r1)
-                    return r1 - r2
-            }
+            def r1 = c1.rankID ?: Integer.MIN_VALUE
+            def r2 = c2.rankID ?: Integer.MIN_VALUE
+            if (r1 <= 0 && r2 > 0)
+                return 10000
+            if (r2 <= 0 && r1 > 0)
+                return -10000
+            if (r2 != r1)
+                return r1 - r2
             return c1.name?.compareTo(c2.name) ?: 0
         }
         children
