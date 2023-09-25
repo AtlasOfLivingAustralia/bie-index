@@ -11,7 +11,7 @@ buildscript {
     }
 }
 
-version "2.0.0"
+version "2.1.0"
 group "au.org.ala"
 
 apply plugin:"eclipse"
@@ -111,7 +111,7 @@ dependencies {
     }
     implementation "com.google.guava:guava:19.0"
     implementation 'dk.glasius:external-config:3.1.1'
-    runtimeOnly "org.grails.plugins:ala-bootstrap3:4.1.0"
+    runtimeOnly "org.grails.plugins:ala-bootstrap3:4.3.0"
     implementation "org.grails.plugins:ala-ws-security-plugin:${alaSecurityLibsVersion}"
     implementation "org.grails.plugins:ala-ws-plugin:${alaSecurityLibsVersion}"
     implementation "org.grails.plugins:ala-auth:${alaSecurityLibsVersion}"
@@ -127,8 +127,8 @@ dependencies {
 bootRun {
     ignoreExitValue true
     jvmArgs(
-        '-Dspring.output.ansi.enabled=always', 
-        '-noverify', 
+        '-Dspring.output.ansi.enabled=always',
+        '-noverify',
         '-XX:TieredStopAtLevel=1',
         '-Xmx1024m')
     sourceResources sourceSets.main

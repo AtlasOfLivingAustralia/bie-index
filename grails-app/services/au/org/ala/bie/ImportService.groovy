@@ -128,6 +128,8 @@ class ImportService implements GrailsConfigurationAware {
     // Configuration fields
     File importDir
     String[] importSequence
+    String[] importDailySequence
+    String[] importWeeklySequence
     String gazetteerId
     List<String> localityKeywords
     String wordPressSitemap
@@ -139,6 +141,8 @@ class ImportService implements GrailsConfigurationAware {
     List<String> occurrenceCountFilter
     String commonNameDefaultLanguage
     String imageConfiguration
+    String hiddenImageConfiguration
+    String wikiConfiguration
     Set<String> commonNameLanguages
     double weightMin
     double weightMax
@@ -167,6 +171,8 @@ class ImportService implements GrailsConfigurationAware {
     void setConfiguration(Config config) {
         importDir = new File(config.import.taxonomy.dir)
         importSequence = config.import.sequence?.split(',')
+        importDailySequence = config.import.sequenceDaily?.split(',')
+        importWeeklySequence = config.import.sequenceWeekly?.split(',')
         gazetteerId = config.layers.gazetteerId
         localityKeywords = getConfigFile(config.localityKeywordsUrl)
         wordPressSitemap = config.wordPress.sitemap
@@ -178,6 +184,8 @@ class ImportService implements GrailsConfigurationAware {
         occurrenceCountFilter = config.biocache.occurrenceCount.filterQuery as List
         commonNameDefaultLanguage = config.commonName.defaultLanguage
         imageConfiguration = config.images.config
+        hiddenImageConfiguration = config.hiddenImages.config
+        wikiConfiguration = config.wiki.config
         commonNameLanguages = config.commonName.languages ? config.commonName.languages.split(',') as Set : null
         weightMin = config.getProperty("import.priority.min", Double, 0.25)
         weightMax = config.getProperty("import.priority.max", Double, 5.0)
@@ -210,9 +218,9 @@ class ImportService implements GrailsConfigurationAware {
         filePaths
     }
 
-    def importAll() {
+    def importAll(String [] sequence, boolean online) {
         log "Starting import of all data"
-        for (String step : importSequence) {
+        for (String step : sequence) {
             if (!jobService.current || jobService.current.cancelled) {
                 log "Cancelled"
                 return
@@ -222,53 +230,62 @@ class ImportService implements GrailsConfigurationAware {
             try {
                 switch (step) {
                     case 'collectory':
-                        importCollectory(false)
+                        importCollectory(online)
                         break
                     case 'conservation-lists':
-                        importConservationSpeciesLists()
+                        importConservationSpeciesLists(online)
                         break
                     case 'denormalise':
                     case 'denormalize':
-                        denormaliseTaxa(false)
+                        denormaliseTaxa(online)
                         break
                     case 'favourites':
-                        buildFavourites(false)
+                        buildFavourites(online)
                         break
                     case 'images':
-                        loadImages(false)
+                        loadImages(online)
+                        break
+                    case 'hidden-images':
+                        loadHiddenImages(online)
+                        break
+                    case 'wiki-urls':
+                        loadWikiUrls(online)
                         break
                     case 'layers':
-                        importLayers(false)
+                        importLayers(online)
                         break
                     case 'link-identifiers':
-                        buildLinkIdentifiers(false)
+                        buildLinkIdentifiers(online)
                         break
                     case 'localities':
-                        importLocalities(false)
+                        importLocalities(online)
                         break
                     case 'occurrences':
-                        importOccurrenceData(false)
+                        importOccurrenceData(online)
                         break
                     case 'regions':
-                        importRegions(false)
+                        importRegions(online)
                         break
                     case 'suggest-index':
-                        buildSuggestIndex(false)
+                        buildSuggestIndex(online)
                         break
                     case 'taxonomy-all':
-                        importAllDwcA()
+                        importAllDwcA(online)
                         break
                     case 'vernacular':
-                        importVernacularSpeciesLists()
+                        importVernacularSpeciesLists(online)
                         break
                     case 'weights':
-                        buildWeights(false)
+                        buildWeights(online)
                         break
                     case 'wordpress':
-                        importWordPressPages(false)
+                        importWordPressPages(online)
                         break
                     case 'knowledgebase':
-                        importKnowledgeBasePages(false)
+                        importKnowledgeBasePages(online)
+                        break
+                    case 'swap':
+                        indexService.swap()
                         break
                     default:
                         log("Unknown step ${step}")
@@ -283,12 +300,12 @@ class ImportService implements GrailsConfigurationAware {
         log "Finished import of all data"
     }
 
-    def importAllDwcA() {
+    def importAllDwcA(boolean online) {
         log "Starting import of all taxon field"
-        clearTaxaIndex()
+        clearTaxaIndex(online)
         def filePaths = retrieveAvailableDwCAPaths()
         filePaths.each {
-            importDwcA(it, false)
+            importDwcA(it, false, online)
         }
         log "Finished import of all taxon field"
     }
@@ -388,26 +405,19 @@ class ImportService implements GrailsConfigurationAware {
                     def doc = [:]
                     doc["id"] = currentLine[0]
                     doc["guid"] = currentLine[0]
-
                     if (currentLine[5] == "POINT") {
                         doc["idxtype"] = IndexDocType.LOCALITY.name()
                     } else {
                         doc["idxtype"] = IndexDocType.REGION.name()
                     }
-
                     doc["name"] = currentLine[2]
-
                     if (currentLine[3] && currentLine[2] != currentLine[3]) {
                         doc["description"] = currentLine[3]
                     } else {
                         doc["description"] = layer.displayname
                     }
-
                     doc["centroid"] = currentLine[4]
-
-
                     doc["distribution"] = "N/A"
-
                     localityKeywords.each {
                         if (doc["description"].contains(it)) {
                             doc["distribution"] = it
@@ -429,7 +439,7 @@ class ImportService implements GrailsConfigurationAware {
         }
     }
 
-    def importHabitats() {
+    def importHabitats(boolean online) {
 
         def batch = []
         indexService.deleteFromIndex(IndexDocType.HABITAT, false)
@@ -461,7 +471,7 @@ class ImportService implements GrailsConfigurationAware {
                 batch << doc
             }
         }
-        indexService.indexBatch(batch)
+        indexService.indexBatch(batch, online)
     }
 
     /**
@@ -644,7 +654,7 @@ class ImportService implements GrailsConfigurationAware {
      * </ul>
      * For each taxon in each list, update that taxon's SOLR doc with additional fields
      */
-    def importConservationSpeciesLists() throws Exception {
+    def importConservationSpeciesLists(boolean online) throws Exception {
         def defaultSourceField = conservationListsSource.defaultSourceField
         def defaultKingdomField = conservationListsSource.defaultKingdomField
         def defaultPhylumField = conservationListsSource.defaultPhylumField
@@ -671,7 +681,7 @@ class ImportService implements GrailsConfigurationAware {
                 log("Loading list from: " + uid)
                 try {
                     def list = listService.get(uid, [sourceField, kingdomField, phylumField, classField, orderField, familyField, rankField])
-                    updateDocsWithConservationStatus(list, sourceField, solrField, uid, kingdomField, phylumField, classField, orderField, familyField, rankField)
+                    updateDocsWithConservationStatus(list, sourceField, solrField, uid, kingdomField, phylumField, classField, orderField, familyField, rankField, online)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -681,7 +691,7 @@ class ImportService implements GrailsConfigurationAware {
         }
     }
 
-    def importVernacularSpeciesLists() throws Exception {
+    def importVernacularSpeciesLists(boolean online) throws Exception {
         def config = this.getConfigFile(vernacularListsUrl)
         def lists = config.lists
         Integer listNum = 0
@@ -742,11 +752,11 @@ class ImportService implements GrailsConfigurationAware {
             ]
             if (uid && vernacularNameField) {
                 log("Deleting entries for: " + uid)
-                indexService.deleteFromIndexByQuery("idxtype:\"${IndexDocType.COMMON.name()}\" AND datasetID:\"${uid}\"")
+                indexService.deleteFromIndexByQuery("idxtype:\"${IndexDocType.COMMON.name()}\" AND datasetID:\"${uid}\"", online)
                 log("Loading list from: " + uid)
                 try {
                     def list = listService.get(uid, mapping.keySet() as List)
-                    importAdditionalVernacularNames(list, mapping, defaultLanguage, defaultStatus, uid)
+                    importAdditionalVernacularNames(list, mapping, defaultLanguage, defaultStatus, uid, online)
                 } catch (Exception ex) {
                     def msg = "Error calling webservice: ${ex.message}"
                     log(msg)
@@ -847,7 +857,7 @@ class ImportService implements GrailsConfigurationAware {
      * @param solrFieldName
      * @return
      */
-    private updateDocsWithConservationStatus(List list, String jsonFieldName, String solrFieldName, String drUid, String kingdomField, String phylumField, String classField, String orderField, String familyField, String rankField) {
+    private updateDocsWithConservationStatus(List list, String jsonFieldName, String solrFieldName, String drUid, String kingdomField, String phylumField, String classField, String orderField, String familyField, String rankField, boolean online) {
         if (list.size() > 0) {
             def totalDocs = list.size()
             def buffer = []
@@ -860,10 +870,10 @@ class ImportService implements GrailsConfigurationAware {
                 def taxonDoc
 
                 if (item.lsid) {
-                    taxonDoc = searchService.lookupTaxon(item.lsid, true)
+                    taxonDoc = searchService.lookupTaxon(item.lsid, !online)
                 }
                 if (!taxonDoc && item.lsid) {
-                    taxonDoc = searchService.lookupTaxonByPreviousIdentifier(item.lsid, true)
+                    taxonDoc = searchService.lookupTaxonByPreviousIdentifier(item.lsid, !online)
                 }
                 if (!taxonDoc && item.name) {
                     def kingdom = kingdomField ? item.getAt(kingdomField) : null
@@ -874,7 +884,7 @@ class ImportService implements GrailsConfigurationAware {
                     def rank = rankField ? item.getAt(rankField) : null
                     def lsid = nameService.search(item.name, kingdom, phylum, class_, order, family, rank)
                     if (lsid) {
-                        taxonDoc = searchService.lookupTaxon(lsid, true)
+                        taxonDoc = searchService.lookupTaxon(lsid, !online)
                     }
                 }
 
@@ -916,7 +926,7 @@ class ImportService implements GrailsConfigurationAware {
             }
 
             log("Committing to SOLR...")
-            indexService.indexBatch(buffer)
+            indexService.indexBatch(buffer, online)
             updateProgressBar2(100, 100)
             log("Number of taxa unmatched: ${unmatchedTaxaCount}")
             log("Import finished.")
@@ -925,7 +935,7 @@ class ImportService implements GrailsConfigurationAware {
         }
     }
 
-    private void importAdditionalVernacularNames(List list, Map<String, Term> mapping, String defaultLanguage, String defaultStatus, String uid) {
+    private void importAdditionalVernacularNames(List list, Map<String, Term> mapping, String defaultLanguage, String defaultStatus, String uid, boolean online) {
         if (list.size() > 0) {
             def totalDocs = list.size()
             def buffer = []
@@ -993,7 +1003,8 @@ class ImportService implements GrailsConfigurationAware {
                         additional,
                         buffer,
                         loaded,
-                        commonStatus)) {
+                        commonStatus,
+                        online)) {
                     unmatchedTaxaCount++
                 }
 
@@ -1003,7 +1014,7 @@ class ImportService implements GrailsConfigurationAware {
             }
             log("Committing names to SOLR...")
             if (!buffer.isEmpty())
-                indexService.indexBatch(buffer)
+                indexService.indexBatch(buffer, online)
             log("Unmatched names for " + uid + ": " + unmatchedTaxaCount)
             log("Ensure denormalisation is re-run")
         } else {
@@ -1012,7 +1023,7 @@ class ImportService implements GrailsConfigurationAware {
     }
 
 
-    private boolean addVernacularName(String taxonID, String name, String kingdom, String phylum, String class_, String order, String family, String rank, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, String provenance, Map additional, List buffer, Set loaded, Object defaultStatus) {
+    private boolean addVernacularName(String taxonID, String name, String kingdom, String phylum, String class_, String order, String family, String rank, String vernacularName, String nameId, Object status, String language, String source, String datasetID, String taxonRemarks, String provenance, Map additional, List buffer, Set loaded, Object defaultStatus, boolean online) {
         def taxonDoc = null
         if (source) { // Extract URL from anchor if needed
             def sia = SOURCE_IN_ANCHOR.matcher(source)
@@ -1020,11 +1031,11 @@ class ImportService implements GrailsConfigurationAware {
                 source = sia.group(1)
         }
         if (taxonID)
-            taxonDoc = searchService.lookupTaxon(taxonID, true)
+            taxonDoc = searchService.lookupTaxon(taxonID, !online)
         if (!taxonDoc && name) {
             taxonID = nameService.search(name, kingdom, phylum, class_, order, family, rank)
             if (taxonID)
-                taxonDoc = searchService.lookupTaxon(taxonID, true)
+                taxonDoc = searchService.lookupTaxon(taxonID, !online)
         }
         if (!taxonDoc) {
             log.warn("Can't find matching taxon document for ${taxonID} for ${vernacularName}, skipping")
@@ -1040,7 +1051,7 @@ class ImportService implements GrailsConfigurationAware {
         loaded.add(key)
         def remarksList = taxonRemarks?.split("\\|").collect({ it.trim() })
         def provenanceList = provenance?.split("\\|").collect({ it.trim() })
-        def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, language, true)
+        def vernacularDoc = searchService.lookupVernacular(taxonDoc.guid, vernacularName, language, !online)
         def priority = status?.priority ?: defaultStatus.priority
         if (vernacularDoc) {
             // do a SOLR doc (atomic) update
@@ -1093,22 +1104,22 @@ class ImportService implements GrailsConfigurationAware {
         return true
     }
 
-    def clearDanglingSynonyms() {
+    def clearDanglingSynonyms(boolean online) {
         log("Starting clear dangling synonyms")
-        indexService.deleteFromIndexByQuery("(${SYNONYM_STATUS}) AND -acceptedConceptName:*")
+        indexService.deleteFromIndexByQuery("(${SYNONYM_STATUS}) AND -acceptedConceptName:*", online)
         log("Finished clear dangling synonyms")
     }
 
-    def clearTaxaIndex() {
+    def clearTaxaIndex(boolean online) {
         log("Deleting existing taxon entries in index...")
-        indexService.deleteFromIndex(IndexDocType.TAXON, false)
-        indexService.deleteFromIndex(IndexDocType.COMMON, false)
-        indexService.deleteFromIndex(IndexDocType.IDENTIFIER, false)
-        indexService.deleteFromIndex(IndexDocType.TAXONVARIANT, false)
+        indexService.deleteFromIndex(IndexDocType.TAXON, online)
+        indexService.deleteFromIndex(IndexDocType.COMMON, online)
+        indexService.deleteFromIndex(IndexDocType.IDENTIFIER, online)
+        indexService.deleteFromIndex(IndexDocType.TAXONVARIANT, online)
         log("Cleared.")
     }
 
-    def importDwcA(dwcDir, clearIndex) {
+    def importDwcA(dwcDir, clearIndex, online) {
         try {
             log("Importing archive from path.." + dwcDir)
             //read the DwC metadata
@@ -1133,29 +1144,29 @@ class ImportService implements GrailsConfigurationAware {
             def rowType = archive.core.rowType
             //clear
             if (clearIndex) {
-                clearTaxaIndex()
+                clearTaxaIndex(online)
             } else {
                 log("Skipping deleting existing entries in index...")
             }
             if (rowType == DwcTerm.Taxon)
-                importTaxonDwcA(archive, attributionMap, datasetMap, defaultDatasetName)
+                importTaxonDwcA(archive, attributionMap, datasetMap, defaultDatasetName, online)
             else if (rowType == GbifTerm.VernacularName)
-                importVernacularDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
+                importVernacularDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName, online)
             else if (rowType == GbifTerm.Identifier)
-                importIdentifierDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
+                importIdentifierDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName, online)
             else if (rowType == ALATerm.TaxonVariant)
-                importTaxonVariantDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName)
+                importTaxonVariantDwcA(archive.core, attributionMap, datasetMap, defaultDatasetName, online)
             else
                 log("Unable to import an archive of type " + rowType)
             def variantExtension = archive.getExtension(ALATerm.TaxonVariant)
             if (variantExtension)
-                importTaxonVariantDwcA(variantExtension, attributionMap, datasetMap, defaultDatasetName)
+                importTaxonVariantDwcA(variantExtension, attributionMap, datasetMap, defaultDatasetName, online)
             def vernacularExtension = archive.getExtension(GbifTerm.VernacularName)
             if (vernacularExtension)
-                importVernacularDwcA(vernacularExtension, attributionMap, datasetMap, defaultDatasetName)
+                importVernacularDwcA(vernacularExtension, attributionMap, datasetMap, defaultDatasetName, online)
             def identifierExtension = archive.getExtension(GbifTerm.Identifier)
             if (identifierExtension)
-                importIdentifierDwcA(identifierExtension, attributionMap, datasetMap, defaultDatasetName)
+                importIdentifierDwcA(identifierExtension, attributionMap, datasetMap, defaultDatasetName, online)
             log("Import finished.")
         } catch (Exception ex) {
             log("There was problem with the import: " + ex.getMessage())
@@ -1170,7 +1181,7 @@ class ImportService implements GrailsConfigurationAware {
      *
      * @return
      */
-    def importTaxonDwcA(Archive archive, Map attributionMap, Map datasetMap, String defaultDatasetName) {
+    def importTaxonDwcA(Archive archive, Map attributionMap, Map datasetMap, String defaultDatasetName, boolean online) {
         /*
         log.info("Loading Species Group mappings for DwcA import")
         def speciesGroupMapping = speciesGroupService.invertedSpeciesGroups
@@ -1235,19 +1246,19 @@ class ImportService implements GrailsConfigurationAware {
             if (buffer.size() >= BUFFER_SIZE) {
                 if (counter % REPORT_INTERVAL == 0)
                     log("Adding taxa: ${counter}")
-                indexService.indexBatch(buffer)
+                indexService.indexBatch(buffer, online)
                 buffer.clear()
             }
         }
 
         if (!buffer.isEmpty()) {
             log("Adding taxa: ${counter}")
-            indexService.indexBatch(buffer)
+            indexService.indexBatch(buffer, online)
         }
     }
 
 
-    def importVernacularDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName) throws Exception {
+    def importVernacularDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName, boolean online) throws Exception {
         if (archiveFile.rowType != GbifTerm.VernacularName)
             throw new IllegalArgumentException("Vernacular import only works for files of type " + GbifTerm.VernacularName + " got " + archiveFile.rowType)
         log("Importing vernacular names")
@@ -1318,20 +1329,20 @@ class ImportService implements GrailsConfigurationAware {
             buffer << doc
             count++
             if (buffer.size() >= BUFFER_SIZE) {
-                indexService.indexBatch(buffer)
+                indexService.indexBatch(buffer, online)
                 buffer.clear()
                 if (count % REPORT_INTERVAL == 0)
                     log("Processed ${count} records")
             }
         }
         if (buffer.size() > 0) {
-            indexService.indexBatch(buffer)
+            indexService.indexBatch(buffer, online)
             log("Processed ${count} records")
         }
     }
 
 
-    def importIdentifierDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName) throws Exception {
+    def importIdentifierDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName, boolean online) throws Exception {
         if (archiveFile.rowType != GbifTerm.Identifier)
             throw new IllegalArgumentException("Identifier import only works for files of type " + GbifTerm.Identifier + " got " + archiveFile.rowType)
         log("Importing identifiers")
@@ -1375,19 +1386,19 @@ class ImportService implements GrailsConfigurationAware {
             buffer << doc
             count++
             if (buffer.size() >= BUFFER_SIZE) {
-                indexService.indexBatch(buffer)
+                indexService.indexBatch(buffer, online)
                 buffer.clear()
                 if (count % REPORT_INTERVAL == 0)
                     log("Processed ${count} records")
             }
         }
         if (buffer.size() > 0) {
-            indexService.indexBatch(buffer)
+            indexService.indexBatch(buffer, online)
             log("Processed ${count} records")
         }
     }
 
-    def importTaxonVariantDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName) throws Exception {
+    def importTaxonVariantDwcA(ArchiveFile archiveFile, Map attributionMap, Map datasetMap, String defaultDatasetName, boolean online) throws Exception {
         if (archiveFile.rowType != ALATerm.TaxonVariant)
             throw new IllegalArgumentException("Taxon variant import only works for files of type " + ALATerm.TaxonVariant + " got " + archiveFile.rowType)
         log("Importing taxon variants")
@@ -1404,14 +1415,14 @@ class ImportService implements GrailsConfigurationAware {
             buffer << doc
             count++
             if (buffer.size() >= BUFFER_SIZE) {
-                indexService.indexBatch(buffer)
+                indexService.indexBatch(buffer, online)
                 buffer.clear()
                 if (count % REPORT_INTERVAL == 0)
                     log("Processed ${count} records")
             }
         }
         if (buffer.size() > 0) {
-            indexService.indexBatch(buffer)
+            indexService.indexBatch(buffer, online)
             log("Processed ${count} records")
         }
     }
@@ -1615,6 +1626,18 @@ class ImportService implements GrailsConfigurationAware {
         }
     }
 
+    def getImagesLists() {
+        this.getConfigFile(imageConfiguration).lists
+    }
+
+    def getHiddenImagesLists() {
+        this.getConfigFile(hiddenImageConfiguration).lists
+    }
+
+    def getWikiUrlLists() {
+        this.getConfigFile(wikiConfiguration).lists
+    }
+
     /**
      * Go through the index and build image links for taxa
      */
@@ -1657,14 +1680,16 @@ class ImportService implements GrailsConfigurationAware {
                 def buffer = []
 
                 docs.each { doc ->
-                    def update = [:]
-                    update["id"] = doc.id // doc key
-                    update["idxtype"] = ["set": doc.idxtype] // required field
-                    update["guid"] = ["set": doc.guid] // required field
-                    update["image"] = ["set": null]
-                    update["imageAvailable"] = ["set": null]
-                    buffer << update
-                    processed++
+                    if (imageMap[doc.guid] == null) {
+                        def update = [:]
+                        update["id"] = doc.id // doc key
+                        update["idxtype"] = ["set": doc.idxtype] // required field
+                        update["guid"] = ["set": doc.guid] // required field
+                        update["image"] = ["set": null]
+                        update["imageAvailable"] = ["set": null]
+                        buffer << update
+                        processed++
+                    }
                 }
                 if (!buffer.isEmpty())
                     indexService.indexBatch(buffer, online)
@@ -1746,6 +1771,112 @@ class ImportService implements GrailsConfigurationAware {
     }
 
     /**
+     * Go through the index and build hiddenImage field
+     */
+    def loadHiddenImages(online) {
+        int pageSize = BATCH_SIZE
+        int processed = 0
+        def clearQuery = "hiddenImages_s:*"
+        def prevCursor
+        def cursor
+        def listConfig = this.getConfigFile(hiddenImageConfiguration)
+        def imageMap = collectHiddenImageLists(listConfig.lists)
+        log.debug "listConfig = ${listConfig} "
+
+        log("Clearing hiddenImages for ${online ? 'online' : 'offline'} index")
+        try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
+            while (cursor != prevCursor) {
+                SolrQuery query = new SolrQuery(clearQuery)
+                query.setParam('cursorMark', cursor)
+                query.setSort("id", SolrQuery.ORDER.asc)
+                query.setRows(pageSize)
+                def response = indexService.query(query, online)
+                def docs = response.results
+                def buffer = []
+
+                docs.each { doc ->
+                    // only remove hidden images that will not be updated below
+                    if (imageMap[doc.guid] == null) {
+                        def update = [:]
+                        update["id"] = doc.id // doc key
+                        update["idxtype"] = ["set": doc.idxtype] // required field
+                        update["guid"] = ["set": doc.guid] // required field
+                        update["hiddenImages_s"] = ["set": null]
+                        buffer << update
+                        processed++
+                    }
+                }
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                log("Cleared ${processed} hiddenImages")
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+        } catch (Exception ex) {
+            log.error("Unable to clear hiddenImages", ex)
+            log("Error during hiddenImages clear: " + ex.getMessage())
+        }
+        log("Loading hiddenImages")
+        updateHiddenImages(online, imageMap)
+    }
+
+    /**
+     * Go through the index and build hiddenImage field
+     */
+    def loadWikiUrls(online) {
+        int pageSize = BATCH_SIZE
+        int processed = 0
+        def clearQuery = "wikiUrl_s:*"
+        def prevCursor
+        def cursor
+        def listConfig = this.getConfigFile(wikiConfiguration)
+        def imageMap = collectHiddenImageLists(listConfig.lists)
+        log.debug "listConfig = ${listConfig} "
+
+        log("Clearing wikiUrls for ${online ? 'online' : 'offline'} index")
+        try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
+            while (cursor != prevCursor) {
+                SolrQuery query = new SolrQuery(clearQuery)
+                query.setParam('cursorMark', cursor)
+                query.setSort("id", SolrQuery.ORDER.asc)
+                query.setRows(pageSize)
+                def response = indexService.query(query, online)
+                def docs = response.results
+                def buffer = []
+
+                docs.each { doc ->
+                    // only remove hidden images that will not be updated below
+                    if (imageMap[doc.guid] == null) {
+                        def update = [:]
+                        update["id"] = doc.id // doc key
+                        update["idxtype"] = ["set": doc.idxtype] // required field
+                        update["guid"] = ["set": doc.guid] // required field
+                        update["wikiUrl_s"] = ["set": null]
+                        buffer << update
+                        processed++
+                    }
+                }
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                log("Cleared ${processed} wikiUrls")
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+        } catch (Exception ex) {
+            log.error("Unable to clear wikiUrls", ex)
+            log("Error during wikiUrls clear: " + ex.getMessage())
+        }
+        log("Loading wikiUrls")
+        updateWikiUrls(online, imageMap)
+    }
+
+    /**
      * Collect the list where images are specifically listed
      */
     def collectImageLists(List lists) {
@@ -1765,6 +1896,37 @@ class ImportService implements GrailsConfigurationAware {
                         def imageUrl = imageUrlName ? item[imageUrlName] : null
                         if (imageId || imageUrl) {
                             def image = [taxonID: taxonID, name: name, imageId: imageId, imageUrl: imageUrl]
+                            if (taxonID && !imageMap.containsKey(taxonID))
+                                imageMap[taxonID] = image
+                        }
+                    }
+                } catch (Exception ex) {
+                    log("Unable to load image list at ${url}: ${ex.getMessage()} ... ignoring")
+                }
+            }
+        }
+        log("Loaded image lists (${imageMap.size()} taxa)")
+        return imageMap
+    }
+
+    /**
+     * Collect the list where images are specifically listed
+     */
+    def collectHiddenImageLists(List lists) {
+        def imageMap = [:]
+        log("Loading image lists")
+        lists.each { list ->
+            String drUid = list.uid
+            String imageIdName = list.imageId
+            if (drUid && (imageIdName)) {
+                try {
+                    def images = listService.get(drUid, [imageIdName])
+                    images.each { item ->
+                        def taxonID = item.lsid
+                        def name = item.name
+                        def imageId = imageIdName ? item[imageIdName] : null
+                        if (imageId) {
+                            def image = [taxonID: taxonID, name: name, imageId: imageId]
                             if (taxonID && !imageMap.containsKey(taxonID))
                                 imageMap[taxonID] = image
                         }
@@ -1918,6 +2080,135 @@ class ImportService implements GrailsConfigurationAware {
     }
 
     /**
+     * Triggered from admin -> links import page. Runs on separate thread and send async message back to page via log() method
+     *
+     * @param online Use online rather than offline store
+     * @param imagesMap The images to update
+     * @param guidList The list to update from the map
+     */
+    def updateHiddenImages(online, imagesMap) {
+        def updatedTaxa = []
+        Integer batchSize = 20
+
+        List guidList = imagesMap.values().collect { image -> image.taxonID }
+        int totalDocs = guidList.size()
+        int totalPages = ((totalDocs + batchSize - 1) / batchSize) - 1
+        def totalDocumentsUpdated = 0
+        def lastTaxon = null
+        def lastImage = null
+        def buffer = []
+        log "${totalDocs} taxa to update in ${totalPages} pages"
+
+        if (totalDocs > 0) {
+            (0..totalPages).each { page ->
+                def startInd = page * batchSize
+                def endInd = (startInd + batchSize - 1) < totalDocs ? (startInd + batchSize - 1) : totalDocs - 1
+                log.debug "GUID batch = ${startInd} to ${endInd}"
+                String guids = '"' + guidList[startInd..endInd].join('" "') + '"'
+                updateProgressBar(totalPages, page)
+                def paramsMap = [
+                        q: "guid:(" + guids + ")",
+                        fq: "idxtype:${IndexDocType.TAXON.name()}",
+                        rows: "${batchSize}",
+                        wt: "json"
+                ]
+                MapSolrParams solrParams = new MapSolrParams(paramsMap)
+                def searchResults = searchService.getCursorSearchResults(solrParams, !online)
+                def resultsDocs = searchResults?.results ?: []
+                log.debug( "SOLR query returned ${resultsDocs.size()} docs")
+                resultsDocs.each { Map doc ->
+                    if (doc.containsKey("id") && doc.containsKey("guid") && doc.containsKey("idxtype")) {
+                        //String imageId = getImageFromParamList(preferredImagesList, doc.guid)
+                        def listEntry = imagesMap[doc.guid]
+                        String imageId = listEntry?.imageId
+                        if (!doc.containsKey("hiddenImages") || (doc.containsKey("hiddenImages") && doc.hiddenImages != imageId)) {
+                            lastTaxon = doc.guid
+                            lastImage = imageId
+                            updateHiddenImage(doc, imageId, buffer, online)
+                            totalDocumentsUpdated ++
+                        }
+                    } else {
+                        log.warn "Updating doc error: missing keys ${doc}"
+                    }
+                }
+            }
+
+            if (buffer.size() > 0) {
+                log "Updating ${buffer.size()} docs, last taxon ${lastTaxon} with image ${lastImage}"
+                indexService.indexBatch(buffer, online)
+                updatedTaxa = searchService.getTaxa(guidList)
+            } else {
+                log "No documents to update"
+            }
+        }
+        log "Updated ${totalDocumentsUpdated} out of ${totalDocs} with images"
+
+        updatedTaxa
+
+    }
+
+    def updateWikiUrls(online, wikiMap) {
+        def updatedTaxa = []
+        Integer batchSize = 20
+
+        List guidList = wikiMap.values().collect { item -> item.taxonID }
+        int totalDocs = guidList.size()
+        int totalPages = ((totalDocs + batchSize - 1) / batchSize) - 1
+        def totalDocumentsUpdated = 0
+        def lastTaxon = null
+        def lastUrl = null
+        def buffer = []
+        log "${totalDocs} taxa to update in ${totalPages} pages"
+
+        if (totalDocs > 0) {
+            (0..totalPages).each { page ->
+                def startInd = page * batchSize
+                def endInd = (startInd + batchSize - 1) < totalDocs ? (startInd + batchSize - 1) : totalDocs - 1
+                log.debug "GUID batch = ${startInd} to ${endInd}"
+                String guids = '"' + guidList[startInd..endInd].join('" "') + '"'
+                updateProgressBar(totalPages, page)
+                def paramsMap = [
+                        q: "guid:(" + guids + ")",
+                        fq: "idxtype:${IndexDocType.TAXON.name()}",
+                        rows: "${batchSize}",
+                        wt: "json"
+                ]
+                MapSolrParams solrParams = new MapSolrParams(paramsMap)
+                def searchResults = searchService.getCursorSearchResults(solrParams, !online)
+                def resultsDocs = searchResults?.results ?: []
+                log.debug( "SOLR query returned ${resultsDocs.size()} docs")
+                resultsDocs.each { Map doc ->
+                    if (doc.containsKey("id") && doc.containsKey("guid") && doc.containsKey("idxtype")) {
+                        //String imageId = getImageFromParamList(preferredImagesList, doc.guid)
+                        def listEntry = wikiMap[doc.guid]
+                        String url = listEntry?.url
+                        if (!doc.containsKey("wikiUrl") || (doc.containsKey("wikiUrl") && doc.wikiUrl != url)) {
+                            lastTaxon = doc.guid
+                            lastUrl = url
+                            updateWikiUrl(doc, url, buffer, online)
+                            totalDocumentsUpdated ++
+                        }
+                    } else {
+                        log.warn "Updating doc error: missing keys ${doc}"
+                    }
+                }
+            }
+
+            if (buffer.size() > 0) {
+                log "Updating ${buffer.size()} docs, last taxon ${lastTaxon} with wikiUrl ${lastUrl}"
+                indexService.indexBatch(buffer, online)
+                updatedTaxa = searchService.getTaxa(guidList)
+            } else {
+                log "No documents to update"
+            }
+        }
+        log "Updated ${totalDocumentsUpdated} out of ${totalDocs} with wikiUrls"
+
+        updatedTaxa
+
+    }
+
+    /**
      * Update a taxon with an image, along with any common nmames
      *
      * @param doc The taxon document
@@ -1933,6 +2224,46 @@ class ImportService implements GrailsConfigurationAware {
                     guid: [set: d.guid],
                     image: ["set": imageId],
                     imageAvailable: ["set": true]
+            ]
+        }
+        buffer << update(doc)
+        def commonNames = searchService.lookupVernacular(doc.guid, !online)
+        commonNames.each { common ->
+            buffer << update(common)
+        }
+    }
+
+    def updateHiddenImage(Map doc, String imageId, List buffer, boolean online) {
+        def update = { d ->
+            [
+                    id: d.id,
+                    idxtype: [set: d.idxtype],
+                    guid: [set: d.guid],
+                    hiddenImages_s: ["set": imageId]
+            ]
+        }
+        buffer << update(doc)
+        def commonNames = searchService.lookupVernacular(doc.guid, !online)
+        commonNames.each { common ->
+            buffer << update(common)
+        }
+    }
+
+    /**
+     * Update a taxon with an image, along with any common nmames
+     *
+     * @param doc The taxon document
+     * @param imageId The image identifier
+     * @param buffer The update buffer
+     * @param online True to use the online index
+     */
+    private updateWikiUrl(Map doc, String wikiUrl, List buffer, boolean online) {
+        def update = { d ->
+            [
+                    id: d.id,
+                    idxtype: [set: d.idxtype],
+                    guid: [set: d.guid],
+                    wikiUrl_s: ["set": wikiUrl]
             ]
         }
         buffer << update(doc)

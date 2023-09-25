@@ -6,9 +6,11 @@ import au.org.ala.bie.util.Encoder
 import grails.config.Config
 import grails.core.support.GrailsConfigurationAware
 import org.apache.solr.client.solrj.SolrQuery
+import org.apache.solr.client.solrj.request.CoreAdminRequest
 import org.apache.solr.client.solrj.response.QueryResponse
 import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.SolrInputDocument
+import org.apache.solr.common.params.CoreAdminParams
 import org.apache.solr.common.params.CursorMarkParams
 import org.apache.solr.common.params.ModifiableSolrParams
 import org.apache.solr.common.params.SolrParams
@@ -20,6 +22,7 @@ class IndexService implements GrailsConfigurationAware {
     def liveSolrClient
     def offlineSolrClient
     def updatingLiveSolrClient
+    def adminSolrClient
 
     // Configuration
     SolrQuery searchTemplate
@@ -50,10 +53,15 @@ class IndexService implements GrailsConfigurationAware {
         suggestTemplate = new SolrQuery()
     }
 
-    def deleteFromIndexByQuery(query){
+    def deleteFromIndexByQuery(query, online){
         log.info("Deleting from index: " + query + "....")
-        offlineSolrClient.deleteByQuery(query)
-        offlineSolrClient.commit()
+        if (online) {
+            updatingLiveSolrClient.deleteByQuery(query)
+            updatingLiveSolrClient.commit()
+        } else {
+            offlineSolrClient.deleteByQuery(query)
+            offlineSolrClient.commit()
+        }
         log.info("Deleted from index: " + query)
     }
 
@@ -69,13 +77,28 @@ class IndexService implements GrailsConfigurationAware {
         log.info("Deleted from index: " + docType.name())
     }
 
+    def swap() {
+        log.info("Swapping index")
+        CoreAdminRequest car = new CoreAdminRequest()
+        car.setCoreName("bie")
+        car.setOtherCoreName("bie-offline")
+        car.setAction(CoreAdminParams.CoreAdminAction.SWAP)
+        car.process(adminSolrClient.client)
+    }
+
+    def info() {
+        CoreAdminRequest car = new CoreAdminRequest()
+        car.setAction(CoreAdminParams.CoreAdminAction.STATUS)
+        car.process(adminSolrClient.client)
+    }
+
     /**
      * Index the supplied batch of docs.
      * @param docType
      * @param docsToIndex
      * @param offline Use the offline index (defaults to true)
      */
-    def indexBatch(List docsToIndex, boolean online = false) throws Exception {
+    def indexBatch(List docsToIndex, boolean online) throws Exception {
         def client = online ? updatingLiveSolrClient : offlineSolrClient
         def buffer = []
 

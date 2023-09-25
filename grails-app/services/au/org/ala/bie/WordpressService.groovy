@@ -87,7 +87,7 @@ class WordpressService implements IndexingInterface, GrailsConfigurationAware {
                 continue
             seen << source
             try {
-                Document doc = Jsoup.connect(source.toExternalForm()).timeout(this.timeout).validateTLSCertificates(this.validateTLS).get()
+                Document doc = Jsoup.connect(source.toExternalForm()).timeout(this.timeout).get()
                 Elements sitemaps = doc.select("sitemapindex sitemap loc")
                 sitemaps.each { loc ->
                     try {
@@ -128,7 +128,7 @@ class WordpressService implements IndexingInterface, GrailsConfigurationAware {
     Map getResource(String url) {
         String fullUrl = url + contentOnlyParams
         log.info "GETing url: ${fullUrl}"
-        Document document = Jsoup.connect(fullUrl).timeout(this.timeout).validateTLSCertificates(this.validateTLS).get()
+        Document document = Jsoup.connect(fullUrl).timeout(this.timeout).get()
 
         // some summary/landing pages do not work with `content-only=1`, so we don't want to index them
         if (document.select("body.ala-content") || !document.body().text()) {
