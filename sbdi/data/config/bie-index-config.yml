@@ -44,7 +44,7 @@ layers:
 images:
   # URL of image configuration file
   config: file:///data/bie-index/config/image-lists.json
-  base: {{ image_base_url | default('https://images.ala.org.au') }}
+  base: https://images.biodiversitydata.se
   service:
     base: https://images.biodiversitydata.se
     thumbnail: https://images.biodiversitydata.se/image/proxyImageThumbnail?imageId={0}
