@@ -17,6 +17,7 @@ cache:
 
 install:
   - 'travis_wait 30 ./gradlew clean'
+  - './gradlew assemble'
 
 after_success:
   - '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && travis_retry ./gradlew publish'
