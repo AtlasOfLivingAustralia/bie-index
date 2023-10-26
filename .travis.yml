@@ -16,7 +16,7 @@ cache:
   - $HOME/.gradle/wrapper/
 
 install:
-  - './gradlew build --scan --debug'
+  - 'travis_wait 30 ./gradlew clean'
 
 after_success:
   - '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && travis_retry ./gradlew publish'
