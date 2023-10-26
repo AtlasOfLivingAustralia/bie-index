@@ -61,6 +61,8 @@ class UrlMappings {
         "/api/setImages" (controller: 'misc', action: 'setImages')
         "/api/setUrl" (controller: 'misc', action: 'setWikiUrl')
 
+        "/sitemap($idx)?.xml"(controller: "sitemap", action: "index")
+
         "/"(view: "/index")
 
         "500"(view: '/error')

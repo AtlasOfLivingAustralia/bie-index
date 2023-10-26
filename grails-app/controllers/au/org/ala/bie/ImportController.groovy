@@ -60,6 +60,8 @@ class ImportController {
 
     def links(){}
 
+    def sitemap() {}
+
     def occurrences(){}
 
     def swap() {
@@ -232,6 +234,17 @@ class ImportController {
     def importKnowledgeBase(){
         boolean online = params.getBoolean('online', false)
         def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages(online) })
+        asJson(job.status())
+    }
+
+    /**
+     * Build sitemap.xml from SOLR index
+     *
+     * @return
+     */
+    def buildSitemap(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("buildSitemap", "admin.button.buildsitemap", { importService.buildSitemap(online) })
         asJson(job.status())
     }
 

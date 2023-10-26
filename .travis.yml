@@ -1,14 +1,10 @@
 language: groovy
 jdk:
 - openjdk11
-sudo: false
 branches:
   only:
   - master
   - develop
-  - hotfix
-  - 1.4.2.1
-  - feature/grails5
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
@@ -18,6 +14,10 @@ cache:
   - $HOME/.m2
   - $HOME/.gradle/caches/
   - $HOME/.gradle/wrapper/
+
+install:
+  - 'travis_wait 30 ./gradlew clean'
+  - './gradlew assemble'
 
 after_success:
   - '[ "${TRAVIS_PULL_REQUEST}" = "false" ] && travis_retry ./gradlew publish'
