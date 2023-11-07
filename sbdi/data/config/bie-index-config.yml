@@ -151,6 +151,16 @@ bie:
   baseURL: https://species.biodiversitydata.se
   searchPath: /search
 openapi:
+  title: Species REST services
+  description: REST services for interacting with the BIE webapp
+  terms: https://docs.biodiversitydata.se/sbdi-data/sbdi-atlas-terms-of-use/
+  contact:
+    name:
+    email:
+  license:
+    name: Mozilla Public License 1.1
+    url: https://www.mozilla.org/en-US/MPL/1.1/
+  version: '@info.app.version@'
   components:
     security:
       oauth2:
