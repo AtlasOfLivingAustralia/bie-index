@@ -1,29 +1,25 @@
-buildscript {
-    repositories {
-        mavenLocal()
-        maven { url "https://nexus.ala.org.au/content/groups/public/" }
-        maven { url "https://repo.grails.org/grails/core" }
-    }
-    dependencies {
-        classpath "org.grails:grails-gradle-plugin:$grailsVersion"
-        classpath "gradle.plugin.com.github.erdi.webdriver-binaries:webdriver-binaries-gradle-plugin:$webdriverBinariesVersion"
-        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:3.4.6"
-    }
+plugins {
+    id "groovy"
+    id "org.grails.grails-gsp"
+    id "org.grails.grails-web"
+    id "com.github.erdi.webdriver-binaries" version "3.0"
+    id "war"
+    id "idea"
+    id "com.bertramlabs.asset-pipeline"
+    id "application"
+    id "eclipse"
+
+    id "com.gorylenko.gradle-git-properties" version "2.4.1"
+
+    id "maven-publish"
 }
 
-version "2.1.0"
+version "3.0.0-SNAPSHOT"
 group "au.org.ala"
 
-apply plugin:"eclipse"
-apply plugin:"idea"
-apply plugin:"war"
-apply plugin:"org.grails.grails-web"
-apply plugin:"com.github.erdi.webdriver-binaries"
-apply plugin:"com.bertramlabs.asset-pipeline"
-apply plugin:"org.grails.grails-gsp"
-apply plugin:"maven-publish"
 
 publishing {
+    targetCompatibility = 1.11
     repositories {
         maven {
             name 'Nexus'
@@ -43,11 +39,22 @@ publishing {
 
 bootWar {
     launchScript()
+    dependsOn(compileGroovyPages)
 }
+
+war {
+    dependsOn(compileGroovyPages)
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion("11")
+}
+
 
 repositories {
     mavenLocal()
     maven { url "https://nexus.ala.org.au/content/groups/public/" }
+    mavenCentral()
     maven { url "https://repo.grails.org/grails/core" }
 }
 configurations {
@@ -88,11 +95,11 @@ dependencies {
     testImplementation  "org.mockito:mockito-core"
     testImplementation  "org.grails:grails-web-testing-support"
     testImplementation  "org.grails.plugins:geb"
-    testImplementation "org.seleniumhq.selenium:selenium-remote-driver:$seleniumVersion"
-    testImplementation "org.seleniumhq.selenium:selenium-api:$seleniumVersion"
-    testImplementation "org.seleniumhq.selenium:selenium-support:$seleniumVersion"
-    testImplementation "org.seleniumhq.selenium:selenium-chrome-driver:$seleniumVersion"
-    testImplementation "org.seleniumhq.selenium:selenium-firefox-driver:$seleniumVersion"
+//    testImplementation "org.seleniumhq.selenium:selenium-remote-driver:$seleniumVersion"
+//    testImplementation "org.seleniumhq.selenium:selenium-api:$seleniumVersion"
+//    testImplementation "org.seleniumhq.selenium:selenium-support:$seleniumVersion"
+//    testImplementation "org.seleniumhq.selenium:selenium-chrome-driver:$seleniumVersion"
+//    testImplementation "org.seleniumhq.selenium:selenium-firefox-driver:$seleniumVersion"
     testImplementation  'org.springframework:spring-messaging:5.3.22'
 
     implementation 'com.github.davidmoten:rxjava-file:0.4'
@@ -111,7 +118,7 @@ dependencies {
     }
     implementation "com.google.guava:guava:19.0"
     implementation 'dk.glasius:external-config:3.1.1'
-    runtimeOnly "org.grails.plugins:ala-bootstrap3:4.3.0"
+    runtimeOnly "org.grails.plugins:ala-bootstrap3:4.4.0"
     implementation "org.grails.plugins:ala-ws-security-plugin:${alaSecurityLibsVersion}"
     implementation "org.grails.plugins:ala-ws-plugin:${alaSecurityLibsVersion}"
     implementation "org.grails.plugins:ala-auth:${alaSecurityLibsVersion}"
@@ -142,17 +149,17 @@ tasks.withType(GroovyCompile) {
     }
 }
 
-webdriverBinaries {
-    chromedriver "$chromeDriverVersion"
-    geckodriver "$geckodriverVersion"
-}
+//webdriverBinaries {
+//    chromedriver "$chromeDriverVersion"
+//    geckodriver "$geckodriverVersion"
+//}
 
-tasks.withType(Test) {
-    systemProperty "geb.env", System.getProperty('geb.env')
-    systemProperty "geb.build.reportsDir", reporting.file("geb/integrationTest")
-    systemProperty "webdriver.chrome.driver", System.getProperty('webdriver.chrome.driver')
-    systemProperty "webdriver.gecko.driver", System.getProperty('webdriver.gecko.driver')
-}
+//tasks.withType(Test) {
+//    systemProperty "geb.env", System.getProperty('geb.env')
+//    systemProperty "geb.build.reportsDir", reporting.file("geb/integrationTest")
+//    systemProperty "webdriver.chrome.driver", System.getProperty('webdriver.chrome.driver')
+//    systemProperty "webdriver.gecko.driver", System.getProperty('webdriver.gecko.driver')
+//}
 
 
 assets {

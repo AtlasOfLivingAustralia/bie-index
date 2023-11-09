@@ -273,9 +273,9 @@ skin:
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
 import:
-  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,swap
-  sequenceDaily: conservation-lists,wordpress,knowledgebase,favourites,suggest-index,swap
-  sequenceWeekly: images,hidden-images,wiki-urls,occurrences,layers,regions,localities,suggest-index,swap
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,sitemap,swap
+  sequenceDaily: conservation-lists,wordpress,knowledgebase,favourites,suggest-index,images,hidden-images,wiki-urls,sitemap,swap
+  sequenceWeekly: occurrences,layers,regions,localities,suggest-index,sitemap,swap
   # enable daily and weekly tasks
   enableTasks: false
   # run daily sequence on this hour
@@ -300,3 +300,7 @@ import:
 headerAndFooter:
   baseURL: "https://www.ala.org.au/commonui-bs3-2019"
   version: "2"
+
+sitemap:
+  dir: /data/bie-index
+  enabled: true

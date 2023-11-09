@@ -110,7 +110,7 @@ class ImportService implements GrailsConfigurationAware {
     // A pattern indicating that we have a URL embedded in an anchor. Yuk
     static SOURCE_IN_ANCHOR = Pattern.compile(/<[Aa] [^>]*[Hh][Rr][Ee][Ff]\s*=\s*"([^"]+)"[^>]*>.*<\/[Aa]>/)
 
-    def indexService, searchService, biocacheService, nameService
+    def indexService, searchService, biocacheService, nameService, sitemapService
     def listService, layerService, collectoryService, wordpressService, knowledgeBaseService
 
     def speciesGroupService
@@ -642,6 +642,13 @@ class ImportService implements GrailsConfigurationAware {
         indexService.indexBatch(buffer, online)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished knowledge base import"
+    }
+
+    /**
+     * Index Knowledge Base pages.
+     */
+    def buildSitemap(boolean online) throws Exception {
+        sitemapService.build(online)
     }
 
 
