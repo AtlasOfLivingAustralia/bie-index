@@ -3,6 +3,7 @@
 <head>
     <meta name="layout" content="${grailsApplication.config.skin.layout}"/>
     <title><g:message code="admin.index.title" args="[grailsApplication.config.skin.orgNameLong]"/></title>
+    <asset:javascript src="sockets"/>
 </head>
 <body>
 <div id="page-body" role="main">
