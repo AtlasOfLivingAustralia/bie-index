@@ -156,7 +156,7 @@ class SearchService {
             }
         }
 
-        def matcher = ( queryTitle =~ /(rkid_)([a-z]{1,})(:)(.*)/ )
+        def matcher = ( queryTitle =~ /(rkid_)([a-z]{1,})(:"?)([^"]*)"?/ )
         if(matcher.matches()){
             try {
                 def rankName = matcher[0][2]
