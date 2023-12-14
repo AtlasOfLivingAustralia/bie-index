@@ -3,6 +3,7 @@ package au.org.ala.bie
 import au.org.ala.bie.search.*
 import org.apache.commons.lang.StringUtils
 import org.apache.solr.client.solrj.SolrQuery
+import org.apache.solr.client.solrj.SolrRequest
 import org.apache.solr.client.solrj.SolrServerException
 import org.apache.solr.client.solrj.response.FacetField
 import org.apache.solr.client.solrj.response.QueryResponse
@@ -138,7 +139,7 @@ class SolrSearchService {
             log.debug("About to execute ${solrQuery.query}")
         }
         // do the Solr search
-        return liveSolrClient.query(solrQuery); // can throw exception
+        return liveSolrClient.query(solrQuery, SolrRequest.METHOD.POST); // can throw exception
     }
 
     private SearchResultsDTO createSearchResultsFromQueryResponse(SolrQuery solrQuery, QueryResponse qr, Integer pageSize,
