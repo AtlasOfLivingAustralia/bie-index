@@ -865,7 +865,6 @@ class SearchService {
                             priority: variant.priority
                     ]
                 }
-
         ]
         if (taxon.taxonConceptID)
             model.taxonConcept["taxonConceptID"] = taxon.taxonConceptID
@@ -875,6 +874,9 @@ class SearchService {
             model.taxonConcept["acceptedConceptID"] = taxon.acceptedConceptID
         if (taxon.acceptedConceptName)
             model.taxonConcept["acceptedConceptName"] = taxon.acceptedConceptName
+
+        if (taxon.linkIdentifier)
+            model.put("linkIdentifier", taxon.linkIdentifier)
 
         if(getAdditionalResultFields()) {
             def doc = [:]
