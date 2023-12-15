@@ -9,7 +9,7 @@ class AdminController {
         [info: indexService.info()]
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def indexFields() {
         redirect(controller: "misc", action: "indexFields") // shouldn't get triggered due UrlMappings
     }

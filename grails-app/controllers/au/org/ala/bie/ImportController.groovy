@@ -73,7 +73,7 @@ class ImportController {
      *
      * @return
      */
-    // Dcoumented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importDwcA() {
 
         if(!params.dwca_dir || !(new File(params.dwca_dir).exists())){
@@ -131,7 +131,7 @@ class ImportController {
         }
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def deleteDanglingSynonyms(){
         boolean online = params.getBoolean('online', false)
         def job = execute("deleteDanglingSynonyms", "admin.button.deletedanglingsynonyms", { importService.clearDanglingSynonyms(online) })
@@ -143,7 +143,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importCollectory(){
         boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.collectory.service){
@@ -159,7 +159,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importLayers(){
         boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service){
@@ -175,7 +175,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importLocalities(){
         boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service && grailsApplication.config.layers.gazetteerId){
@@ -191,7 +191,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importRegions(){
         boolean online = params.getBoolean('online', false)
         if(grailsApplication.config.layers.service){
@@ -207,7 +207,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importHabitats(){
         boolean online = params.getBoolean('online', false)
         def job = execute("importHabitats", "admin.button.importhabitats", { importService.importHabitats(online) })
@@ -219,7 +219,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importWordPress(){
         boolean online = params.getBoolean('online', false)
         def job = execute("importWordPressPages", "admin.button.loadwordpress", { importService.importWordPressPages(online) })
@@ -253,7 +253,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importOccurrences(){
         def online = params.getBoolean('online', false)
         def job = execute("importOccurrences", "admin.button.loadoccurrence", { importService.importOccurrenceData(online) })
@@ -266,7 +266,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importConservationSpeciesLists(){
         boolean online = params.getBoolean('online', false)
         def job = execute("importConsevationSpeciesLists", "admin.button.importlistconservatioon", { importService.importConservationSpeciesLists(online) })
@@ -278,7 +278,7 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importVernacularSpeciesLists(){
         boolean online = params.getBoolean('online', false)
         def job = execute("buildVernacularSpeciesLists", "admin.button.importlistvernacular", { importService.importVernacularSpeciesLists(online) })
@@ -299,7 +299,7 @@ class ImportController {
 
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def buildLinkIdentifiers() {
         def online = params.getBoolean('online', false)
         def job = execute("buildLinkIdentifiers", "admin.button.buildLinks", { importService.buildLinkIdentifiers(online) })
@@ -307,7 +307,7 @@ class ImportController {
 
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def denormaliseTaxa() {
         def online = params.getBoolean('online', false)
         def job = execute("denormaliseTaxa", "admin.button.denormalise", { importService.denormaliseTaxa(online) })
@@ -315,7 +315,7 @@ class ImportController {
 
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def buildFavourites() {
         def online = params.getBoolean('online', false)
         def job = execute("buildFavourites", "admin.button.buildfavourites", { importService.buildFavourites(online) })
@@ -323,7 +323,7 @@ class ImportController {
 
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def buildWeights() {
         def online = params.getBoolean('online', false)
         def job = execute("buildWeights", "admin.button.buildweights", { importService.buildWeights(online) })
@@ -331,7 +331,7 @@ class ImportController {
 
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def buildSuggestIndex() {
         def online = params.getBoolean('online', false)
         def job = execute("buildSuggestIndex", "admin.button.buildsuggestindex", { importService.buildSuggestIndex(online) })
@@ -345,14 +345,14 @@ class ImportController {
      *
      * @return
      */
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def loadPreferredImages() {
         def online = params.getBoolean('online', false)
         def job = execute("loadImages", "admin.button.loadimagespref", { importService.loadPreferredImages(online) })
         asJson (job.status())
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def loadImages() {
         def online = params.getBoolean('online', false)
         def job = execute("loadImages", "admin.button.loadimagesall", { importService.loadImages(online) })

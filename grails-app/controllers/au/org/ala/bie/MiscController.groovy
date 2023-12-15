@@ -40,7 +40,7 @@ class MiscController {
         return
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because no recent use
     def ranks() {
         render importService.ranks() as JSON
     }
