@@ -1,15 +1,20 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /ws
+
 grails:
-  serverURL: http://localhost:8080
+  serverURL: http://localhost:8081/ws
   cors:
     enabled: true
-serverName: http://localhost:8080
+serverName: http://localhost:8081/ws
 # CAS Config
 security:
   cas:
     casServerName:   https://auth.biodiversitydata.se
     uriFilterPattern:   /admin,/admin/*,/alaAdmin*
     uriExclusionFilterPattern:   /admin/indexFields
-    appServerName:   http://localhost:8080
+    appServerName:   http://localhost:8081
     casServerUrlPrefix:   https://auth.biodiversitydata.se/cas
     loginUrl:   https://auth.biodiversitydata.se/cas/login
     logoutUrl:   https://auth.biodiversitydata.se/cas/logout
@@ -25,8 +30,19 @@ security:
   jwt:
     enabled: false
     discoveryUri:
-  apikey:
-    serviceUrl: https://auth.biodiversitydata.se/apikey/ws/check?apikey=
+  apiKey:
+    enabled: true
+    auth:
+      serviceUrl: https://auth.biodiversitydata.se/apikey/
+    check:
+      serviceUrl: https://auth.biodiversitydata.se/apikey/ws/check?apikey=
+    userdetails:
+      serviceUrl: https://auth.biodiversitydata.se/userdetails/
+webservice:
+  jwt: false
+  jwt-scopes:
+  client-id:
+  client-secret:
 disableCAS: false
 userDetails:
   url: https://auth.biodiversitydata.se/userdetails/
@@ -47,9 +63,9 @@ images:
   base: https://images.biodiversitydata.se
   service:
     base: https://images.biodiversitydata.se
-    thumbnail: https://images.biodiversitydata.se/image/proxyImageThumbnail?imageId={0}
-    large: https://images.biodiversitydata.se/image/proxyImage?imageId={0}
-    small: https://images.biodiversitydata.se/image/proxyImageThumbnailLarge?imageId={0}
+    thumbnail: https://images.biodiversitydata.se/image/{0}/thumbnail
+    large: https://images.biodiversitydata.se/image/{0}/large
+    small: https://images.biodiversitydata.se/image/{0}/original
     metadata: https://images.biodiversitydata.se/ws/image/{0}
   index: true
 knowledgeBase:
@@ -168,3 +184,7 @@ openapi:
         authorizationUrl:
         refreshUrl:
         tokenUrl:
+userdetails:
+  url: https://auth.biodiversitydata.se/userdetails
+userdetails.web.url: https://auth.biodiversitydata.se/userdetails/
+userdetails.api.url: https://auth.biodiversitydata.se/userdetails/
