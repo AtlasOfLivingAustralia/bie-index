@@ -19,6 +19,8 @@ grails:
       # Whether to translate GORM events into Reactor events
       # Disabled by default for performance reasons
       events: false
+  cors:
+    enabled: true
 info:
   app:
     name: '@info.app.name@'
@@ -150,6 +152,12 @@ images:
     small: https://images.ala.org.au/image/proxyImageThumbnailLarge?imageId={0}
     metadata: https://images.ala.org.au/ws/image/{0}
   index: true
+hiddenImages:
+  # URL of hidden images configuration file
+  config: /default-hidden-images-lists.json
+wiki:
+  # URL of wiki configuration file
+  config: /default-wiki-lists.json
 wordPress:
   service: https://www.ala.org.au
   sitemap: /xmlsitemap.xml
@@ -174,6 +182,8 @@ knowledgeBase:
 lists:
   service: https://lists.ala.org.au/ws
   items: /speciesListItems/{0}?includeKVP=true&max={1}&offset={2}
+  add: /createItem
+  remove: /deleteItem
 # If attribution entry is null, the default is used
 naming:
   service: https://namematching-ws.ala.org.au
@@ -214,6 +224,12 @@ additionalResultFields: ""
 
 # SOLR additional params and connections
 solr:
+  admin:
+    type: HTTP
+    connection: http://localhost:8983/solr
+    queueSize: 10
+    threadCount: 4
+    timeout: 120000
   live:
     type: HTTP
     connection: http://localhost:8983/solr/bie
@@ -257,7 +273,15 @@ skin:
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
 import:
-  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,suggest-index
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,sitemap,swap
+  sequenceDaily: conservation-lists,wordpress,knowledgebase,favourites,suggest-index,images,hidden-images,wiki-urls,sitemap,swap
+  sequenceWeekly: occurrences,layers,regions,localities,suggest-index,sitemap,swap
+  # enable daily and weekly tasks
+  enableTasks: false
+  # run daily sequence on this hour
+  dailyRunHour: 2
+  # run weekly sequence on this day (6 == Saturday)
+  weeklyRunDay: 6
   taxonomy:
     dir: /data/bie/import
   priority:
@@ -276,3 +300,7 @@ import:
 headerAndFooter:
   baseURL: "https://www.ala.org.au/commonui-bs3-2019"
   version: "2"
+
+sitemap:
+  dir: /data/bie-index
+  enabled: true

@@ -16,8 +16,46 @@
     </div>
 
     <div>
-        <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importAll')}')" class="btn btn-primary import-button"><g:message code="admin.button.importall"/></button>
+        <button id="start-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importAll')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importall"/></button>
     </div>
+
+    <div>
+        <button id="start-import-daily" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importDaily')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.daily"/></button>
+    </div>
+
+    <div>
+        <button id="start-import-weekly" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importWeekly')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.weekly"/></button>
+    </div>
+    <div>
+        <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
+    </div>
+    <br/>
+
+
+    <div>
+        <table class="table-bordered table">
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Documents</th>
+                    <th>Version</th>
+                    <th>Path</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>bie</td><td>${info.response.status.bie.index.numDocs}</td><td>${info.response.status.bie.index.version}</td><td>${info.response.status.bie.instanceDir}</td>
+                </tr>
+                <tr>
+                    <td>bie-offline</td><td>${info.response.status['bie-offline'].index.numDocs}</td><td>${info.response.status['bie-offline'].index.version}</td><td>${info.response.status['bie-offline'].instanceDir}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div>
+        <button id="start-import-swap" onclick="javascript:loadInfo('${createLink(controller:'import', action:'swap')}')" class="btn btn-primary import-button"><g:message code="admin.button.swap"/></button>
+    </div>
+
 
     <g:render template="status" model="${[showTitle: true, showJob: true, showLog: true, startLog: false]}"/>
 </div>

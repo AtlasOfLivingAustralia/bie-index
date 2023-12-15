@@ -14,16 +14,8 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.util.Job
-import au.org.ala.plugins.openapi.Path
 import grails.converters.JSON
 import au.org.ala.web.AlaSecured
-import io.swagger.v3.oas.annotations.Operation
-import io.swagger.v3.oas.annotations.headers.Header
-import io.swagger.v3.oas.annotations.media.Schema
-import io.swagger.v3.oas.annotations.responses.ApiResponse
-import io.swagger.v3.oas.annotations.security.SecurityRequirement
-
-import javax.ws.rs.Produces
 
 
 /**
@@ -32,7 +24,7 @@ import javax.ws.rs.Produces
 @AlaSecured(value = "ROLE_ADMIN", redirectUri = "/")
 class ImportController {
 
-    def importService, bieAuthService
+    def importService, bieAuthService, indexService
     def brokerMessagingTemplate
     def jobService
 
@@ -46,7 +38,11 @@ class ImportController {
         [filePaths: filePaths]
     }
 
-    def all(){}
+    def all(){
+        [info: indexService.info()]
+    }
+
+    def daily(){}
 
     def collectory(){}
 
@@ -64,7 +60,13 @@ class ImportController {
 
     def links(){}
 
+    def sitemap() {}
+
     def occurrences(){}
+
+    def swap() {
+        indexService.swap()
+    }
 
     /**
      * Import a DwC-A into this system.
@@ -83,21 +85,34 @@ class ImportController {
         def dwcDir = params.dwca_dir
 
         if(new File(dwcDir).exists()){
-            def job = execute("importDwca", "admin.button.importdwca", { importService.importDwcA(dwcDir, clearIndex) })
+            def job = execute("importDwca", "admin.button.importdwca", { importService.importDwcA(dwcDir, clearIndex, false) })
             asJson (job.status())
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
         }
     }
 
-
     def importAll(){
-        def job = execute(
-                "importDwca,importCollectory,deleteDanglingSynonyms,importLayers,importLocalities,importRegions,importHabitats,importHabitats," +
-                        "importWordPressPages,importOccurrences,importConsevationSpeciesLists,buildVernacularSpeciesLists,buildLinkIdentifiers" +
-                        "denormaliseTaxa,loadImages,importKnowledgeBase",
+        boolean online = params.getBoolean('online', false)
+        def job = execute(importService.importSequence.join(','),
                 "admin.button.importall",
-                { importService.importAll() })
+                { importService.importAll(importService.importSequence, online) })
+        asJson(job.status())
+    }
+
+    def importDaily(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute(importService.importDailySequence.join(','),
+                "admin.button.daily",
+                { importService.importAll(importService.importDailySequence, online) })
+        asJson(job.status())
+    }
+
+    def importWeekly(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute(importService.importWeeklySequence.join(','),
+                "admin.button.weekly",
+                { importService.importAll(importService.importWeeklySequence, online) })
         asJson(job.status())
     }
 
@@ -107,8 +122,9 @@ class ImportController {
      * @return
      */
     def importAllDwcA() {
+        boolean online = params.getBoolean('online', false)
         if(new File(grailsApplication.config..getProperty('import.taxonomy.dir')).exists()){
-            def job = execute("importDwca", "admin.button.importalldwca", { importService.importAllDwcA() })
+            def job = execute("importDwca", "admin.button.importalldwca", { importService.importAllDwcA(online) })
             asJson(job.status())
         } else {
             asJson ([success: false, message: 'Supplied directory path is not accessible'])
@@ -117,7 +133,8 @@ class ImportController {
 
     // Documented in openapi.yml
     def deleteDanglingSynonyms(){
-        def job = execute("deleteDanglingSynonyms", "admin.button.deletedanglingsynonyms", { importService.clearDanglingSynonyms() })
+        boolean online = params.getBoolean('online', false)
+        def job = execute("deleteDanglingSynonyms", "admin.button.deletedanglingsynonyms", { importService.clearDanglingSynonyms(online) })
         asJson(job.status())
     }
 
@@ -192,7 +209,8 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importHabitats(){
-        def job = execute("importHabitats", "admin.button.importhabitats", { importService.importHabitats() })
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importHabitats", "admin.button.importhabitats", { importService.importHabitats(online) })
         asJson(job.status())
     }
 
@@ -220,6 +238,17 @@ class ImportController {
     }
 
     /**
+     * Build sitemap.xml from SOLR index
+     *
+     * @return
+     */
+    def buildSitemap(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("buildSitemap", "admin.button.buildsitemap", { importService.buildSitemap(online) })
+        asJson(job.status())
+    }
+
+    /**
      * Index occurrence data
      *
      * @return
@@ -239,7 +268,8 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importConservationSpeciesLists(){
-        def job = execute("importConsevationSpeciesLists", "admin.button.importlistconservatioon", { importService.importConservationSpeciesLists() })
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importConsevationSpeciesLists", "admin.button.importlistconservatioon", { importService.importConservationSpeciesLists(online) })
         asJson(job.status())
     }
 
@@ -250,7 +280,21 @@ class ImportController {
      */
     // Documented in openapi.yml
     def importVernacularSpeciesLists(){
-        def job = execute("buildVernacularSpeciesLists", "admin.button.importlistvernacular", { importService.importVernacularSpeciesLists() })
+        boolean online = params.getBoolean('online', false)
+        def job = execute("buildVernacularSpeciesLists", "admin.button.importlistvernacular", { importService.importVernacularSpeciesLists(online) })
+        asJson (job.status())
+
+    }
+
+    def importWikiUrls(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("buildWikiUrls", "admin.button.importlistwiki", { importService.loadWikiUrls(online) })
+        asJson (job.status())
+    }
+
+    def importHiddenImages(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("buildHiddenImages", "admin.button.importlisthiddenimages", { importService.loadHiddenImages(online) })
         asJson (job.status())
 
     }

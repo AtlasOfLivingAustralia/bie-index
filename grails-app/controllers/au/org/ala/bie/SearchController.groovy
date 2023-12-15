@@ -867,6 +867,7 @@ class SearchController implements GrailsConfigurationAware {
     private regularise(String guid) {
         if (!guid)
             return guid
+        guid = URLDecoder.decode(guid)
         if (guid ==~ BROKEN_URLPATTERN) {
             guid = guid.replaceFirst(":/", "://")
         }

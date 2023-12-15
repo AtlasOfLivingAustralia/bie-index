@@ -86,7 +86,7 @@ paths:
         required: false
       responses:
         200:
-          description: 'Search results'        
+          description: 'Search results'
           content:
             application/json:
               schema:
@@ -134,12 +134,12 @@ paths:
           schema:
             type: string
           required: true
-          description: Numeric ID of the taxon      
+          description: Numeric ID of the taxon
       responses:
         404:
           description: The identifier was not found
         200:
-          description: 'Species info in JSON'        
+          description: 'Species info in JSON'
           content:
             application/json:
               schema:
@@ -221,7 +221,7 @@ paths:
                     type: array
                     description: Alternative sources for the base taxon concept (including itself)
                     items:
-                      $ref: '#/components/schemas/TaxonConcept'          
+                      $ref: '#/components/schemas/TaxonConcept'
       tags:
         - lookup
   /species/{id}:
@@ -236,7 +236,7 @@ paths:
         404:
           description: The identifier was not found
         200:
-          description: 'Species info in JSON'        
+          description: 'Species info in JSON'
           content:
             application/json:
               schema:
@@ -331,7 +331,7 @@ paths:
         404:
           description: The identifier was not found
         200:
-          description: 'Classification info in JSON'                
+          description: 'Classification info in JSON'
           content:
             application/json:
               schema:
@@ -374,7 +374,7 @@ paths:
         404:
           description: The identifier was not found
         200:
-          description: 'Child concepts list in JSON'                        
+          description: 'Child concepts list in JSON'
           content:
             application/json:
               schema:
@@ -423,7 +423,7 @@ paths:
           type: string
       responses:
         200:
-          description: 'Image seearch list in JSON'                                
+          description: 'Image seearch list in JSON'
           content:
             application/json:
               schema:
@@ -570,7 +570,7 @@ paths:
             type: string
       responses:
         200:
-          description: List of short profile for taxa        
+          description: List of short profile for taxa
           content:
             application/json:
               schema:
@@ -600,7 +600,7 @@ paths:
         404:
           description: If a guid is not found
         200:
-          description: List of short profile for taxa        
+          description: List of short profile for taxa
           content:
             application/json:
               schema:
@@ -685,7 +685,7 @@ paths:
         400:
           description: On an invalid request
         200:
-          description: List of long profiles for taxa        
+          description: List of long profiles for taxa
           content:
             application/json:
               schema:
@@ -712,7 +712,7 @@ paths:
         required: false
       responses:
         200:
-          description: Zipped file containing CSV        
+          description: Zipped file containing CSV
           content:
             text/csv:
               schema:
@@ -766,7 +766,7 @@ paths:
         500:
           description: If unable to connect to the solr index
         200:
-          description: List of indexed fields in JSON        
+          description: List of indexed fields in JSON
           content:
             application/json:
               schema:
@@ -842,7 +842,7 @@ paths:
         500:
           description: If unable to connect to the solr index
         200:
-          description: A list of habitats in JSON        
+          description: A list of habitats in JSON
           content:
             application/json:
               schema:
@@ -863,7 +863,7 @@ paths:
         500:
           description: If unable to connect to the solr index
         200:
-          description: A tree structure of habitats in JSON                
+          description: A tree structure of habitats in JSON
           content:
             application/json:
               schema:
@@ -879,7 +879,7 @@ paths:
       tags:
       - metadata
       parameters:
-      - $ref: '#/components/parameters/idParam'      
+      - $ref: '#/components/parameters/idParam'
       responses:
         500:
           description: If unable to connect to the solr index
@@ -902,7 +902,7 @@ paths:
       tags:
       - metadata
       parameters:
-      - $ref: '#/components/parameters/idParam'        
+      - $ref: '#/components/parameters/idParam'
       responses:
         500:
           description: If unable to connect to the solr index
@@ -1189,6 +1189,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobStatus'
+  /admin/import/importWikiUrls:
+    get:
+      summary: Import wikipedia URLs from species lists
+      description: >
+        Remove wiki urls removed from lists and import URLs from lists
+      tags:
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/onlineParam'
+      security:
+        - cas: [ ]
+      responses:
+        200:
+          description: JSON response indicating job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
+  /admin/import/importHiddenImages:
+    get:
+      summary: Import hidden images from species lists
+      description: >
+        Remove images no longer hidden and import lists of hidden images for taxa
+      tags:
+        - admin
+      parameters:
+        - $ref: '#/components/parameters/onlineParam'
+      security:
+        - cas: [ ]
+      responses:
+        200:
+          description: JSON response indicating job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatus'
   /admin/import/buildLinkIdentifiers:
     get:
       summary: Build link identifiers for unique taxa
@@ -1353,7 +1389,7 @@ paths:
       tags:
       - admin
       parameters:
-      - $ref: '#/components/parameters/idParam'          
+      - $ref: '#/components/parameters/idParam'
       - $ref: '#/components/parameters/formatParam'
       security:
       - cas: []
@@ -1373,7 +1409,7 @@ paths:
       tags:
       - admin
       parameters:
-      - $ref: '#/components/parameters/idParam'          
+      - $ref: '#/components/parameters/idParam'
       - $ref: '#/components/parameters/formatParam'
       security:
       - cas: []
@@ -1393,7 +1429,7 @@ paths:
       tags:
       - admin
       parameters:
-      - $ref: '#/components/parameters/idParam'          
+      - $ref: '#/components/parameters/idParam'
       - $ref: '#/components/parameters/formatParam'
       security:
       - cas: []
