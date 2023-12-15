@@ -1600,15 +1600,29 @@ class ImportService implements GrailsConfigurationAware {
                 response.results.each { doc ->
                     try {
                         def nameQuery = "linkText:\"${Encoder.escapeSolr(doc.linkText)}\""
-                        def nameResponse = indexService.query(online, nameQuery, [], 0)
+
+                        // query for taxonomicStatus:accepted first as it is the most likely taxon for the linkIdentifier
+                        def nameResponse = indexService.query(online, nameQuery, ["taxonomicStatus:accepted"], 1)
+
+                        // query for taxonomicStatus:inferredAccepted second as it is the second most likely taxon for the linkIdentifier
+                        if (nameResponse.results.numFound == 0) {
+                            nameResponse = indexService.query(online, nameQuery, ["taxonomicStatus:inferredAccepted"], 1)
+                        }
+
+                        // query for other taxonomicStatuses last
+                        if (nameResponse.results.numFound == 0) {
+                            nameResponse = indexService.query(online, nameQuery, [], 1)
+                        }
+
                         int found = nameResponse.results.numFound
                         if (found == 1) {
+                            def currentDoc = nameResponse.results[0]
                             //log.debug("Adding link identifier for ${name} to ${doc.id}")
                             def update = [:]
-                            update["id"] = doc.id // doc key
-                            update["idxtype"] = ["set": doc.idxtype] // required field
-                            update["guid"] = ["set": doc.guid] // required field
-                            update["linkIdentifier"] = ["set": doc.linkText]
+                            update["id"] = currentDoc.id // doc key
+                            update["idxtype"] = ["set": currentDoc.idxtype] // required field
+                            update["guid"] = ["set": currentDoc.guid] // required field
+                            update["linkIdentifier"] = ["set": currentDoc.linkText]
                             buffer << update
                             added++
                         }
