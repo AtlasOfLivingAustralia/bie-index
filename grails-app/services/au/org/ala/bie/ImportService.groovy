@@ -1753,7 +1753,17 @@ class ImportService implements GrailsConfigurationAware {
                             biocacheQuery = addImageSearch(biocacheQuery, rank.idField, taxonID, 20)
                             if (biocacheQuery) {
                                 biocacheQuery = "(${biocacheQuery}) AND multimedia:Image"
-                                def occurrences = biocacheService.search(biocacheQuery, preferredFilters)
+                                def occurrences
+                                // iterate over preferredFilters instead using them all in a single query
+                                if (preferredFilters) {
+                                    for (String fq : preferredFilters) {
+                                        occurrences = biocacheService.search(biocacheQuery, [fq])
+                                        if (occurrences.totalRecords > 0) {
+                                            break;
+                                        }
+                                    }
+                                }
+
                                 if (occurrences.totalRecords < 1 && preferredFilters) {
                                     // Try without preferred filters
                                     occurrences = biocacheService.search(biocacheQuery, requiredFilters)
