@@ -21,6 +21,7 @@
         <li><g:link controller="import" action="links"><g:message code="admin.import.links.label"/></g:link> <g:message code="admin.import.links.lead"/></li>
         <li><g:link controller="import" action="occurrences"><g:message code="admin.import.occurrences.label"/></g:link> <g:message code="admin.import.occurrences.lead"/></li>
         <li><g:link controller="import" action="sitemap"><g:message code="admin.import.sitemap.label"/></g:link> <g:message code="admin.import.sitemap.lead"/></li>
+        <li><g:link controller="import" action="biocollect"><g:message code="admin.import.biocollect.label"/></g:link> <g:message code="admin.import.biocollect.lead"/></li>
         <br>
         <li><g:link controller="job" action="index"><g:message code="admin.job.label"/></g:link> <g:message code="admin.job.lead"/></li>
         <li><g:link controller="alaAdmin" action="index"><g:message code="admin.ala.label"/></g:link> <g:message code="admin.ala.lead"/></li>

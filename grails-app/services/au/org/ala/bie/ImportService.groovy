@@ -111,7 +111,7 @@ class ImportService implements GrailsConfigurationAware {
     static SOURCE_IN_ANCHOR = Pattern.compile(/<[Aa] [^>]*[Hh][Rr][Ee][Ff]\s*=\s*"([^"]+)"[^>]*>.*<\/[Aa]>/)
 
     def indexService, searchService, biocacheService, nameService, sitemapService
-    def listService, layerService, collectoryService, wordpressService, knowledgeBaseService
+    def listService, layerService, collectoryService, wordpressService, knowledgeBaseService, biocollectService
 
     def speciesGroupService
     def conservationListsSource
@@ -283,6 +283,9 @@ class ImportService implements GrailsConfigurationAware {
                         break
                     case 'knowledgebase':
                         importKnowledgeBasePages(online)
+                        break
+                    case 'biocollect':
+                        importBiocollectProjects(online)
                         break
                     case 'swap':
                         indexService.swap()
@@ -642,6 +645,55 @@ class ImportService implements GrailsConfigurationAware {
         indexService.indexBatch(buffer, online)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished knowledge base import"
+    }
+
+    /**
+     * Index Biocollect projects.
+     */
+    def importBiocollectProjects(boolean online) throws Exception {
+        log "Starting biocollect import."
+
+        // get List of Biocollect document URLs (each page's URL)
+        def projects = biocollectService.resources()
+        def documentCount = 0
+        def totalDocs = projects.size()
+        def buffer = []
+        log("Biocollect projects found: ${totalDocs}") // update user via socket
+
+        // slurp and build each SOLR doc (add to buffer)
+        projects.each { project ->
+            log "indexing url: ${project.url}"
+            try {
+                documentCount++
+                // create SOLR doc
+                log.debug documentCount + ". Indexing Biocollect project - id: " + project.projectId + " | title: " + project.name + " | text: " + StringUtils.substring(project.description?:"", 0, 100) + "... ";
+                def doc = [:]
+                doc["idxtype"] = IndexDocType.BIOCOLLECT.name()
+                doc["guid"] = project.url
+                doc["id"] = "bc" + project.projectId // guid required
+                doc["name"] = project.name
+                doc["content"] = project.description?:""
+                doc["linkIdentifier"] = project.url
+                // add to doc to buffer (List)
+                buffer << doc
+                // update progress bar (number output only)
+                if (documentCount > 0) {
+                    updateProgressBar(totalDocs, documentCount)
+                }
+            } catch (IOException ex) {
+                // catch it so we don't stop indexing other pages
+                log("Problem accessing/reading Biocollect project <${project.url}>: " + ex.getMessage() + " - document skipped")
+                log.warn(ex.getMessage(), ex)
+            }
+        }
+        log("Committing to ${buffer.size()} documents to SOLR...")
+        if (online) {
+            log "Search for biocollect projects may be temporarily unavailable"
+        }
+        indexService.deleteFromIndex(IndexDocType.BIOCOLLECT, online)
+        indexService.indexBatch(buffer, online)
+        updateProgressBar(100, 100) // complete progress bar
+        log "Finished biocollect import"
     }
 
     /**

@@ -58,6 +58,8 @@ class ImportController {
 
     def knowledgebase(){}
 
+    def biocollect(){}
+
     def links(){}
 
     def sitemap() {}
@@ -234,6 +236,17 @@ class ImportController {
     def importKnowledgeBase(){
         boolean online = params.getBoolean('online', false)
         def job = execute("importKnowledgeBasePages", "admin.button.loadknowledgebase", { importService.importKnowledgeBasePages(online) })
+        asJson(job.status())
+    }
+
+    /**
+     * Import/index KB (biocollect) projects
+     *
+     * @return
+     */
+    def importBiocollect(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importBiocollectProjects", "admin.button.loadbiocollect", { importService.importBiocollectProjects(online) })
         asJson(job.status())
     }
 
