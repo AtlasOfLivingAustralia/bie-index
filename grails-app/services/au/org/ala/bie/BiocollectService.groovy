@@ -13,14 +13,7 @@
 
 package au.org.ala.bie
 
-import au.org.ala.bie.indexing.IndexingInterface
-import au.org.ala.bie.util.Encoder
 import grails.converters.JSON
-import groovy.json.JsonSlurper
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
-import org.jsoup.select.Elements
 
 /**
  * Service to index Biocollect projects

@@ -3,6 +3,7 @@ package au.org.ala.bie
 import au.org.ala.bie.util.Encoder
 import groovy.json.JsonSlurper
 import org.apache.http.entity.ContentType
+import grails.converters.JSON
 
 /**
  * Interface to the list servers
@@ -59,5 +60,24 @@ class ListService {
         def url = new URL(grailsApplication.config.lists.service + grailsApplication.config.lists.remove)
 
         webService.get(url.toString(), [druid: listDr, guid: guid], ContentType.APPLICATION_JSON, true, false, [:])
+    }
+
+    def resources() {
+        def lists = []
+        boolean hasAnotherPage = true
+        int max = 400
+        int offset = 0
+
+        while (hasAnotherPage) {
+            def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.search, max, offset)
+
+            def json = JSON.parse(url.getText('UTF-8')).lists
+            lists.addAll(json)
+
+            hasAnotherPage = json.size() == max
+            offset += max
+        }
+
+        lists
     }
 }

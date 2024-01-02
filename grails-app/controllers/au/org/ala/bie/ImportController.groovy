@@ -282,7 +282,18 @@ class ImportController {
     // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def importConservationSpeciesLists(){
         boolean online = params.getBoolean('online', false)
-        def job = execute("importConsevationSpeciesLists", "admin.button.importlistconservatioon", { importService.importConservationSpeciesLists(online) })
+        def job = execute("importConservationSpeciesLists", "admin.button.importlistconservation", { importService.importConservationSpeciesLists(online) })
+        asJson(job.status())
+    }
+
+    /**
+     * Import/index Species Lists
+     *
+     * @return
+     */
+    def importSpeciesLists(){
+        boolean online = params.getBoolean('online', false)
+        def job = execute("importSpeciesLists", "admin.button.importspecieslists", { importService.importSpeciesLists(online) })
         asJson(job.status())
     }
 

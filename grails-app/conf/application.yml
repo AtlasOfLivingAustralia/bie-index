@@ -131,6 +131,7 @@ collectory:
   base: https://collections.ala.org.au
   service: https://collections.ala.org.au/ws
   resources: /{0}
+  find: /find/{0}
   # A list of uids for the national species list datasets
   nationalSpeciesDatsets:
   #- dr2699 - dr2700 -dr2702 -dr2704 -dr2703 -dr3118
@@ -180,8 +181,10 @@ knowledgeBase:
   sectionSelector: section.article-list .list-lead > a
   articleCssSelector: .article-title a.c-link
 lists:
-  service: https://lists.ala.org.au/ws
-  items: /speciesListItems/{0}?includeKVP=true&max={1}&offset={2}
+  service: https://lists.ala.org.au
+  items: /ws/speciesListItems/{0}?includeKVP=true&max={1}&offset={2}
+  search: /ws/speciesList/?isAuthoritative=eq:true&max={0}&offset={1}
+  show: /speciesListItem/list/{0}
   add: /createItem
   remove: /deleteItem
 biocollect:
@@ -276,8 +279,8 @@ skin:
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
 import:
-  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,biocollect,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,sitemap,swap
-  sequenceDaily: conservation-lists,wordpress,knowledgebase,biocollect,favourites,suggest-index,images,hidden-images,wiki-urls,sitemap,swap
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,biocollect,species-lists,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,sitemap,swap
+  sequenceDaily: conservation-lists,wordpress,knowledgebase,biocollect,species-lists,favourites,suggest-index,images,hidden-images,wiki-urls,sitemap,swap
   sequenceWeekly: occurrences,layers,regions,localities,suggest-index,sitemap,swap
   # enable daily and weekly tasks
   enableTasks: false

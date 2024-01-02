@@ -1093,6 +1093,25 @@ class SearchService {
                 if (it.content){
                     doc.put("content", it.content)
                 }
+                if (it.image) {
+                    if (!it.image.startsWith("http")) {
+                        doc.put("image", it.image)
+                        doc.put("imageUrl", MessageFormat.format(grailsApplication.config.images.service.small, it.image))
+                        doc.put("thumbnailUrl", MessageFormat.format(grailsApplication.config.images.service.thumbnail, it.image))
+                    } else {
+                        doc.put("image", it.image)
+                        doc.put("imageUrl", it.image)
+                        doc.put("thumbnailUrl", it.image)
+                    }
+                }
+
+                // biocollect fields
+                (['projectType', 'containsActivity', 'dateCreated', 'keywords'] +
+                        // species list fields
+                        ['listType', 'dateCreated', 'itemCount', 'isAuthoritative', 'isInvasive', 'isThreatened', 'region']).each { item ->
+                    def key = item + "_s"
+                    if (it[key]) doc.put(key, it[key])
+                }
             }
             if (doc) {
                 if(getAdditionalResultFields()){

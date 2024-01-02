@@ -41,7 +41,10 @@ import org.gbif.dwca.io.ArchiveFile
 import org.gbif.dwca.record.Record
 import org.gbif.dwca.record.StarRecord
 import org.gbif.nameparser.PhraseNameParser
+import org.springframework.context.MessageSource
+import org.springframework.context.i18n.LocaleContextHolder
 
+import java.text.MessageFormat
 import java.text.SimpleDateFormat
 import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream
@@ -116,6 +119,8 @@ class ImportService implements GrailsConfigurationAware {
     def speciesGroupService
     def conservationListsSource
     def jobService
+    def grailsApplication
+    MessageSource messageSource
 
     def brokerMessagingTemplate
 
@@ -286,6 +291,9 @@ class ImportService implements GrailsConfigurationAware {
                         break
                     case 'biocollect':
                         importBiocollectProjects(online)
+                        break
+                    case 'species-lists':
+                        importSpeciesLists(online)
                         break
                     case 'swap':
                         indexService.swap()
@@ -500,37 +508,62 @@ class ImportService implements GrailsConfigurationAware {
             indexService.deleteFromIndex(indexDocType, online)
             log("Cleared")
 
-            drLists.each {
-                def details = collectoryService.get(it.uri)
-                def doc = [:]
-                doc["id"] = it.uri
-                doc["datasetID"] = details.uid
-                doc["guid"] = details.alaPublicUrl
-                doc["idxtype"] = indexDocType.name()
-                doc["name"] = details.name
-                doc["description"] = details.pubDescription
-                doc["distribution"] = "N/A"
+            def maxSize = 100
+            def batch = []
+            def uriMap = [:]
 
-                if (details.rights)
-                    doc["rights"] = details.rights
-                if (details.licenseType)
-                    doc["license"] = (details.licenseType + " " + details.licenseVersion ?: "").trim()
-                if (details.acronym)
-                    doc["acronym"] = details.acronym
+            drLists.each { dr ->
+                batch.add(dr)
+                uriMap[dr.uid] = dr.uri
 
-                entities << doc
-
-                if (entities.size() > BUFFER_SIZE) {
-                    indexService.indexBatch(entities, online)
-                    entities.clear()
+                if (batch.size() == maxSize) {
+                    collectoryBatch(batch, entities, online, entityType, indexDocType, uriMap)
+                    batch.clear()
                 }
             }
+
+            if (batch) {
+                collectoryBatch(batch, entities, online, entityType, indexDocType, uriMap)
+            }
+
             if (entities) {
                 indexService.indexBatch(entities, online)
             }
+
             log("Finished indexing ${drLists.size()} ${entityType}")
         }
         log "Finished collectory import"
+    }
+
+    def collectoryBatch(batch, entities, online, entityType, indexDocType, uriMap) {
+        def drs = collectoryService.getBatch(batch, entityType)
+
+        drs.each { details ->
+            def doc = [:]
+            doc["id"] = uriMap[details.uid]
+            doc["datasetID"] = details.uid
+            doc["guid"] = details.alaPublicUrl
+            doc["idxtype"] = indexDocType.name()
+            doc["name"] = details.name?.trim()
+            doc["description"] = details.pubDescription?.trim()
+            doc["distribution"] = "N/A"
+
+            if (details.rights)
+                doc["rights"] = details.rights
+            if (details.licenseType)
+                doc["license"] = (details.licenseType + " " + details.licenseVersion ?: "").trim()
+            if (details.acronym)
+                doc["acronym"] = details.acronym
+            if (details.logoRef?.uri)
+                doc["image"] = details.logoRef.uri
+
+            entities << doc
+
+            if (entities.size() > BUFFER_SIZE) {
+                indexService.indexBatch(entities, online)
+                entities.clear()
+            }
+        }
     }
 
     /**
@@ -674,6 +707,13 @@ class ImportService implements GrailsConfigurationAware {
                 doc["name"] = project.name
                 doc["content"] = project.description?:""
                 doc["linkIdentifier"] = project.url
+
+                doc["projectType_s"] = project.projectType
+                if (project.urlImage) doc["image"] = project.urlImage
+                doc["containsActivity_s"] = project.containsActivity
+                doc["dateCreated_s"] = project.dateCreated
+                if (project.keywords) doc["keywords_s"] = project.keywords
+
                 // add to doc to buffer (List)
                 buffer << doc
                 // update progress bar (number output only)
@@ -694,6 +734,74 @@ class ImportService implements GrailsConfigurationAware {
         indexService.indexBatch(buffer, online)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished biocollect import"
+    }
+
+    /**
+     * Index Species lists
+     */
+    def importSpeciesLists(boolean online) throws Exception {
+        log "Starting species lists import."
+
+        // get List of species lists
+        def lists = listService.resources()
+        def documentCount = 0
+        def totalDocs = lists.size()
+        def buffer = []
+        log("Species lists found: ${totalDocs}") // update user via socket
+
+        // slurp and build each SOLR doc (add to buffer)
+        lists.each { list ->
+            def url = MessageFormat.format(grailsApplication.config.lists.service + grailsApplication.config.lists.show, list.dataResourceUid)
+            log "indexing url: ${url}"
+            try {
+                documentCount++
+
+                // create SOLR doc
+                log.debug documentCount + ". Indexing Species lists - id: " + list.dataResourceUid + " | title: " + list.listName + "... ";
+                def doc = [:]
+                doc["idxtype"] = IndexDocType.SPECIESLIST.name()
+                doc["guid"] = url
+                doc["id"] = list.dataResourceUid // guid required
+                doc["name"] = list.listName
+                doc["linkIdentifier"] = url
+
+                doc["listType_s"] = list.listType
+                def content = messageSource.getMessage('list.content.listType', null, LocaleContextHolder.locale) + ": " +
+                        messageSource.getMessage("list." + list.listType, null, LocaleContextHolder.locale)
+
+                ['dateCreated', 'itemCount', 'isAuthoritative', 'isInvasive', 'isThreatened', 'region'].each {item ->
+                    def label = messageSource.getMessage('list.content.' + item, null, LocaleContextHolder.locale)
+                    if (label && list[item]) {
+                        if ("true" == list[item].toString()) {
+                            content += ', ' + label
+                        } else {
+                            content += ', ' + label + ": " + list[item]
+                        }
+                        doc[item + "_s"] = list[item]
+                    }
+                }
+
+                doc["content"] = content
+                // add to doc to buffer (List)
+                buffer << doc
+                // update progress bar (number output only)
+                if (documentCount > 0) {
+                    updateProgressBar(totalDocs, documentCount)
+                }
+            } catch (IOException ex) {
+                // catch it so we don't stop indexing other pages
+                log("Problem accessing/reading Species lists <${project.url}>: " + ex.getMessage() + " - document skipped")
+                log.warn(ex.getMessage(), ex)
+            }
+        }
+        log("Committing to ${buffer.size()} documents to SOLR...")
+        if (online) {
+            log "Search for species lists may be temporarily unavailable"
+        }
+        indexService.deleteFromIndex(IndexDocType.SPECIESLIST, online)
+        indexService.indexBatch(buffer, online)
+        updateProgressBar(100, 100) // complete progress bar
+        log "Finished species lists import"
     }
 
     /**
