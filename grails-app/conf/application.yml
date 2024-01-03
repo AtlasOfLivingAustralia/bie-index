@@ -222,9 +222,16 @@ vernacularListsUrl: /default-vernacular-lists.json
 # Location of locality keywords (null for default)
 localityKeywordsUrl: /default-locality-keywords.json
 #nationalSpeciesDatasets: dr2699,dr2700,dr2702,dr2704,dr2703,dr3118
-defaultDownloadFields: guid,rank,scientificName,scientificNameAuthorship,taxonomicStatus,establishmentMeans,rk_genus,rk_family,rk_order,rk_class,rk_phylum,rk_kingdom,datasetName,parentGuid,acceptedConceptName,acceptedConceptID,idxtype,name
+
+# all available rk_ and rkid_ fields in SOLR are added to defaultDownloadFields when no rk_ field is defined in defaultDownloadFields
+defaultDownloadFields: guid,rank,scientificName,scientificNameAuthorship,taxonomicStatus,establishmentMeans,datasetName,parentGuid,acceptedConceptName,acceptedConceptID,idxtype,name
+downloadMaxRows: 10000
+
 additionalResultFields: ""
 #toggle for the population of occurrence counts
+
+# override the taxon ranks taxonRanksFile with an external file
+taxonRanksFile:
 
 # Score normal value (divides integer priority by the norm to give solr boosts)
 

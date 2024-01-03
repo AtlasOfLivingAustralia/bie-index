@@ -1594,6 +1594,15 @@ class ImportService implements GrailsConfigurationAware {
         }
     }
 
+    def getTaxonRankID(taxonRanks, taxonRank) {
+        def tr = taxonRanks.get(taxonRank)
+        if (!tr) {
+            tr = taxonRanks.find { it.value.otherNames?.contains(taxonRank) }
+        }
+
+        return tr ? tr.rankID : -1
+    }
+
     def buildTaxonRecord(Record record, Map doc, Map attributionMap, Map datasetMap, Map taxonRanks, String defaultTaxonomicStatus, String defaultDatasetName) {
         def datasetID = record.value(DwcTerm.datasetID)
         def taxonRank = (record.value(DwcTerm.taxonRank) ?: "").toLowerCase()
@@ -1602,7 +1611,9 @@ class ImportService implements GrailsConfigurationAware {
         def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
         def nameComplete = record.value(ALATerm.nameComplete)
         def nameFormatted = record.value(ALATerm.nameFormatted)
-        def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
+        // TODO: use ALATerm.taxonRankID, or the alternative, when it exists in ala-name-matching-model
+        //def taxonRankID = record.value(ALATerm.taxonRankID) ?: getTaxonRankID(taxonRanks, taxonRank)
+        def taxonRankID = getTaxonRankID(taxonRanks, taxonRank)
         def taxonomicStatus = record.value(DwcTerm.taxonomicStatus) ?: defaultTaxonomicStatus
         def nameType = record.value(GbifTerm.nameType)
         String taxonRemarks = record.value(DwcTerm.taxonRemarks)
@@ -2942,15 +2953,32 @@ class ImportService implements GrailsConfigurationAware {
      * @return
      */
     def ranks() {
-        JsonSlurper slurper = new JsonSlurper()
-        def ranks = slurper.parse(this.class.getResource("/taxonRanks.json"))
-        def idMap = [:]
-        def iter = ranks.iterator()
-        while (iter.hasNext()) {
-            def entry = iter.next()
-            idMap.put(entry.rank, entry)
+        String path = grailsApplication.config.taxonRanksFile
+        File taxonRanksFile = new File(path)
+        if (path && taxonRanksFile.exists()) {
+            JsonSlurper slurper = new JsonSlurper()
+            def ranks = slurper.parse(taxonRanksFile.text)
+            def idMap = [:]
+            def iter = ranks.iterator()
+            while (iter.hasNext()) {
+                def entry = iter.next()
+                idMap.put(entry.rank, entry)
+            }
+            idMap
+        } else {
+            def idMap = [:]
+            RankType.values().each { rankType ->
+                idMap.put(rankType.field, [
+                        branch: null,
+                        notes: null,
+                        otherNames: [],
+                        rank: rankType.field,
+                        rankGroup: rankType.cbRank?.name()?.toLowerCase(),
+                        rankID: rankType.sortOrder
+                ])
+            }
+            idMap
         }
-        idMap
     }
 
     /**
