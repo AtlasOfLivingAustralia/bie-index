@@ -471,6 +471,19 @@ class SearchService {
     }
 
     /**
+     * Retrieve details of all records with this acceptedConceptID.
+     *
+     * @param taxonID The acceptedConceptID
+     * @param useOfflineIndex
+     * @return
+     */
+    def lookupNames(String taxonID, Boolean useOfflineIndex = false){
+        taxonID = Encoder.escapeSolr(taxonID)
+        def response = indexService.query(!useOfflineIndex, "acceptedConceptID:\"${taxonID}\"", [], GET_ALL_SIZE)
+        return response.results
+    }
+
+    /**
      * Retrieve details of all name vairants attached to a taxon.
      *
      * @param taxonID The taxon identifier

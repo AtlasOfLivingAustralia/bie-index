@@ -751,7 +751,7 @@ class ImportService implements GrailsConfigurationAware {
 
         // slurp and build each SOLR doc (add to buffer)
         lists.each { list ->
-            def url = MessageFormat.format(grailsApplication.config.lists.service + grailsApplication.config.lists.show, list.dataResourceUid)
+            def url = MessageFormat.format(grailsApplication.config.lists.ui + grailsApplication.config.lists.show, list.dataResourceUid)
             log "indexing url: ${url}"
             try {
                 documentCount++
@@ -2778,6 +2778,14 @@ class ImportService implements GrailsConfigurationAware {
         def identifiers = searchService.lookupIdentifier(guid, !online)
         if (identifiers) {
             update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
+        }
+        def names = searchService.lookupNames(guid, !online)
+        if (names) {
+            def filteredNames = names.collect { it.scientificName }.unique()
+            filteredNames.remove(scientificName)
+            if (filteredNames) {
+                update["additionalNames_m_s"] = [set: filteredNames]
+            }
         }
         def prevCursor = ""
         def cursor = CursorMarkParams.CURSOR_MARK_START
