@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
+import os
 import sys
 
 def process_taxon(src_dir):
     print('\nProcess taxon')
 
-    infile = open(f'{src_dir}/Taxon-lab.tsv', 'r')
-    outfile = open(f'{src_dir}/Taxon-new.tsv', 'w')
+    destination_path = f'{src_dir}/Taxon.tsv'
+    original_path = f'{destination_path}.original'
+
+    if not os.path.isfile(original_path):
+        os.rename(destination_path, original_path)
+
+    infile = open(original_path, 'r')
+    outfile = open(destination_path, 'w')
 
     row_count = 0
 
@@ -33,8 +40,14 @@ def process_taxon(src_dir):
 def process_vernacular_name(src_dir):
     print('\nProcess vernacular name')
 
-    infile = open(f'{src_dir}/VernacularName.tsv', 'r')
-    outfile = open(f'{src_dir}/VernacularName-new.tsv', 'w')
+    destination_path = f'{src_dir}/VernacularName.tsv'
+    original_path = f'{destination_path}.original'
+
+    if not os.path.isfile(original_path):
+        os.rename(destination_path, original_path)
+
+    infile = open(original_path, 'r')
+    outfile = open(destination_path, 'w')
 
     row_count = 0
     keep_count = 0
@@ -57,6 +70,7 @@ def process_vernacular_name(src_dir):
     print(f'Done. Processed {row_count} rows. Kept {keep_count} rows.')
 
 def main(argv):
+
     src_dir = argv[1] if len(argv) > 1 else '/data/bie-index/import/backbone'
     print(f'Using {src_dir} as source directory')
 
