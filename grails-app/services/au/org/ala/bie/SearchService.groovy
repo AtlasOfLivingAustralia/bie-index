@@ -20,9 +20,9 @@ class SearchService {
     static GET_ALL_SIZE = 40
 
     def grailsApplication
-    def conservationListsSource
     def indexService
     def biocacheService
+    def listService
 
     def additionalResultFields = null
 
@@ -747,7 +747,7 @@ class SearchService {
         def taxonDatasetName = getDataset(taxon.datasetID, datasetMap)?.name
 
         // Conservation status map
-        def clists = conservationListsSource.lists ?: []
+        def clists = listService.conservationLists() ?: []
         def conservationStatus = clists.inject([:], { ac, cl ->
             final cs = taxon[cl.field]
             if (cs)

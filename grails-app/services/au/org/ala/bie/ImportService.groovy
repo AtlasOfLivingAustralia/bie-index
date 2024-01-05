@@ -822,14 +822,15 @@ class ImportService implements GrailsConfigurationAware {
      * For each taxon in each list, update that taxon's SOLR doc with additional fields
      */
     def importConservationSpeciesLists(boolean online) throws Exception {
-        def defaultSourceField = conservationListsSource.defaultSourceField
+        def defaultSourceField = conservationListsSource.defaultSourceField ?: 'status'
         def defaultKingdomField = conservationListsSource.defaultKingdomField
         def defaultPhylumField = conservationListsSource.defaultPhylumField
         def defaultClassField = conservationListsSource.defaultClassField
         def defaultOrderField = conservationListsSource.defaultOrderField
         def defaultFamilyField = conservationListsSource.defaultFamilyField
         def defaultRankField = conservationListsSource.defaultRankField
-        def lists = conservationListsSource.lists
+        def lists = listService.conservationLists()
+
         Integer listNum = 0
 
         lists.each { resource ->

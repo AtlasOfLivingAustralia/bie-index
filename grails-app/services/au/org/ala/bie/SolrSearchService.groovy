@@ -23,9 +23,8 @@ class SolrSearchService {
 
     static transactional = false
 
-    def grailsApplication
     def liveSolrClient
-    def conservationListsSource
+    def listService
 
     SearchResultsDTO<SearchTaxonConceptDTO> findByScientificName(
             String query, List<String> filterQuery = [], Integer startIndex = 0,
@@ -428,7 +427,7 @@ class SolrSearchService {
      * @return
      */
     private SearchTaxonConceptDTO createTaxonConceptFromIndex(QueryResponse qr, SolrDocument doc) {
-        def clists = conservationListsSource.lists ?: []
+        def clists = listService.conservationLists() ?: []
         def conservationStatus = clists.inject([:], { map, region ->
             def cs = (String) doc.getFirstValue(region.field)
             if (cs) map.put(region.term, cs)

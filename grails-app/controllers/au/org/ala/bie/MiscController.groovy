@@ -68,6 +68,24 @@ class MiscController {
         render activeRanks as JSON
     }
 
+    @Operation(
+            method = "GET",
+            tags = "fields",
+            operationId = "fields",
+            summary = "Gets the list of indexed fields",
+            responses = [
+                    @ApiResponse(
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                            ]
+                    )
+            ]
+    )
+    @Path("/indexFields")
+    @Produces("application/json")
     def indexFields() {
         def fields = indexService.getIndexFieldDetails(null)
 
