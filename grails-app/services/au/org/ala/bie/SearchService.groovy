@@ -123,11 +123,11 @@ class SearchService {
             }
             // boost query syntax was removed from here. NdR.
 
-            // Add fuzzy search term modifier to simple queries with > 1 term (e.g. no braces)
+            // Add fuzzy search term modifier to simple queries with > 1 term (e.g. no braces or quotes or colons)
             q = q.trim()
-            if (!q.startsWith('(') && q.trim() =~ /\s+/) {
-                def qs = q.replaceAll(/[^\p{Alnum}]+/, " ").trim()
-                def queryArray = qs.split(/\s+/).findAll({ it.length() > 5}).collect({ it + "~0.8"})
+            if (!q.startsWith('(') && !q.startsWith('"') && !q.contains(':') && q.trim() =~ /[\s\h]+/) {
+                def qs = q.replaceAll(/[^\p{Alnum}\p{IsLatin}]+/, " ").trim()
+                def queryArray = qs.split(/[\s\h]+/).findAll({ it.length() > 5}).collect({ it + "~0.8"})
                 def nq = queryArray.join(" ")
                 log.debug "fuzzy nq = ${nq}"
                 q = "\"${q}\"^100 ${nq}"
