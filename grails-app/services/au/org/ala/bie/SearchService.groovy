@@ -20,9 +20,9 @@ class SearchService {
     static GET_ALL_SIZE = 40
 
     def grailsApplication
-    def conservationListsSource
     def indexService
     def biocacheService
+    def listService
 
     def additionalResultFields = null
 
@@ -156,7 +156,7 @@ class SearchService {
             }
         }
 
-        def matcher = ( queryTitle =~ /(rkid_)([a-z]{1,})(:)(.*)/ )
+        def matcher = ( queryTitle =~ /(rkid_)([a-z]{1,})(:"?)([^"]*)"?/ )
         if(matcher.matches()){
             try {
                 def rankName = matcher[0][2]
@@ -471,6 +471,19 @@ class SearchService {
     }
 
     /**
+     * Retrieve details of all records with this acceptedConceptID.
+     *
+     * @param taxonID The acceptedConceptID
+     * @param useOfflineIndex
+     * @return
+     */
+    def lookupNames(String taxonID, Boolean useOfflineIndex = false){
+        taxonID = Encoder.escapeSolr(taxonID)
+        def response = indexService.query(!useOfflineIndex, "acceptedConceptID:\"${taxonID}\"", [], GET_ALL_SIZE)
+        return response.results
+    }
+
+    /**
      * Retrieve details of all name vairants attached to a taxon.
      *
      * @param taxonID The taxon identifier
@@ -734,7 +747,7 @@ class SearchService {
         def taxonDatasetName = getDataset(taxon.datasetID, datasetMap)?.name
 
         // Conservation status map
-        def clists = conservationListsSource.lists ?: []
+        def clists = listService.conservationLists() ?: []
         def conservationStatus = clists.inject([:], { ac, cl ->
             final cs = taxon[cl.field]
             if (cs)
@@ -865,7 +878,6 @@ class SearchService {
                             priority: variant.priority
                     ]
                 }
-
         ]
         if (taxon.taxonConceptID)
             model.taxonConcept["taxonConceptID"] = taxon.taxonConceptID
@@ -875,6 +887,9 @@ class SearchService {
             model.taxonConcept["acceptedConceptID"] = taxon.acceptedConceptID
         if (taxon.acceptedConceptName)
             model.taxonConcept["acceptedConceptName"] = taxon.acceptedConceptName
+
+        if (taxon.linkIdentifier)
+            model.put("linkIdentifier", taxon.linkIdentifier)
 
         if(getAdditionalResultFields()) {
             def doc = [:]
@@ -1090,6 +1105,25 @@ class SearchService {
                 }
                 if (it.content){
                     doc.put("content", it.content)
+                }
+                if (it.image) {
+                    if (!it.image.startsWith("http")) {
+                        doc.put("image", it.image)
+                        doc.put("imageUrl", MessageFormat.format(grailsApplication.config.images.service.small, it.image))
+                        doc.put("thumbnailUrl", MessageFormat.format(grailsApplication.config.images.service.thumbnail, it.image))
+                    } else {
+                        doc.put("image", it.image)
+                        doc.put("imageUrl", it.image)
+                        doc.put("thumbnailUrl", it.image)
+                    }
+                }
+
+                // biocollect fields
+                (['projectType', 'containsActivity', 'dateCreated', 'keywords'] +
+                        // species list fields
+                        ['listType', 'dateCreated', 'itemCount', 'isAuthoritative', 'isInvasive', 'isThreatened', 'region']).each { item ->
+                    def key = item + "_s"
+                    if (it[key]) doc.put(key, it[key])
                 }
             }
             if (doc) {

@@ -3,6 +3,7 @@ package au.org.ala.bie
 import au.org.ala.bie.search.*
 import org.apache.commons.lang.StringUtils
 import org.apache.solr.client.solrj.SolrQuery
+import org.apache.solr.client.solrj.SolrRequest
 import org.apache.solr.client.solrj.SolrServerException
 import org.apache.solr.client.solrj.response.FacetField
 import org.apache.solr.client.solrj.response.QueryResponse
@@ -22,9 +23,8 @@ class SolrSearchService {
 
     static transactional = false
 
-    def grailsApplication
     def liveSolrClient
-    def conservationListsSource
+    def listService
 
     SearchResultsDTO<SearchTaxonConceptDTO> findByScientificName(
             String query, List<String> filterQuery = [], Integer startIndex = 0,
@@ -138,7 +138,7 @@ class SolrSearchService {
             log.debug("About to execute ${solrQuery.query}")
         }
         // do the Solr search
-        return liveSolrClient.query(solrQuery); // can throw exception
+        return liveSolrClient.query(solrQuery, SolrRequest.METHOD.POST); // can throw exception
     }
 
     private SearchResultsDTO createSearchResultsFromQueryResponse(SolrQuery solrQuery, QueryResponse qr, Integer pageSize,
@@ -427,7 +427,7 @@ class SolrSearchService {
      * @return
      */
     private SearchTaxonConceptDTO createTaxonConceptFromIndex(QueryResponse qr, SolrDocument doc) {
-        def clists = conservationListsSource.lists ?: []
+        def clists = listService.conservationLists() ?: []
         def conservationStatus = clists.inject([:], { map, region ->
             def cs = (String) doc.getFirstValue(region.field)
             if (cs) map.put(region.term, cs)

@@ -1,3 +1,8 @@
+buildscript {
+    version "3.1.0-SNAPSHOT"
+    group "au.org.ala"
+}
+
 plugins {
     id "groovy"
     id "org.grails.grails-gsp"
@@ -13,10 +18,6 @@ plugins {
 
     id "maven-publish"
 }
-
-version "3.0.0-SNAPSHOT"
-group "au.org.ala"
-
 
 publishing {
     targetCompatibility = 1.11
@@ -109,7 +110,7 @@ dependencies {
     }
 
     implementation "org.grails.plugins:grails-spring-websocket:2.3.0"
-    implementation group: "au.org.ala", name: "ala-name-matching-model", version:"4.2"
+    implementation group: "au.org.ala", name: "ala-name-matching-model", version:"4.3"
     implementation "org.jsoup:jsoup:1.15.4"
     implementation 'net.sf.opencsv:opencsv:2.3'
     implementation "org.apache.solr:solr-solrj:8.1.0"

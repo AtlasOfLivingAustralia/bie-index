@@ -41,7 +41,10 @@ import org.gbif.dwca.io.ArchiveFile
 import org.gbif.dwca.record.Record
 import org.gbif.dwca.record.StarRecord
 import org.gbif.nameparser.PhraseNameParser
+import org.springframework.context.MessageSource
+import org.springframework.context.i18n.LocaleContextHolder
 
+import java.text.MessageFormat
 import java.text.SimpleDateFormat
 import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream
@@ -111,11 +114,13 @@ class ImportService implements GrailsConfigurationAware {
     static SOURCE_IN_ANCHOR = Pattern.compile(/<[Aa] [^>]*[Hh][Rr][Ee][Ff]\s*=\s*"([^"]+)"[^>]*>.*<\/[Aa]>/)
 
     def indexService, searchService, biocacheService, nameService, sitemapService
-    def listService, layerService, collectoryService, wordpressService, knowledgeBaseService
+    def listService, layerService, collectoryService, wordpressService, knowledgeBaseService, biocollectService
 
     def speciesGroupService
     def conservationListsSource
     def jobService
+    def grailsApplication
+    MessageSource messageSource
 
     def brokerMessagingTemplate
 
@@ -283,6 +288,12 @@ class ImportService implements GrailsConfigurationAware {
                         break
                     case 'knowledgebase':
                         importKnowledgeBasePages(online)
+                        break
+                    case 'biocollect':
+                        importBiocollectProjects(online)
+                        break
+                    case 'species-lists':
+                        importSpeciesLists(online)
                         break
                     case 'swap':
                         indexService.swap()
@@ -497,37 +508,62 @@ class ImportService implements GrailsConfigurationAware {
             indexService.deleteFromIndex(indexDocType, online)
             log("Cleared")
 
-            drLists.each {
-                def details = collectoryService.get(it.uri)
-                def doc = [:]
-                doc["id"] = it.uri
-                doc["datasetID"] = details.uid
-                doc["guid"] = details.alaPublicUrl
-                doc["idxtype"] = indexDocType.name()
-                doc["name"] = details.name
-                doc["description"] = details.pubDescription
-                doc["distribution"] = "N/A"
+            def maxSize = 100
+            def batch = []
+            def uriMap = [:]
 
-                if (details.rights)
-                    doc["rights"] = details.rights
-                if (details.licenseType)
-                    doc["license"] = (details.licenseType + " " + details.licenseVersion ?: "").trim()
-                if (details.acronym)
-                    doc["acronym"] = details.acronym
+            drLists.each { dr ->
+                batch.add(dr)
+                uriMap[dr.uid] = dr.uri
 
-                entities << doc
-
-                if (entities.size() > BUFFER_SIZE) {
-                    indexService.indexBatch(entities, online)
-                    entities.clear()
+                if (batch.size() == maxSize) {
+                    collectoryBatch(batch, entities, online, entityType, indexDocType, uriMap)
+                    batch.clear()
                 }
             }
+
+            if (batch) {
+                collectoryBatch(batch, entities, online, entityType, indexDocType, uriMap)
+            }
+
             if (entities) {
                 indexService.indexBatch(entities, online)
             }
+
             log("Finished indexing ${drLists.size()} ${entityType}")
         }
         log "Finished collectory import"
+    }
+
+    def collectoryBatch(batch, entities, online, entityType, indexDocType, uriMap) {
+        def drs = collectoryService.getBatch(batch, entityType)
+
+        drs.each { details ->
+            def doc = [:]
+            doc["id"] = uriMap[details.uid]
+            doc["datasetID"] = details.uid
+            doc["guid"] = details.alaPublicUrl
+            doc["idxtype"] = indexDocType.name()
+            doc["name"] = details.name?.trim()
+            doc["description"] = details.pubDescription?.trim()
+            doc["distribution"] = "N/A"
+
+            if (details.rights)
+                doc["rights"] = details.rights
+            if (details.licenseType)
+                doc["license"] = (details.licenseType + " " + details.licenseVersion ?: "").trim()
+            if (details.acronym)
+                doc["acronym"] = details.acronym
+            if (details.logoRef?.uri)
+                doc["image"] = details.logoRef.uri
+
+            entities << doc
+
+            if (entities.size() > BUFFER_SIZE) {
+                indexService.indexBatch(entities, online)
+                entities.clear()
+            }
+        }
     }
 
     /**
@@ -645,6 +681,130 @@ class ImportService implements GrailsConfigurationAware {
     }
 
     /**
+     * Index Biocollect projects.
+     */
+    def importBiocollectProjects(boolean online) throws Exception {
+        log "Starting biocollect import."
+
+        // get List of Biocollect document URLs (each page's URL)
+        def projects = biocollectService.resources()
+        def documentCount = 0
+        def totalDocs = projects.size()
+        def buffer = []
+        log("Biocollect projects found: ${totalDocs}") // update user via socket
+
+        // slurp and build each SOLR doc (add to buffer)
+        projects.each { project ->
+            log "indexing url: ${project.url}"
+            try {
+                documentCount++
+                // create SOLR doc
+                log.debug documentCount + ". Indexing Biocollect project - id: " + project.projectId + " | title: " + project.name + " | text: " + StringUtils.substring(project.description?:"", 0, 100) + "... ";
+                def doc = [:]
+                doc["idxtype"] = IndexDocType.BIOCOLLECT.name()
+                doc["guid"] = project.url
+                doc["id"] = "bc" + project.projectId // guid required
+                doc["name"] = project.name
+                doc["content"] = project.description?:""
+                doc["linkIdentifier"] = project.url
+
+                doc["projectType_s"] = project.projectType
+                if (project.urlImage) doc["image"] = project.urlImage
+                doc["containsActivity_s"] = project.containsActivity
+                doc["dateCreated_s"] = project.dateCreated
+                if (project.keywords) doc["keywords_s"] = project.keywords
+
+                // add to doc to buffer (List)
+                buffer << doc
+                // update progress bar (number output only)
+                if (documentCount > 0) {
+                    updateProgressBar(totalDocs, documentCount)
+                }
+            } catch (IOException ex) {
+                // catch it so we don't stop indexing other pages
+                log("Problem accessing/reading Biocollect project <${project.url}>: " + ex.getMessage() + " - document skipped")
+                log.warn(ex.getMessage(), ex)
+            }
+        }
+        log("Committing to ${buffer.size()} documents to SOLR...")
+        if (online) {
+            log "Search for biocollect projects may be temporarily unavailable"
+        }
+        indexService.deleteFromIndex(IndexDocType.BIOCOLLECT, online)
+        indexService.indexBatch(buffer, online)
+        updateProgressBar(100, 100) // complete progress bar
+        log "Finished biocollect import"
+    }
+
+    /**
+     * Index Species lists
+     */
+    def importSpeciesLists(boolean online) throws Exception {
+        log "Starting species lists import."
+
+        // get List of species lists
+        def lists = listService.resources()
+        def documentCount = 0
+        def totalDocs = lists.size()
+        def buffer = []
+        log("Species lists found: ${totalDocs}") // update user via socket
+
+        // slurp and build each SOLR doc (add to buffer)
+        lists.each { list ->
+            def url = MessageFormat.format(grailsApplication.config.lists.ui + grailsApplication.config.lists.show, list.dataResourceUid)
+            log "indexing url: ${url}"
+            try {
+                documentCount++
+
+                // create SOLR doc
+                log.debug documentCount + ". Indexing Species lists - id: " + list.dataResourceUid + " | title: " + list.listName + "... ";
+                def doc = [:]
+                doc["idxtype"] = IndexDocType.SPECIESLIST.name()
+                doc["guid"] = url
+                doc["id"] = list.dataResourceUid // guid required
+                doc["name"] = list.listName
+                doc["linkIdentifier"] = url
+
+                doc["listType_s"] = list.listType
+                def content = messageSource.getMessage('list.content.listType', null, LocaleContextHolder.locale) + ": " +
+                        messageSource.getMessage("list." + list.listType, null, LocaleContextHolder.locale)
+
+                ['dateCreated', 'itemCount', 'isAuthoritative', 'isInvasive', 'isThreatened', 'region'].each {item ->
+                    def label = messageSource.getMessage('list.content.' + item, null, LocaleContextHolder.locale)
+                    if (label && list[item]) {
+                        if ("true" == list[item].toString()) {
+                            content += ', ' + label
+                        } else {
+                            content += ', ' + label + ": " + list[item]
+                        }
+                        doc[item + "_s"] = list[item]
+                    }
+                }
+
+                doc["content"] = content
+                // add to doc to buffer (List)
+                buffer << doc
+                // update progress bar (number output only)
+                if (documentCount > 0) {
+                    updateProgressBar(totalDocs, documentCount)
+                }
+            } catch (IOException ex) {
+                // catch it so we don't stop indexing other pages
+                log("Problem accessing/reading Species lists <${project.url}>: " + ex.getMessage() + " - document skipped")
+                log.warn(ex.getMessage(), ex)
+            }
+        }
+        log("Committing to ${buffer.size()} documents to SOLR...")
+        if (online) {
+            log "Search for species lists may be temporarily unavailable"
+        }
+        indexService.deleteFromIndex(IndexDocType.SPECIESLIST, online)
+        indexService.indexBatch(buffer, online)
+        updateProgressBar(100, 100) // complete progress bar
+        log "Finished species lists import"
+    }
+
+    /**
      * Index Knowledge Base pages.
      */
     def buildSitemap(boolean online) throws Exception {
@@ -662,14 +822,15 @@ class ImportService implements GrailsConfigurationAware {
      * For each taxon in each list, update that taxon's SOLR doc with additional fields
      */
     def importConservationSpeciesLists(boolean online) throws Exception {
-        def defaultSourceField = conservationListsSource.defaultSourceField
+        def defaultSourceField = conservationListsSource.defaultSourceField ?: 'status'
         def defaultKingdomField = conservationListsSource.defaultKingdomField
         def defaultPhylumField = conservationListsSource.defaultPhylumField
         def defaultClassField = conservationListsSource.defaultClassField
         def defaultOrderField = conservationListsSource.defaultOrderField
         def defaultFamilyField = conservationListsSource.defaultFamilyField
         def defaultRankField = conservationListsSource.defaultRankField
-        def lists = conservationListsSource.lists
+        def lists = listService.conservationLists()
+
         Integer listNum = 0
 
         lists.each { resource ->
@@ -1434,6 +1595,15 @@ class ImportService implements GrailsConfigurationAware {
         }
     }
 
+    def getTaxonRankID(taxonRanks, taxonRank) {
+        def tr = taxonRanks.get(taxonRank)
+        if (!tr) {
+            tr = taxonRanks.find { it.value.otherNames?.contains(taxonRank) }
+        }
+
+        return tr ? tr.rankID : -1
+    }
+
     def buildTaxonRecord(Record record, Map doc, Map attributionMap, Map datasetMap, Map taxonRanks, String defaultTaxonomicStatus, String defaultDatasetName) {
         def datasetID = record.value(DwcTerm.datasetID)
         def taxonRank = (record.value(DwcTerm.taxonRank) ?: "").toLowerCase()
@@ -1442,7 +1612,9 @@ class ImportService implements GrailsConfigurationAware {
         def scientificNameAuthorship = record.value(DwcTerm.scientificNameAuthorship)
         def nameComplete = record.value(ALATerm.nameComplete)
         def nameFormatted = record.value(ALATerm.nameFormatted)
-        def taxonRankID = taxonRanks.get(taxonRank) ? taxonRanks.get(taxonRank).rankID : -1
+        // TODO: use ALATerm.taxonRankID, or the alternative, when it exists in ala-name-matching-model
+        //def taxonRankID = record.value(ALATerm.taxonRankID) ?: getTaxonRankID(taxonRanks, taxonRank)
+        def taxonRankID = getTaxonRankID(taxonRanks, taxonRank)
         def taxonomicStatus = record.value(DwcTerm.taxonomicStatus) ?: defaultTaxonomicStatus
         def nameType = record.value(GbifTerm.nameType)
         String taxonRemarks = record.value(DwcTerm.taxonRemarks)
@@ -1600,15 +1772,29 @@ class ImportService implements GrailsConfigurationAware {
                 response.results.each { doc ->
                     try {
                         def nameQuery = "linkText:\"${Encoder.escapeSolr(doc.linkText)}\""
-                        def nameResponse = indexService.query(online, nameQuery, [], 0)
+
+                        // query for taxonomicStatus:accepted first as it is the most likely taxon for the linkIdentifier
+                        def nameResponse = indexService.query(online, nameQuery, ["taxonomicStatus:accepted"], 1)
+
+                        // query for taxonomicStatus:inferredAccepted second as it is the second most likely taxon for the linkIdentifier
+                        if (nameResponse.results.numFound == 0) {
+                            nameResponse = indexService.query(online, nameQuery, ["taxonomicStatus:inferredAccepted"], 1)
+                        }
+
+                        // query for other taxonomicStatuses last
+                        if (nameResponse.results.numFound == 0) {
+                            nameResponse = indexService.query(online, nameQuery, [], 1)
+                        }
+
                         int found = nameResponse.results.numFound
                         if (found == 1) {
+                            def currentDoc = nameResponse.results[0]
                             //log.debug("Adding link identifier for ${name} to ${doc.id}")
                             def update = [:]
-                            update["id"] = doc.id // doc key
-                            update["idxtype"] = ["set": doc.idxtype] // required field
-                            update["guid"] = ["set": doc.guid] // required field
-                            update["linkIdentifier"] = ["set": doc.linkText]
+                            update["id"] = currentDoc.id // doc key
+                            update["idxtype"] = ["set": currentDoc.idxtype] // required field
+                            update["guid"] = ["set": currentDoc.guid] // required field
+                            update["linkIdentifier"] = ["set": currentDoc.linkText]
                             buffer << update
                             added++
                         }
@@ -1739,7 +1925,17 @@ class ImportService implements GrailsConfigurationAware {
                             biocacheQuery = addImageSearch(biocacheQuery, rank.idField, taxonID, 20)
                             if (biocacheQuery) {
                                 biocacheQuery = "(${biocacheQuery}) AND multimedia:Image"
-                                def occurrences = biocacheService.search(biocacheQuery, preferredFilters)
+                                def occurrences
+                                // iterate over preferredFilters instead using them all in a single query
+                                if (preferredFilters) {
+                                    for (String fq : preferredFilters) {
+                                        occurrences = biocacheService.search(biocacheQuery, [fq])
+                                        if (occurrences.totalRecords > 0) {
+                                            break;
+                                        }
+                                    }
+                                }
+
                                 if (occurrences.totalRecords < 1 && preferredFilters) {
                                     // Try without preferred filters
                                     occurrences = biocacheService.search(biocacheQuery, requiredFilters)
@@ -2584,6 +2780,14 @@ class ImportService implements GrailsConfigurationAware {
         if (identifiers) {
             update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
         }
+        def names = searchService.lookupNames(guid, !online)
+        if (names) {
+            def filteredNames = names.collect { it.scientificName }.unique()
+            filteredNames.remove(scientificName)
+            if (filteredNames) {
+                update["additionalNames_m_s"] = [set: filteredNames]
+            }
+        }
         def prevCursor = ""
         def cursor = CursorMarkParams.CURSOR_MARK_START
         while (cursor != prevCursor) {
@@ -2758,15 +2962,32 @@ class ImportService implements GrailsConfigurationAware {
      * @return
      */
     def ranks() {
-        JsonSlurper slurper = new JsonSlurper()
-        def ranks = slurper.parse(this.class.getResource("/taxonRanks.json"))
-        def idMap = [:]
-        def iter = ranks.iterator()
-        while (iter.hasNext()) {
-            def entry = iter.next()
-            idMap.put(entry.rank, entry)
+        String path = grailsApplication.config.taxonRanksFile
+        File taxonRanksFile = new File(path)
+        if (path && taxonRanksFile.exists()) {
+            JsonSlurper slurper = new JsonSlurper()
+            def ranks = slurper.parse(taxonRanksFile.text)
+            def idMap = [:]
+            def iter = ranks.iterator()
+            while (iter.hasNext()) {
+                def entry = iter.next()
+                idMap.put(entry.rank, entry)
+            }
+            idMap
+        } else {
+            def idMap = [:]
+            RankType.values().each { rankType ->
+                idMap.put(rankType.field, [
+                        branch: null,
+                        notes: null,
+                        otherNames: [],
+                        rank: rankType.field,
+                        rankGroup: rankType.cbRank?.name()?.toLowerCase(),
+                        rankID: rankType.sortOrder
+                ])
+            }
+            idMap
         }
-        idMap
     }
 
     /**
