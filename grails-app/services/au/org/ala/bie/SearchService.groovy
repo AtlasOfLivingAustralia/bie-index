@@ -805,6 +805,7 @@ class SearchService {
                             datasetURL: datasetURL
                     ]
                 },
+                commonNameSingle: taxon.commonNameSingle,
                 commonNames: commonNames.collect { commonName ->
                     def datasetURL = getDataset(commonName.datasetID, datasetMap)?.guid
                     def datasetName = getDataset(commonName.datasetID, datasetMap)?.name

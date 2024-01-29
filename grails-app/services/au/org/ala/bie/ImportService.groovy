@@ -244,6 +244,9 @@ class ImportService implements GrailsConfigurationAware {
                     case 'denormalize':
                         denormaliseTaxa(online)
                         break
+                    case 'align-common-name':
+                        alignCommonName(online)
+                        break
                     case 'favourites':
                         buildFavourites(online)
                         break
@@ -1013,6 +1016,163 @@ class ImportService implements GrailsConfigurationAware {
             log("Finished scan")
         } catch (Exception ex) {
             log.error("Unable to perform occurrence scan", ex)
+            log("Error during scan: " + ex.getMessage())
+        }
+    }
+
+    /**
+     * Align the preferred common name with the namematching service
+     *
+     * 1. Align with idxtype:COMMON using the same method as ala-namematching-service
+     * 2. Align with ala-namematching-service
+     */
+    def alignCommonName(online) {
+        alignCommonNameWithCommonRecords(online)
+        alignCommonNameWithNamematchingService(online)
+    }
+
+    def alignCommonNameWithCommonRecords(online) {
+        int pageSize = BATCH_SIZE
+        int processed = 0
+        def typeQuery = "guid:* AND (idxtype:TAXON OR idxtype:TAXONVARIANT OR idxtype:IDENTIFIER)"
+        def prevCursor
+        def cursor
+
+        log("Starting common name alignment with common records scan for ${online ? 'online' : 'offline'} index")
+        try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
+
+            while (prevCursor != cursor) {
+                def startTime = System.currentTimeMillis()
+                SolrQuery query = new SolrQuery(typeQuery)
+                query.setParam('cursorMark', cursor)
+                query.setSort("id", SolrQuery.ORDER.asc)
+                query.setRows(pageSize)
+                def response = indexService.query(query, online)
+                def docs = response.results
+                int total = docs.numFound
+                def buffer = []
+
+                docs.each { doc ->
+                    def taxonID = doc.guid
+
+                    def commonNames = searchService.lookupVernacular(taxonID, online)
+
+                    if (commonNames) {
+                        def names = new LinkedHashSet(commonNames.collect { it.name })
+                        def update = [id: doc.id, commonNameSingle: [set: commonNames.get(0).name], commonName: [set: names]]
+                        buffer << update
+                    }
+
+                    if (buffer.size() >= BUFFER_SIZE) {
+                        indexService.indexBatch(buffer, online)
+                        buffer = []
+                    }
+                    processed++
+                }
+
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                def percentage = total ? Math.round(processed * 100 / total) : 100
+                def speed = total ? Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime)) : 0
+                log("Processed ${processed} taxa (${percentage}%) speed ${speed} records per second")
+                if (total > 0) {
+                    updateProgressBar(total, processed)
+                }
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+            log("Finished scan")
+        } catch (Exception ex) {
+            log.error("Unable to perform common name with common records alignment scan", ex)
+            log("Error during scan: " + ex.getMessage())
+        }
+    }
+
+    def alignCommonNameWithNamematchingService(online) {
+        int pageSize = BATCH_SIZE
+        int processed = 0
+        def typeQuery = "guid:* AND (idxtype:TAXON OR idxtype:TAXONVARIANT OR idxtype:IDENTIFIER)"
+        def prevCursor
+        def cursor
+
+        log("Starting common name alignment scan for ${online ? 'online' : 'offline'} index")
+        try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
+
+            while (prevCursor != cursor) {
+                def startTime = System.currentTimeMillis()
+                SolrQuery query = new SolrQuery(typeQuery)
+                query.setParam('cursorMark', cursor)
+                query.setSort("id", SolrQuery.ORDER.asc)
+                query.setRows(pageSize)
+                def response = indexService.query(query, online)
+                def docs = response.results
+                int total = docs.numFound
+                def buffer = []
+                def guids = []
+                def updates = [:]
+
+                docs.each { doc ->
+                    def taxonID = doc.guid
+
+                    guids << taxonID
+                    updates[taxonID] = [id: doc.id, commonName: doc.commonNameSingle]
+
+                    if (guids.size() >= BATCH_SIZE) {
+                        def resultList = nameService.searchByIds(guids)
+
+                        for(def result : resultList) {
+                            def vernacularName = result.vernacularName
+
+                            if (updates[result.taxonConceptID] && vernacularName != updates[result.taxonConceptID].commonName) {
+                                def update = [id: updates[result.taxonConceptID].id, commonNameSingle: [set: vernacularName]]
+                                buffer << update
+                            }
+                        }
+                        guids = []
+                        updates = [:]
+                    }
+
+                    if (buffer.size() >= BUFFER_SIZE) {
+                        indexService.indexBatch(buffer, online)
+                        buffer = []
+                    }
+                    processed++
+                }
+                if (!guids.isEmpty()) {
+                    def resultList = nameService.searchByIds(guids)
+
+                    for(def result : resultList) {
+                        def vernacularName = result.vernacularName
+
+                        if (updates[result.taxonConceptID] && vernacularName != updates[result.taxonConceptID].commonName) {
+                            def update = [id: updates[result.taxonConceptID].id, commonNameSingle: [set: vernacularName]]
+                            buffer << update
+                        }
+                    }
+                    guids = []
+                    updates = [:]
+                }
+
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                def percentage = total ? Math.round(processed * 100 / total) : 100
+                def speed = total ? Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime)) : 0
+                log("Processed ${processed} taxa (${percentage}%) speed ${speed} records per second")
+                if (total > 0) {
+                    updateProgressBar(total, processed)
+                }
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+            log("Finished scan")
+        } catch (Exception ex) {
+            log.error("Unable to perform common name alignment scan", ex)
             log("Error during scan: " + ex.getMessage())
         }
     }
@@ -2759,23 +2919,6 @@ class ImportService implements GrailsConfigurationAware {
                 update["nameComplete"] = [set: nameComplete]
         }
         update['priority'] = [set: (int) Math.round(priority)]
-        def commonNames = searchService.lookupVernacular(guid, !online)
-        if (commonNames && !commonNames.isEmpty()) {
-            commonNames = commonNames.sort { n1, n2 ->
-                def s = n2.priority - n1.priority
-                if (s == 0 && commonLanguages) {
-                    def s1 = commonLanguages.contains(n1.language) ? 1 : 0
-                    def s2 = commonLanguages.contains(n2.language) ? 1 : 0
-                    s = s1 - s2
-                }
-                s
-            }
-            def single = commonNames.find({ it.status != deprecatedStatus.status && (!commonLanguages || commonLanguages.contains(it.language))})?.name
-            def names = new LinkedHashSet(commonNames.collect { it.name })
-            update["commonName"] = [set: names]
-            update["commonNameExact"] = [set: names]
-            update["commonNameSingle"] = [set: single ]
-        }
         def identifiers = searchService.lookupIdentifier(guid, !online)
         if (identifiers) {
             update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
