@@ -754,33 +754,49 @@ class ImportService implements GrailsConfigurationAware {
 
         // slurp and build each SOLR doc (add to buffer)
         lists.each { list ->
-            def url = MessageFormat.format(grailsApplication.config.lists.ui + grailsApplication.config.lists.show, list.dataResourceUid)
+            // 2024-02-21 id is the new parameter moving forward. It is not in sync with collections
+            def id = list.id ?: list.dataResourceUid
+            def listName = list.listName ?: list.title
+            def listType = list.listType
+            def url = MessageFormat.format(grailsApplication.config.lists.ui + grailsApplication.config.lists.show, id)
             log "indexing url: ${url}"
             try {
                 documentCount++
 
                 // create SOLR doc
-                log.debug documentCount + ". Indexing Species lists - id: " + list.dataResourceUid + " | title: " + list.listName + "... ";
+                log.debug documentCount + ". Indexing Species lists - id: " + id + " | title: " + listName + "... ";
                 def doc = [:]
                 doc["idxtype"] = IndexDocType.SPECIESLIST.name()
                 doc["guid"] = url
-                doc["id"] = list.dataResourceUid // guid required
-                doc["name"] = list.listName
+                doc["id"] = id // guid required
+                doc["name"] = listName
                 doc["linkIdentifier"] = url
 
-                doc["listType_s"] = list.listType
+                doc["listType_s"] = listType
                 def content = messageSource.getMessage('list.content.listType', null, LocaleContextHolder.locale) + ": " +
-                        messageSource.getMessage("list." + list.listType, null, LocaleContextHolder.locale)
+                        messageSource.getMessage("list." + listType, null, LocaleContextHolder.locale)
 
                 ['dateCreated', 'itemCount', 'isAuthoritative', 'isInvasive', 'isThreatened', 'region'].each {item ->
+                    def value = list[item]
+                    if (grailsApplication.config.lists.useListWs) {
+                        if (item == 'itemCount') {
+                            value = list['rowCount']
+                        } else if (item == 'dateCreated') {
+                            // convert from long to string
+                            value = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(new Date(value))
+                        } else if (item != 'region' && value == null) {
+                            // use 'false' when null for 'isAuthoritative', 'isInvasive', 'isThreatened'
+                            value = 'false'
+                        }
+                    }
                     def label = messageSource.getMessage('list.content.' + item, null, LocaleContextHolder.locale)
-                    if (label && list[item]) {
-                        if ("true" == list[item].toString()) {
+                    if (label && value) {
+                        if ("true" == value.toString()) {
                             content += ', ' + label
                         } else {
-                            content += ', ' + label + ": " + list[item]
+                            content += ', ' + label + ": " + value
                         }
-                        doc[item + "_s"] = list[item]
+                        doc[item + "_s"] = value
                     }
                 }
 
