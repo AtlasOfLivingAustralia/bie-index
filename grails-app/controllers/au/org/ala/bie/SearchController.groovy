@@ -550,7 +550,6 @@ class SearchController implements GrailsConfigurationAware {
     @Produces("application/json")
     def taxon(){
         def guid = regularise(params.id)
-        log.warn(guid)
         def locales = [request.locale, defaultLocale]
         if(guid == 'favicon') return; //not sure why this is happening....
         if(!guid){
@@ -558,7 +557,6 @@ class SearchController implements GrailsConfigurationAware {
             return null
         }
         def model = searchService.getTaxon(guid, locales)
-        log.debug "taxon model = ${model}"
 
         if(!model) {
             response.sendError(404, "GUID not recognised ${guid}")

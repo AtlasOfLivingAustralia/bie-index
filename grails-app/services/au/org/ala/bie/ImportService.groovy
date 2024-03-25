@@ -298,6 +298,9 @@ class ImportService implements GrailsConfigurationAware {
                     case 'swap':
                         indexService.swap()
                         break
+                    case 'sitemap':
+                        buildSitemap(online)
+                        break
                     default:
                         log("Unknown step ${step}")
                         log.error("Unknown step ${step}")
