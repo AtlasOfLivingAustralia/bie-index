@@ -8,7 +8,7 @@ import grails.converters.XML
 class JobController {
     def jobService
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def index() {
         def jobs = jobService.list().collect { it.status() }
         withFormat {
@@ -19,7 +19,7 @@ class JobController {
         }
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def status() {
         def id = params.id
         def status = jobService.get(id)?.status() ?: notFoundStatus(id)
@@ -37,7 +37,7 @@ class JobController {
         [job: status]
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def cancel() {
         def id = params.id
         jobService.cancel(params.id)
@@ -50,7 +50,7 @@ class JobController {
         }
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because it is not intended for external use. 
     def remove() {
         def id = params.id
         def removed = jobService.remove(params.id)

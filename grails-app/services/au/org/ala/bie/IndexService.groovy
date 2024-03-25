@@ -6,6 +6,7 @@ import au.org.ala.bie.util.Encoder
 import grails.config.Config
 import grails.core.support.GrailsConfigurationAware
 import org.apache.solr.client.solrj.SolrQuery
+import org.apache.solr.client.solrj.SolrRequest
 import org.apache.solr.client.solrj.request.CoreAdminRequest
 import org.apache.solr.client.solrj.response.QueryResponse
 import org.apache.solr.common.SolrDocument
@@ -170,7 +171,7 @@ class IndexService implements GrailsConfigurationAware {
     QueryResponse query(SolrQuery query, boolean online) {
         def client = online ? liveSolrClient : offlineSolrClient
 
-        return client.query(query)
+        return client.query(query, SolrRequest.METHOD.POST)
     }
 
     /**

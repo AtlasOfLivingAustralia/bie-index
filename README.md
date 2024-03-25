@@ -107,19 +107,20 @@ Below is an example meta.xml that would be provided in a darwin core archive.
 
 In addition to indexing the content of the darwin core archive, the ingestion & index creation (optionally) indexes data from the following ALA components. It does this by harvesting JSON feeds from the listed components.
 
-- Layers & regions - http://spatial.ala.org.au/layers - spatial layers available in the system and regions (e.g. states, countries)
-- Collectory - http://collections.ala.org.au - data resource, collections, institutions
-- Lists and traits - http://lists.ala.org.au - conservation lists, sensitive species lists, traits
-- Biocache services - http://biocache.ala.org.au/ws - images, occurrence record counts
+- Layers & regions - https://spatial.ala.org.au/layers - spatial layers available in the system and regions (e.g. states, countries)
+- Collectory - https://collections.ala.org.au - data resource, collections, institutions
+- Lists and traits - https://lists.ala.org.au - conservation lists, sensitive species lists, traits
+- Biocache services - https://biocache.ala.org.au/ws - images, occurrence record counts
+- Biocollect - https://biocollect.ala.org.au - projects
 
 ## Architecture
 
 This application makes use of the following technologies
 
 - Apache SOLR 6.6.x
-- Grails 3.2.x
+- Grails 6.0.0
 - Tomcat 7 or higher
-- Java 8 or higher
+- Java 11 or higher
 
 ![Architecture image](architecture.jpg)
 
@@ -301,6 +302,9 @@ The `term` supplies the name of the status field.
 `label` gives the label to apply to the conservation status.
 `sourceField` gives the name of the field that contains the conservation status.
 `kingdomField` gives the name of the field that contains the kingdom -- handy for name lookups, if available.
+
+To use all species lists that are recorded as both authoritative and threatened, have `lists` as an empty array. These 
+lists must have a `status` column indicating the conservation status. 
 
 ## Weighting Rules
 

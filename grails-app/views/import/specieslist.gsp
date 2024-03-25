@@ -50,6 +50,9 @@
         <button id="start-wiki-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importWikiUrls')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importlistwiki"/></button>
     </div>
     <div>
+        <button id="start-species-list-import" onclick="javascript:loadInfo('${createLink(controller:'import', action:'importSpeciesLists')}?online=' + $('#use-online').is(':checked'))" class="btn btn-primary import-button"><g:message code="admin.button.importspecieslists"/></button>
+    </div>
+    <div>
         <input type="checkbox" id="use-online" name="use-online"/> <g:message code="admin.label.useonline"/>
     </div>
 

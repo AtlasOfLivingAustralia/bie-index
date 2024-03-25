@@ -1,11 +1,13 @@
 package au.org.ala.bie
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import grails.config.Config
 import grails.converters.JSON
 import grails.core.support.GrailsConfigurationAware
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.headers.Header
+import io.swagger.v3.oas.annotations.media.ArraySchema
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.media.Schema
@@ -43,7 +45,6 @@ class SearchController implements GrailsConfigurationAware {
      *
      * @return
      */
-    // Documented in openapi.yml
     @Operation(
             method = "GET",
             tags = "Search",
@@ -65,9 +66,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -140,9 +141,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -161,7 +162,39 @@ class SearchController implements GrailsConfigurationAware {
      * Bulk lookup of image information for a list of
      * taxon GUIDs
      */
-    // Documented in apenapi.yml
+    @Operation(
+            method = "POST",
+            tags = "bulk",
+            operationId = "bulkImageLookup",
+            summary = "Get a list of images for a list of taxon identifiers",
+            description = "Return a list of \"hero shot\" preferred image identifiers and links for each taxon specified by the guid or null for no image",
+            requestBody = @RequestBody(
+                    description = "The guids to look up",
+                    content = @Content(
+                            array = @ArraySchema(schema = @Schema(type = "string"))
+                    )
+            ),
+            responses = [
+                    @ApiResponse(
+                            responseCode = "400"
+                    ),
+                    @ApiResponse(
+                            description = "An array of either nulls for not found or packages of image information",
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
+                            ],
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    array = @ArraySchema(schema = @Schema(implementation = ImageResponse))
+                            )
+                    )
+            ]
+    )
+    @Path("/species/image/bulk")
+    @Produces("application/json")
     def bulkImageLookup() {
         final locales = [request.locale, defaultLocale]
         final req = request.getJSON()
@@ -191,8 +224,11 @@ class SearchController implements GrailsConfigurationAware {
 
     /**
      * Returns a redirect to an image of the appropriate type
+     *
+     * No recent usage so marking as deprecated
      */
-    // Documented in openapi.yml
+    @Deprecated
+    // Documented in openapi.yml, data is available from other services and there is no known usage
     def imageLinkSearch() {
         def showNoImage = params.boolean('showNoImage', true)
         def guid = regularise(params.id)
@@ -250,9 +286,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -274,7 +310,6 @@ class SearchController implements GrailsConfigurationAware {
         render (searchService.getChildConcepts(regularise(taxonID), extra, within, unranked) as JSON)
     }
 
-    // Documented in openapi.yml
     /**
      *
      * @return
@@ -300,15 +335,14 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
 
     )
-
     @Path("/guid/{name}")
     @Produces("application/json")
     def guid(){
@@ -326,7 +360,42 @@ class SearchController implements GrailsConfigurationAware {
         }
     }
 
-    // Documented in openapi.yml
+    @Operation(
+            method = "GET",
+            tags = "Search",
+            operationId = "shortProfile",
+            summary = "Get a short description of a taxon",
+            description = "Get a summary of taxon data without details such as variants, additional identifiers, etc.",
+            parameters = [
+                    @Parameter(
+                            name = "id",
+                            in = PATH,
+                            description = "The guid for the taxon concept",
+                            schema = @Schema(implementation = String),
+                            example  = "https://id.biodiversity.org.au/node/apni/2905748",
+                            required = true
+                    ),
+            ],
+            responses = [
+                    @ApiResponse(responseCode = "400"),
+                    @ApiResponse(
+                            description = "Species info in JSON",
+                            responseCode = "200",
+                            headers = [
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
+                            ],
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = ShortProfile)
+                            )
+                    )
+            ]
+
+    )
+    @Path("/species/shortProfile/{id}")
+    @Produces("application/json")
     def shortProfile(){
         def guid = regularise(params.id)
         if(guid == 'favicon') return; //not sure why this is happening....
@@ -372,9 +441,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -418,9 +487,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "List of species info",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -468,9 +537,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -481,7 +550,6 @@ class SearchController implements GrailsConfigurationAware {
     @Produces("application/json")
     def taxon(){
         def guid = regularise(params.id)
-        log.warn(guid)
         def locales = [request.locale, defaultLocale]
         if(guid == 'favicon') return; //not sure why this is happening....
         if(!guid){
@@ -489,7 +557,6 @@ class SearchController implements GrailsConfigurationAware {
             return null
         }
         def model = searchService.getTaxon(guid, locales)
-        log.debug "taxon model = ${model}"
 
         if(!model) {
             response.sendError(404, "GUID not recognised ${guid}")
@@ -529,9 +596,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -604,9 +671,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results as CSV file",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -686,9 +753,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -791,9 +858,9 @@ class SearchController implements GrailsConfigurationAware {
                             description = "Search results",
                             responseCode = "200",
                             headers = [
-                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "String")),
-                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "String"))
+                                    @Header(name = 'Access-Control-Allow-Headers', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Methods', description = "CORS header", schema = @Schema(type = "string")),
+                                    @Header(name = 'Access-Control-Allow-Origin', description = "CORS header", schema = @Schema(type = "string"))
                             ]
                     )
             ]
@@ -820,22 +887,22 @@ class SearchController implements GrailsConfigurationAware {
         }
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because we have no habitat data
     def habitats(){
         asJson([searchResults: searchService.getHabitats()])
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because we have no habitat data
     def habitatTree(){
         asJson([searchResults: searchService.getHabitatsTree()])
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because we have no habitat data
     def getHabitat(){
         asJson([searchResults: searchService.getHabitatByGuid(params.guid)])
     }
 
-    // Documented in openapi.yml
+    // Documented in openapi.yml, not migrating to annotations because we have no habitat data
     def getHabitatIDs(){
         asJson([searchResults: searchService.getHabitatsIDsByGuid(params.guid)])
     }
@@ -873,5 +940,28 @@ class SearchController implements GrailsConfigurationAware {
             guid = guid.replaceFirst(":/", "://")
         }
         return guid
+    }
+
+    @JsonIgnoreProperties('metaClass')
+    class ImageResponse {
+        String imageId
+        String thumbnail
+        String small
+        String large
+    }
+
+    @JsonIgnoreProperties('metaClass')
+    class ShortProfile {
+        String taxonID
+        String scientificName
+        String scientificNameAuthorship
+        String author
+        String rank
+        String rankID
+        String kingdom
+        String family
+        String commonName
+        String thumbnail
+        String imageURL
     }
 }

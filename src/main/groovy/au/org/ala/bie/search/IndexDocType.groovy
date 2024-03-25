@@ -18,5 +18,6 @@ enum IndexDocType {
     KNOWLEDGEBASE,
     COMMON,
     IDENTIFIER,
-    TAXONVARIANT
+    TAXONVARIANT,
+    BIOCOLLECT
 }
