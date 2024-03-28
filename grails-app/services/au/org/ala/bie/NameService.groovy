@@ -16,6 +16,7 @@ package au.org.ala.bie
 
 import au.org.ala.bie.util.Encoder
 import grails.config.Config
+import grails.converters.JSON
 import grails.core.support.GrailsConfigurationAware
 import groovy.json.JsonSlurper
 
@@ -79,4 +80,29 @@ class NameService implements GrailsConfigurationAware {
             return null
         return json.taxonConceptID
      }
+
+    def searchByIds(def list) {
+        try {
+            def query = list.collect { [taxonConceptID: it] }
+
+            def url = new URL(this.service + "/api/searchAllByClassification")
+            def bytes = (query as JSON).toString().getBytes("UTF-8")
+
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection()
+            conn.setRequestMethod("POST")
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Content-Length", String.valueOf(bytes.length))
+            conn.setDoOutput(true)
+            conn.getOutputStream().write(bytes)
+
+            def txt = conn.getInputStream().text
+            def response = JSON.parse(txt)
+
+            conn.disconnect()
+
+            return response
+        } catch (err) {
+            log.error("Error calling " + this.service + "/api/searchByClassification, " + err.message)
+        }
+    }
 }

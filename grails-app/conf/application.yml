@@ -288,7 +288,7 @@ skin:
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
 import:
-  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,biocollect,species-lists,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,sitemap,swap
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,biocollect,species-lists,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,sitemap,align-common-name,swap
   sequenceDaily: conservation-lists,wordpress,knowledgebase,biocollect,species-lists,favourites,suggest-index,images,hidden-images,wiki-urls,sitemap,swap
   sequenceWeekly: occurrences,layers,regions,localities,suggest-index,sitemap,swap
   # enable daily and weekly tasks
