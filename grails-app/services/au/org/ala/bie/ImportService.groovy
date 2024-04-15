@@ -2199,7 +2199,7 @@ class ImportService implements GrailsConfigurationAware {
         def prevCursor
         def cursor
         def listConfig = this.getConfigFile(wikiConfiguration)
-        def imageMap = collectHiddenImageLists(listConfig.lists)
+        def imageMap = collectWikiLists(listConfig.lists)
         log.debug "listConfig = ${listConfig} "
 
         log("Clearing wikiUrls for ${online ? 'online' : 'offline'} index")
@@ -2293,6 +2293,34 @@ class ImportService implements GrailsConfigurationAware {
                         def imageId = imageIdName ? item[imageIdName] : null
                         if (imageId) {
                             def image = [taxonID: taxonID, name: name, imageId: imageId]
+                            if (taxonID && !imageMap.containsKey(taxonID))
+                                imageMap[taxonID] = image
+                        }
+                    }
+                } catch (Exception ex) {
+                    log("Unable to load image list at ${url}: ${ex.getMessage()} ... ignoring")
+                }
+            }
+        }
+        log("Loaded image lists (${imageMap.size()} taxa)")
+        return imageMap
+    }
+
+    def collectWikiLists(List lists) {
+        def imageMap = [:]
+        log("Loading wiki lists")
+        lists.each { list ->
+            String drUid = list.uid
+            String imageIdName = list.wikiUrl
+            if (drUid && (imageIdName)) {
+                try {
+                    def images = listService.get(drUid, [imageIdName])
+                    images.each { item ->
+                        def taxonID = item.lsid
+                        def name = item.name
+                        def imageId = imageIdName ? item[imageIdName] : null
+                        if (imageId) {
+                            def image = [taxonID: taxonID, name: name, url: imageId]
                             if (taxonID && !imageMap.containsKey(taxonID))
                                 imageMap[taxonID] = image
                         }
@@ -2548,7 +2576,7 @@ class ImportService implements GrailsConfigurationAware {
                         //String imageId = getImageFromParamList(preferredImagesList, doc.guid)
                         def listEntry = wikiMap[doc.guid]
                         String url = listEntry?.url
-                        if (!doc.containsKey("wikiUrl") || (doc.containsKey("wikiUrl") && doc.wikiUrl != url)) {
+                        if (!doc.containsKey("wikiUrl_s") || (doc.containsKey("wikiUrl_s") && doc.wikiUrl_s != url)) {
                             lastTaxon = doc.guid
                             lastUrl = url
                             updateWikiUrl(doc, url, buffer, online)
