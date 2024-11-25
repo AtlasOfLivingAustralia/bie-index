@@ -1076,7 +1076,8 @@ class SearchService {
                         "acceptedConceptName": it.acceptedConceptName,
                         "favourite"          : it.favourite,
                         "infoSourceName"     : it.datasetName,
-                        "infoSourceURL"      : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}"
+                        "infoSourceURL"      : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}",
+                        "source"             : it.source
                 ]
                 if (it.image) {
                     doc.put("image", it.image)
