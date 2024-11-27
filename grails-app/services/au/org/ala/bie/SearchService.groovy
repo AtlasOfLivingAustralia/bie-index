@@ -1079,6 +1079,13 @@ class SearchService {
                         "infoSourceURL"      : "${grailsApplication.config.collectory.base}/public/show/${it.datasetID}",
                         "source"             : it.source
                 ]
+
+                if (it.taxonGuid) {
+                    Map taxon = indexService.getTaxonByGuid((String) it.taxonGuid, true)
+                    String scientificName = taxon?.scientificName
+                    doc.put("taxonScientificName", scientificName)
+                }
+
                 if (it.image) {
                     doc.put("image", it.image)
                     doc.put("imageUrl", MessageFormat.format(grailsApplication.config.images.service.small, it.image))
