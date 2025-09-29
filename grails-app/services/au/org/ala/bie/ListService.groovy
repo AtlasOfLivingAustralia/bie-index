@@ -31,14 +31,14 @@ class ListService {
             int pageSize = 1000
             int page = 1
             while (true) {
-                def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.items, pageSize, page)
+                def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.items, uid, pageSize, page)
                 def json = JSON.parse(url.getText('UTF-8'))
 
                 if (!json) {
                     break
                 }
 
-                lists.addAll(json)
+                items.addAll(json)
             }
         } else {
             boolean hasAnotherPage = true
