@@ -50,15 +50,18 @@ class ListService {
 
             while (hasAnotherPage) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.items, uid, max, offset)
-
-                def slurper = new JsonSlurper()
-                def json = slurper.parseText(url.getText('UTF-8'))
+                def response = fetchWithBrowserHeaders(url)
+                def json = response ? JSON.parse(response) : null
                 items.addAll(json)
 
                 hasAnotherPage = json.size() == max
                 offset += max
 
             }
+        }
+
+        if (!items) {
+            return []
         }
 
         return items.collect { item ->
@@ -85,6 +88,8 @@ class ListService {
     }
 
     def add(listDr, name, guid, extraField, extraValue) {
+        def headers = getUserAgentHeader()
+
         if (grailsApplication.config.lists.useListWs) {
             def query =
 """
@@ -92,13 +97,14 @@ mutation add {
     addSpeciesListItem(inputSpeciesListItem: {scientificName: "${name}", taxonID: "${guid}", speciesListID: "${listDr}", properties: { key:"${extraField}", value:"${extraValue}"}} ) { id }
 }
 """
-            webService.post(grailsApplication.config.lists.service + "/graphql", [query: query], null, ContentType.APPLICATION_JSON, true, false, [:])
+
+            webService.post(grailsApplication.config.lists.service + "/graphql", [query: query], null, ContentType.APPLICATION_JSON, true, false, headers)
         } else {
             def url = new URL(grailsApplication.config.lists.service + grailsApplication.config.lists.add)
             def query = [druid: listDr]
             def body = [guid: guid, rawScientificName: name]
             body[extraField] = extraValue
-            webService.post(url.toString(), body, query, ContentType.APPLICATION_JSON, true, false, [:])
+            webService.post(url.toString(), body, query, ContentType.APPLICATION_JSON, true, false, headers)
         }
     }
 
@@ -116,12 +122,12 @@ mutation add {
         removeSpeciesListItem(id: "${id}") { id }
     }
     """
-                    webService.post(grailsApplication.config.lists.service + "/graphql", [query: query])
+                    webService.post(grailsApplication.config.lists.service + "/graphql", [query: query], getUserAgentHeader())
                 }
             }
         } else {
             def url = new URL(grailsApplication.config.lists.service + grailsApplication.config.lists.remove)
-            webService.get(url.toString(), [druid: listDr, guid: guid], ContentType.APPLICATION_JSON, true, false, [:])
+            webService.get(url.toString(), [druid: listDr, guid: guid], ContentType.APPLICATION_JSON, true, false, getUserAgentHeader())
         }
     }
 
@@ -132,7 +138,8 @@ mutation add {
         def pageSize = 1000
         def page = 1
         while (true) {
-            def items = webService.get(grailsApplication.config.lists.service + '/speciesListItems/' + listDr, [pageSize: pageSize, page: page])?.resp
+            def items = webService.get(grailsApplication.config.lists.service + '/speciesListItems/' + listDr, [pageSize: pageSize, page: page],
+                    ContentType.APPLICATION_JSON, true, false, getUserAgentHeader())?.resp
             page++
 
             if (!items) {
@@ -178,8 +185,13 @@ mutation add {
 
             while (hasAnotherPage) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.search, max, offset)
+                def response = fetchWithBrowserHeaders(url)
+                def json = JSON.parse(response)?.lists
 
-                def json = JSON.parse(url.getText('UTF-8')).lists
+                if (!json || json.isEmpty()) {
+                    break
+                }
+
                 lists.addAll(json)
 
                 hasAnotherPage = json.size() == max
@@ -208,9 +220,10 @@ mutation add {
             int page = 1
             while (true) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.conservation, pageSize, page)
-                def json = JSON.parse(url.getText('UTF-8')).lists
+                def response = fetchWithBrowserHeaders(url)
+                def json = JSON.parse(response)?.lists
 
-                if (!json) {
+                if (!json || json.isEmpty()) {
                     break
                 }
 
@@ -223,8 +236,13 @@ mutation add {
 
             while (hasAnotherPage) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.conservation, max, offset)
+                def response = fetchWithBrowserHeaders(url)
+                def json = JSON.parse(response)?.lists
 
-                def json = JSON.parse(url.getText('UTF-8')).lists
+                if (!json || json.isEmpty()) {
+                    break
+                }
+
                 lists.addAll(json)
 
                 hasAnotherPage = json.size() == max
@@ -269,6 +287,7 @@ mutation add {
             def appName = grailsApplication.config.getProperty('info.app.name')
             def appVersion = grailsApplication.config.getProperty('info.app.version')
             log.debug("app.name: ${appName} | app.version: ${appVersion}")
+            log.info("Fetching URL: ${url}")
 
             if (appName && appVersion) {
                 // ALA specific pattern works
@@ -308,5 +327,13 @@ mutation add {
             log.warn("Failed to fetch data from ${url}: ${e.message}", e)
             return null
         }
+    }
+
+    Map getUserAgentHeader() {
+        def appName = grailsApplication.config.getProperty('info.app.name', String, 'ala-bie')
+        def appVersion = grailsApplication.config.getProperty('info.app.version', String, '3.1')
+        log.debug("app.name: ${appName} | app.version: ${appVersion}")
+        String value = "${appName}/${appVersion}" as String
+        return ["User-Agent": value]
     }
 }

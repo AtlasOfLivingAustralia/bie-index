@@ -2307,7 +2307,7 @@ class ImportService implements GrailsConfigurationAware {
                         def name = item.name
                         def imageId = imageIdName ? item[imageIdName] : null
                         if (imageId) {
-                            def image = [taxonID: taxonID, name: name, imageId: imageId]
+                            def image = [taxonID: taxonID, name: name, (imageIdName): imageId]
                             if (taxonID && !imageMap.containsKey(taxonID))
                                 imageMap[taxonID] = image
                         }
@@ -2631,7 +2631,7 @@ class ImportService implements GrailsConfigurationAware {
     }
 
     /**
-     * Update a taxon with an image, along with any common nmames
+     * Update a taxon with an image, along with any common names
      *
      * @param doc The taxon document
      * @param imageId The image identifier

@@ -185,7 +185,7 @@ lists:
   service: https://lists.ala.org.au/ws
   ui: https://lists.ala.org.au
   items: /speciesListItems/{0}?includeKVP=true&max={1}&offset={2}
-  search: /speciesList/?isAuthoritative=eq:true&max={0}&offset={1}
+  search: /speciesList?isAuthoritative=eq:true&max={0}&offset={1}
   conservation: /speciesList?isAuthoritative=eq:true&isThreatened=eq:true&max={0}&offset={1}
   show: /speciesListItem/list/{0}
   add: /createItem
