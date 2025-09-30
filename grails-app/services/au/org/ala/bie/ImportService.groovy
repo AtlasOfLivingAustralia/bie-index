@@ -1220,13 +1220,14 @@ class ImportService implements GrailsConfigurationAware {
                     taxonDoc = searchService.lookupTaxonByPreviousIdentifier(item.lsid, !online)
                 }
                 if (!taxonDoc && item.name) {
-                    def kingdom = kingdomField ? item.getAt(kingdomField) : null
-                    def phylum = phylumField ? item.getAt(phylumField) : null
-                    def class_ = classField ? item.getAt(classField) : null
-                    def order = orderField ? item.getAt(orderField) : null
-                    def family = familyField ? item.getAt(familyField) : null
-                    def rank = rankField ? item.getAt(rankField) : null
-                    def lsid = nameService.search(item.name, kingdom, phylum, class_, order, family, rank)
+                    String kingdom = kingdomField ? item.getAt(kingdomField) as String : null
+                    String phylum = phylumField ? item.getAt(phylumField) as String : null
+                    String class_ = classField ? item.getAt(classField) as String : null
+                    String order = orderField ? item.getAt(orderField) as String : null
+                    String family = familyField ? item.getAt(familyField) as String : null
+                    String rank = rankField ? item.getAt(rankField) as String : null
+                    String name = item.name as String
+                    def lsid = nameService.search(name, kingdom, phylum, class_, order, family, rank)
                     if (lsid) {
                         taxonDoc = searchService.lookupTaxon(lsid, !online)
                     }
@@ -1386,7 +1387,7 @@ class ImportService implements GrailsConfigurationAware {
             return false
         }
         def capitaliser = TitleCapitaliser.create(language ?: commonNameDefaultLanguage)
-        vernacularName = capitaliser.capitalise(vernacularName)
+        vernacularName = capitaliser.capitalise(vernacularName ?: "")
         def key = taxonDoc.guid + "|" + vernacularName + "|" + language
         if (loaded.contains(key)) {
             log "Duplicate name for " + taxonID + ", " + name + ": " + vernacularName + " in " + language
@@ -2296,7 +2297,8 @@ class ImportService implements GrailsConfigurationAware {
         log("Loading image lists")
         lists.each { list ->
             String drUid = list.uid
-            String imageIdName = list.imageId
+            String imageIdName = list.imageId != null ? list.imageId : list.wikiUrl // can be either imageId or wikiUrl
+
             if (drUid && (imageIdName)) {
                 try {
                     def images = listService.get(drUid, [imageIdName])

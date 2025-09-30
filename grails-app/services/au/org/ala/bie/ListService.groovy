@@ -26,19 +26,22 @@ class ListService {
      */
     def get(uid, List fields = []) {
         def items = []
+        Boolean useListWs = grailsApplication.config.getProperty("lists.useListWs", Boolean, false)
 
-        if (grailsApplication.config.lists.useListWs) {
+        if (useListWs) {
             int pageSize = 1000
             int page = 1
             while (true) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.items, uid, pageSize, page)
-                def json = JSON.parse(url.getText('UTF-8'))
+                def response = fetchWithBrowserHeaders(url)
+                def json = response ? JSON.parse(response) : null
 
-                if (!json) {
+                if (!json || json.isEmpty()) {
                     break
                 }
 
                 items.addAll(json)
+                page++
             }
         } else {
             boolean hasAnotherPage = true
@@ -62,10 +65,15 @@ class ListService {
             // item.lsid (lists.useListWs:false), item.classification?.taxonConceptID for matched entries, otherwise taxonID
             def result = [lsid: item.lsid ?: item.classification?.taxonConceptID ?: item.taxonID, name: item.name ?: item.scientificName]
 
-            fields.each { field ->
+            fields.each { String field ->
                 def value
-                if (grailsApplication.config.lists.useListWs) {
-                    value = field ? item?.properties?.find { it.key == field }?.get("value") : null
+                if (useListWs) {
+                    // v2 API removes spaces in property keys,so try both versions
+                    def field2 = field ? field.replaceAll(' ', '_') : null
+                    def value1 = field ? item?.classification?.find { it.key == field }?.value : null
+                    def value2 = field ? item?.properties?.find { it.key == field }?.get("value") : null
+                    def value3 = field2 ? item?.properties?.find { it.key == field2 }?.get("value") : null
+                    value = value1 ?: value2 ?: value3
                 } else {
                     value = field ? item.kvpValues.find { it.key == field }?.get("value") : null
                 }
@@ -150,14 +158,17 @@ mutation add {
             int pageSize = 1000
             int page = 1
             while (true) {
+                log.debug "Fetching page ${page} of lists"
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.search, pageSize, page)
-                def json = JSON.parse(url.getText('UTF-8')).lists
+                def response = fetchWithBrowserHeaders(url)
+                def json = JSON.parse(response)?.lists
 
-                if (!json) {
+                if (!json || json.isEmpty()) {
                     break
                 }
 
                 lists.addAll(json)
+                page++
             }
 
         } else {
@@ -244,5 +255,58 @@ mutation add {
         }
 
         lists
+    }
+
+    /**
+     * Fetches content from a URL with browser-like headers to pass AWS WAF
+     * @param url The URL to fetch (can be String or URL object)
+     * @return The response text, or null if request fails
+     */
+    String fetchWithBrowserHeaders(def url) {
+        try {
+            URL urlObj = url instanceof URL ? url : new URL(url.toString())
+            def connection = urlObj.openConnection()
+            def appName = grailsApplication.config.getProperty('info.app.name')
+            def appVersion = grailsApplication.config.getProperty('info.app.version')
+            log.debug("app.name: ${appName} | app.version: ${appVersion}")
+
+            if (appName && appVersion) {
+                // ALA specific pattern works
+                connection.setRequestProperty("User-Agent", "${appName}/${appVersion}")
+            } else {
+                // Headers that pass AWS WAF
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+                connection.setRequestProperty("Accept-Encoding", "gzip, deflate, br")
+                connection.setRequestProperty("Connection", "keep-alive")
+                connection.setRequestProperty("Upgrade-Insecure-Requests", "1")
+                connection.setRequestProperty("Sec-Fetch-Dest", "document")
+                connection.setRequestProperty("Sec-Fetch-Mode", "navigate")
+                connection.setRequestProperty("Sec-Fetch-Site", "none")
+                connection.setRequestProperty("Sec-Fetch-User", "?1")
+            }
+
+            // Set timeout (optional but recommended)
+            connection.setConnectTimeout(10000) // 10 seconds
+            connection.setReadTimeout(30000)    // 30 seconds
+
+            if (connection instanceof HttpURLConnection) {
+                def httpConn = (HttpURLConnection) connection
+                httpConn.connect()
+                int responseCode = httpConn.responseCode
+                if (responseCode == 404) {
+                    log.warn("404 (no further data for requested \"page\"): ${url}")
+                    return null
+                }
+                return httpConn.inputStream.getText('UTF-8')
+            } else {
+                return connection.inputStream.getText('UTF-8')
+            }
+
+        } catch (Exception e) {
+            log.warn("Failed to fetch data from ${url}: ${e.message}", e)
+            return null
+        }
     }
 }
