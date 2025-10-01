@@ -33,7 +33,7 @@ class ListService {
             int page = 1
             while (true) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.items, uid, pageSize, page)
-                def response = fetchWithBrowserHeaders(url)
+                def response = fetchWithExtraHeaders(url)
                 def json = response ? JSON.parse(response) : null
 
                 if (!json || json.isEmpty()) {
@@ -50,7 +50,7 @@ class ListService {
 
             while (hasAnotherPage) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.items, uid, max, offset)
-                def response = fetchWithBrowserHeaders(url)
+                def response = fetchWithExtraHeaders(url)
                 def json = response ? JSON.parse(response) : null
                 items.addAll(json)
 
@@ -167,7 +167,7 @@ mutation add {
             while (true) {
                 log.debug "Fetching page ${page} of lists"
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.search, pageSize, page)
-                def response = fetchWithBrowserHeaders(url)
+                def response = fetchWithExtraHeaders(url)
                 def json = JSON.parse(response)?.lists
 
                 if (!json || json.isEmpty()) {
@@ -185,7 +185,7 @@ mutation add {
 
             while (hasAnotherPage) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.search, max, offset)
-                def response = fetchWithBrowserHeaders(url)
+                def response = fetchWithExtraHeaders(url)
                 def json = JSON.parse(response)?.lists
 
                 if (!json || json.isEmpty()) {
@@ -220,7 +220,7 @@ mutation add {
             int page = 1
             while (true) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.conservation, pageSize, page)
-                def response = fetchWithBrowserHeaders(url)
+                def response = fetchWithExtraHeaders(url)
                 def json = JSON.parse(response)?.lists
 
                 if (!json || json.isEmpty()) {
@@ -236,7 +236,7 @@ mutation add {
 
             while (hasAnotherPage) {
                 def url = Encoder.buildServiceUrl(grailsApplication.config.lists.service, grailsApplication.config.lists.conservation, max, offset)
-                def response = fetchWithBrowserHeaders(url)
+                def response = fetchWithExtraHeaders(url)
                 def json = JSON.parse(response)?.lists
 
                 if (!json || json.isEmpty()) {
@@ -280,33 +280,15 @@ mutation add {
      * @param url The URL to fetch (can be String or URL object)
      * @return The response text, or null if request fails
      */
-    String fetchWithBrowserHeaders(def url) {
+    String fetchWithExtraHeaders(def url) {
         try {
             URL urlObj = url instanceof URL ? url : new URL(url.toString())
             def connection = urlObj.openConnection()
-            def appName = grailsApplication.config.getProperty('info.app.name')
-            def appVersion = grailsApplication.config.getProperty('info.app.version')
+            def appName = grailsApplication.config.getProperty('info.app.name', String, 'bie-index')
+            def appVersion = grailsApplication.config.getProperty('info.app.version', String, '3.1')
             log.debug("app.name: ${appName} | app.version: ${appVersion}")
-            log.info("Fetching URL: ${url}")
 
-            if (appName && appVersion) {
-                // ALA specific pattern works
-                connection.setRequestProperty("User-Agent", "${appName}/${appVersion}")
-            } else {
-                // Headers that pass AWS WAF
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
-                connection.setRequestProperty("Accept-Encoding", "gzip, deflate, br")
-                connection.setRequestProperty("Connection", "keep-alive")
-                connection.setRequestProperty("Upgrade-Insecure-Requests", "1")
-                connection.setRequestProperty("Sec-Fetch-Dest", "document")
-                connection.setRequestProperty("Sec-Fetch-Mode", "navigate")
-                connection.setRequestProperty("Sec-Fetch-Site", "none")
-                connection.setRequestProperty("Sec-Fetch-User", "?1")
-            }
-
-            // Set timeout (optional but recommended)
+            connection.setRequestProperty("User-Agent", "${appName}/${appVersion}")
             connection.setConnectTimeout(10000) // 10 seconds
             connection.setReadTimeout(30000)    // 30 seconds
 
@@ -330,7 +312,7 @@ mutation add {
     }
 
     Map getUserAgentHeader() {
-        def appName = grailsApplication.config.getProperty('info.app.name', String, 'ala-bie')
+        def appName = grailsApplication.config.getProperty('info.app.name', String, 'bie-index')
         def appVersion = grailsApplication.config.getProperty('info.app.version', String, '3.1')
         log.debug("app.name: ${appName} | app.version: ${appVersion}")
         String value = "${appName}/${appVersion}" as String
