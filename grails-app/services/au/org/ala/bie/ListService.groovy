@@ -86,7 +86,7 @@ class ListService {
                     value = item.kvpValues.find { it.key == field }?.get("value")
                 }
                 if (value)
-                    result.put(field2, value)
+                    result.put(useListWs ? field2 : field, value)
             }
             result
         }
