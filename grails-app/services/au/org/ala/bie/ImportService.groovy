@@ -244,6 +244,9 @@ class ImportService implements GrailsConfigurationAware {
                     case 'denormalize':
                         denormaliseTaxa(online)
                         break
+                    case 'align-common-name':
+                        alignCommonName(online)
+                        break
                     case 'favourites':
                         buildFavourites(online)
                         break
@@ -754,33 +757,49 @@ class ImportService implements GrailsConfigurationAware {
 
         // slurp and build each SOLR doc (add to buffer)
         lists.each { list ->
-            def url = MessageFormat.format(grailsApplication.config.lists.ui + grailsApplication.config.lists.show, list.dataResourceUid)
+            // 2024-02-21 id is the new parameter moving forward. It is not in sync with collections
+            def id = list.id ?: list.dataResourceUid
+            def listName = list.listName ?: list.title
+            def listType = list.listType
+            def url = MessageFormat.format(grailsApplication.config.lists.ui + grailsApplication.config.lists.show, id)
             log "indexing url: ${url}"
             try {
                 documentCount++
 
                 // create SOLR doc
-                log.debug documentCount + ". Indexing Species lists - id: " + list.dataResourceUid + " | title: " + list.listName + "... ";
+                log.debug documentCount + ". Indexing Species lists - id: " + id + " | title: " + listName + "... ";
                 def doc = [:]
                 doc["idxtype"] = IndexDocType.SPECIESLIST.name()
                 doc["guid"] = url
-                doc["id"] = list.dataResourceUid // guid required
-                doc["name"] = list.listName
+                doc["id"] = id // guid required
+                doc["name"] = listName
                 doc["linkIdentifier"] = url
 
-                doc["listType_s"] = list.listType
+                doc["listType_s"] = listType
                 def content = messageSource.getMessage('list.content.listType', null, LocaleContextHolder.locale) + ": " +
-                        messageSource.getMessage("list." + list.listType, null, LocaleContextHolder.locale)
+                        messageSource.getMessage("list." + listType, null, LocaleContextHolder.locale)
 
                 ['dateCreated', 'itemCount', 'isAuthoritative', 'isInvasive', 'isThreatened', 'region'].each {item ->
+                    def value = list[item]
+                    if (grailsApplication.config.lists.useListWs) {
+                        if (item == 'itemCount') {
+                            value = list['rowCount']
+                        } else if (item == 'dateCreated') {
+                            // convert from long to string
+                            value = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(new Date(value))
+                        } else if (item != 'region' && value == null) {
+                            // use 'false' when null for 'isAuthoritative', 'isInvasive', 'isThreatened'
+                            value = 'false'
+                        }
+                    }
                     def label = messageSource.getMessage('list.content.' + item, null, LocaleContextHolder.locale)
-                    if (label && list[item]) {
-                        if ("true" == list[item].toString()) {
+                    if (label && value) {
+                        if ("true" == value.toString()) {
                             content += ', ' + label
                         } else {
-                            content += ', ' + label + ": " + list[item]
+                            content += ', ' + label + ": " + value
                         }
-                        doc[item + "_s"] = list[item]
+                        doc[item + "_s"] = value
                     }
                 }
 
@@ -1021,6 +1040,163 @@ class ImportService implements GrailsConfigurationAware {
     }
 
     /**
+     * Align the preferred common name with the namematching service
+     *
+     * 1. Align with idxtype:COMMON using the same method as ala-namematching-service
+     * 2. Align with ala-namematching-service
+     */
+    def alignCommonName(online) {
+        alignCommonNameWithCommonRecords(online)
+        alignCommonNameWithNamematchingService(online)
+    }
+
+    def alignCommonNameWithCommonRecords(online) {
+        int pageSize = BATCH_SIZE
+        int processed = 0
+        def typeQuery = "guid:* AND (idxtype:TAXON OR idxtype:TAXONVARIANT OR idxtype:IDENTIFIER)"
+        def prevCursor
+        def cursor
+
+        log("Starting common name alignment with common records scan for ${online ? 'online' : 'offline'} index")
+        try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
+
+            while (prevCursor != cursor) {
+                def startTime = System.currentTimeMillis()
+                SolrQuery query = new SolrQuery(typeQuery)
+                query.setParam('cursorMark', cursor)
+                query.setSort("id", SolrQuery.ORDER.asc)
+                query.setRows(pageSize)
+                def response = indexService.query(query, online)
+                def docs = response.results
+                int total = docs.numFound
+                def buffer = []
+
+                docs.each { doc ->
+                    def taxonID = doc.guid
+
+                    def commonNames = searchService.lookupVernacular(taxonID, online)
+
+                    if (commonNames) {
+                        def names = new LinkedHashSet(commonNames.collect { it.name })
+                        def update = [id: doc.id, commonNameSingle: [set: commonNames.get(0).name], commonName: [set: names]]
+                        buffer << update
+                    }
+
+                    if (buffer.size() >= BUFFER_SIZE) {
+                        indexService.indexBatch(buffer, online)
+                        buffer = []
+                    }
+                    processed++
+                }
+
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                def percentage = total ? Math.round(processed * 100 / total) : 100
+                def speed = total ? Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime)) : 0
+                log("Processed ${processed} taxa (${percentage}%) speed ${speed} records per second")
+                if (total > 0) {
+                    updateProgressBar(total, processed)
+                }
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+            log("Finished scan")
+        } catch (Exception ex) {
+            log.error("Unable to perform common name with common records alignment scan", ex)
+            log("Error during scan: " + ex.getMessage())
+        }
+    }
+
+    def alignCommonNameWithNamematchingService(online) {
+        int pageSize = BATCH_SIZE
+        int processed = 0
+        def typeQuery = "guid:* AND (idxtype:TAXON OR idxtype:TAXONVARIANT OR idxtype:IDENTIFIER)"
+        def prevCursor
+        def cursor
+
+        log("Starting common name alignment scan for ${online ? 'online' : 'offline'} index")
+        try {
+            prevCursor = ""
+            cursor = CursorMarkParams.CURSOR_MARK_START
+            processed = 0
+
+            while (prevCursor != cursor) {
+                def startTime = System.currentTimeMillis()
+                SolrQuery query = new SolrQuery(typeQuery)
+                query.setParam('cursorMark', cursor)
+                query.setSort("id", SolrQuery.ORDER.asc)
+                query.setRows(pageSize)
+                def response = indexService.query(query, online)
+                def docs = response.results
+                int total = docs.numFound
+                def buffer = []
+                def guids = []
+                def updates = [:]
+
+                docs.each { doc ->
+                    def taxonID = doc.guid
+
+                    guids << taxonID
+                    updates[taxonID] = [id: doc.id, commonName: doc.commonNameSingle]
+
+                    if (guids.size() >= BATCH_SIZE) {
+                        def resultList = nameService.searchByIds(guids)
+
+                        for(def result : resultList) {
+                            def vernacularName = result.vernacularName
+
+                            if (updates[result.taxonConceptID] && vernacularName != updates[result.taxonConceptID].commonName) {
+                                def update = [id: updates[result.taxonConceptID].id, commonNameSingle: [set: vernacularName]]
+                                buffer << update
+                            }
+                        }
+                        guids = []
+                        updates = [:]
+                    }
+
+                    if (buffer.size() >= BUFFER_SIZE) {
+                        indexService.indexBatch(buffer, online)
+                        buffer = []
+                    }
+                    processed++
+                }
+                if (!guids.isEmpty()) {
+                    def resultList = nameService.searchByIds(guids)
+
+                    for(def result : resultList) {
+                        def vernacularName = result.vernacularName
+
+                        if (updates[result.taxonConceptID] && vernacularName != updates[result.taxonConceptID].commonName) {
+                            def update = [id: updates[result.taxonConceptID].id, commonNameSingle: [set: vernacularName]]
+                            buffer << update
+                        }
+                    }
+                    guids = []
+                    updates = [:]
+                }
+
+                if (!buffer.isEmpty())
+                    indexService.indexBatch(buffer, online)
+                def percentage = total ? Math.round(processed * 100 / total) : 100
+                def speed = total ? Math.round((pageSize * 1000) / (System.currentTimeMillis() - startTime)) : 0
+                log("Processed ${processed} taxa (${percentage}%) speed ${speed} records per second")
+                if (total > 0) {
+                    updateProgressBar(total, processed)
+                }
+                prevCursor = cursor
+                cursor = response.nextCursorMark
+            }
+            log("Finished scan")
+        } catch (Exception ex) {
+            log.error("Unable to perform common name alignment scan", ex)
+            log("Error during scan: " + ex.getMessage())
+        }
+    }
+
+    /**
      * Update TAXON SOLR doc with conservation status info
      *
      * @param list
@@ -1047,13 +1223,14 @@ class ImportService implements GrailsConfigurationAware {
                     taxonDoc = searchService.lookupTaxonByPreviousIdentifier(item.lsid, !online)
                 }
                 if (!taxonDoc && item.name) {
-                    def kingdom = kingdomField ? item.getAt(kingdomField) : null
-                    def phylum = phylumField ? item.getAt(phylumField) : null
-                    def class_ = classField ? item.getAt(classField) : null
-                    def order = orderField ? item.getAt(orderField) : null
-                    def family = familyField ? item.getAt(familyField) : null
-                    def rank = rankField ? item.getAt(rankField) : null
-                    def lsid = nameService.search(item.name, kingdom, phylum, class_, order, family, rank)
+                    String kingdom = kingdomField ? item.getAt(kingdomField) as String : null
+                    String phylum = phylumField ? item.getAt(phylumField) as String : null
+                    String class_ = classField ? item.getAt(classField) as String : null
+                    String order = orderField ? item.getAt(orderField) as String : null
+                    String family = familyField ? item.getAt(familyField) as String : null
+                    String rank = rankField ? item.getAt(rankField) as String : null
+                    String name = item.name as String
+                    def lsid = nameService.search(name, kingdom, phylum, class_, order, family, rank)
                     if (lsid) {
                         taxonDoc = searchService.lookupTaxon(lsid, !online)
                     }
@@ -1213,7 +1390,7 @@ class ImportService implements GrailsConfigurationAware {
             return false
         }
         def capitaliser = TitleCapitaliser.create(language ?: commonNameDefaultLanguage)
-        vernacularName = capitaliser.capitalise(vernacularName)
+        vernacularName = capitaliser.capitalise(vernacularName ?: "")
         def key = taxonDoc.guid + "|" + vernacularName + "|" + language
         if (loaded.contains(key)) {
             log "Duplicate name for " + taxonID + ", " + name + ": " + vernacularName + " in " + language
@@ -2123,7 +2300,11 @@ class ImportService implements GrailsConfigurationAware {
         log("Loading image lists")
         lists.each { list ->
             String drUid = list.uid
-            String imageIdName = list.imageId
+            String imageIdName = list.imageId != null ? list.imageId : list.wikiUrl // can be either imageId or wikiUrl
+            if (grailsApplication.config.getProperty("lists.useListWs", Boolean, false)) {
+                imageIdName = imageIdName?.replaceAll(' ', '_')
+            }
+
             if (drUid && (imageIdName)) {
                 try {
                     def images = listService.get(drUid, [imageIdName])
@@ -2132,7 +2313,7 @@ class ImportService implements GrailsConfigurationAware {
                         def name = item.name
                         def imageId = imageIdName ? item[imageIdName] : null
                         if (imageId) {
-                            def image = [taxonID: taxonID, name: name, imageId: imageId]
+                            def image = [taxonID: taxonID, name: name, (imageIdName): imageId]
                             if (taxonID && !imageMap.containsKey(taxonID))
                                 imageMap[taxonID] = image
                         }
@@ -2456,7 +2637,7 @@ class ImportService implements GrailsConfigurationAware {
     }
 
     /**
-     * Update a taxon with an image, along with any common nmames
+     * Update a taxon with an image, along with any common names
      *
      * @param doc The taxon document
      * @param imageId The image identifier
@@ -2762,23 +2943,6 @@ class ImportService implements GrailsConfigurationAware {
                 update["nameComplete"] = [set: nameComplete]
         }
         update['priority'] = [set: (int) Math.round(priority)]
-        def commonNames = searchService.lookupVernacular(guid, !online)
-        if (commonNames && !commonNames.isEmpty()) {
-            commonNames = commonNames.sort { n1, n2 ->
-                def s = n2.priority - n1.priority
-                if (s == 0 && commonLanguages) {
-                    def s1 = commonLanguages.contains(n1.language) ? 1 : 0
-                    def s2 = commonLanguages.contains(n2.language) ? 1 : 0
-                    s = s1 - s2
-                }
-                s
-            }
-            def single = commonNames.find({ it.status != deprecatedStatus.status && (!commonLanguages || commonLanguages.contains(it.language))})?.name
-            def names = new LinkedHashSet(commonNames.collect { it.name })
-            update["commonName"] = [set: names]
-            update["commonNameExact"] = [set: names]
-            update["commonNameSingle"] = [set: single ]
-        }
         def identifiers = searchService.lookupIdentifier(guid, !online)
         if (identifiers) {
             update["additionalIdentifiers"] = [set: identifiers.collect { it.guid }]
