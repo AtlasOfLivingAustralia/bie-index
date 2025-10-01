@@ -2297,7 +2297,7 @@ class ImportService implements GrailsConfigurationAware {
         log("Loading image lists")
         lists.each { list ->
             String drUid = list.uid
-            String imageIdName = list.imageId != null ? list.imageId : list.wikiUrl // can be either imageId or wikiUrl
+            String imageIdName = list.imageId != null ? list.imageId?.replaceAll(' ', '_') : list.wikiUrl // can be either imageId or wikiUrl
 
             if (drUid && (imageIdName)) {
                 try {

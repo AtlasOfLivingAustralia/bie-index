@@ -69,19 +69,24 @@ class ListService {
             def result = [lsid: item.lsid ?: item.classification?.taxonConceptID ?: item.taxonID, name: item.name ?: item.scientificName]
 
             fields.each { String field ->
+                if (!field) {
+                    return
+                }
+
                 def value
+                def field2 = field.replaceAll(' ', '_') // new lists API removes spaces in property keys
+
                 if (useListWs) {
                     // v2 API removes spaces in property keys,so try both versions
-                    def field2 = field ? field.replaceAll(' ', '_') : null
-                    def value1 = field ? item?.classification?.find { it.key == field }?.value : null
-                    def value2 = field ? item?.properties?.find { it.key == field }?.get("value") : null
-                    def value3 = field2 ? item?.properties?.find { it.key == field2 }?.get("value") : null
+                    def value1 = item?.classification?.find { it.key == field }?.value
+                    def value2 = item?.properties?.find { it.key == field }?.get("value")
+                    def value3 = item?.properties?.find { it.key == field2 }?.get("value")
                     value = value1 ?: value2 ?: value3
                 } else {
-                    value = field ? item.kvpValues.find { it.key == field }?.get("value") : null
+                    value = item.kvpValues.find { it.key == field }?.get("value")
                 }
                 if (value)
-                    result.put(field, value)
+                    result.put(field2, value)
             }
             result
         }
