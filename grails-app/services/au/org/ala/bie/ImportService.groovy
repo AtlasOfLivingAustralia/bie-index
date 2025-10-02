@@ -757,33 +757,49 @@ class ImportService implements GrailsConfigurationAware {
 
         // slurp and build each SOLR doc (add to buffer)
         lists.each { list ->
-            def url = MessageFormat.format(grailsApplication.config.lists.ui + grailsApplication.config.lists.show, list.dataResourceUid)
+            // 2024-02-21 id is the new parameter moving forward. It is not in sync with collections
+            def id = list.id ?: list.dataResourceUid
+            def listName = list.listName ?: list.title
+            def listType = list.listType
+            def url = MessageFormat.format(grailsApplication.config.lists.ui + grailsApplication.config.lists.show, id)
             log "indexing url: ${url}"
             try {
                 documentCount++
 
                 // create SOLR doc
-                log.debug documentCount + ". Indexing Species lists - id: " + list.dataResourceUid + " | title: " + list.listName + "... ";
+                log.debug documentCount + ". Indexing Species lists - id: " + id + " | title: " + listName + "... ";
                 def doc = [:]
                 doc["idxtype"] = IndexDocType.SPECIESLIST.name()
                 doc["guid"] = url
-                doc["id"] = list.dataResourceUid // guid required
-                doc["name"] = list.listName
+                doc["id"] = id // guid required
+                doc["name"] = listName
                 doc["linkIdentifier"] = url
 
-                doc["listType_s"] = list.listType
+                doc["listType_s"] = listType
                 def content = messageSource.getMessage('list.content.listType', null, LocaleContextHolder.locale) + ": " +
-                        messageSource.getMessage("list." + list.listType, null, LocaleContextHolder.locale)
+                        messageSource.getMessage("list." + listType, null, LocaleContextHolder.locale)
 
                 ['dateCreated', 'itemCount', 'isAuthoritative', 'isInvasive', 'isThreatened', 'region'].each {item ->
+                    def value = list[item]
+                    if (grailsApplication.config.lists.useListWs) {
+                        if (item == 'itemCount') {
+                            value = list['rowCount']
+                        } else if (item == 'dateCreated') {
+                            // convert from long to string
+                            value = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(new Date(value))
+                        } else if (item != 'region' && value == null) {
+                            // use 'false' when null for 'isAuthoritative', 'isInvasive', 'isThreatened'
+                            value = 'false'
+                        }
+                    }
                     def label = messageSource.getMessage('list.content.' + item, null, LocaleContextHolder.locale)
-                    if (label && list[item]) {
-                        if ("true" == list[item].toString()) {
+                    if (label && value) {
+                        if ("true" == value.toString()) {
                             content += ', ' + label
                         } else {
-                            content += ', ' + label + ": " + list[item]
+                            content += ', ' + label + ": " + value
                         }
-                        doc[item + "_s"] = list[item]
+                        doc[item + "_s"] = value
                     }
                 }
 
@@ -1207,13 +1223,14 @@ class ImportService implements GrailsConfigurationAware {
                     taxonDoc = searchService.lookupTaxonByPreviousIdentifier(item.lsid, !online)
                 }
                 if (!taxonDoc && item.name) {
-                    def kingdom = kingdomField ? item.getAt(kingdomField) : null
-                    def phylum = phylumField ? item.getAt(phylumField) : null
-                    def class_ = classField ? item.getAt(classField) : null
-                    def order = orderField ? item.getAt(orderField) : null
-                    def family = familyField ? item.getAt(familyField) : null
-                    def rank = rankField ? item.getAt(rankField) : null
-                    def lsid = nameService.search(item.name, kingdom, phylum, class_, order, family, rank)
+                    String kingdom = kingdomField ? item.getAt(kingdomField) as String : null
+                    String phylum = phylumField ? item.getAt(phylumField) as String : null
+                    String class_ = classField ? item.getAt(classField) as String : null
+                    String order = orderField ? item.getAt(orderField) as String : null
+                    String family = familyField ? item.getAt(familyField) as String : null
+                    String rank = rankField ? item.getAt(rankField) as String : null
+                    String name = item.name as String
+                    def lsid = nameService.search(name, kingdom, phylum, class_, order, family, rank)
                     if (lsid) {
                         taxonDoc = searchService.lookupTaxon(lsid, !online)
                     }
@@ -1373,7 +1390,7 @@ class ImportService implements GrailsConfigurationAware {
             return false
         }
         def capitaliser = TitleCapitaliser.create(language ?: commonNameDefaultLanguage)
-        vernacularName = capitaliser.capitalise(vernacularName)
+        vernacularName = capitaliser.capitalise(vernacularName ?: "")
         def key = taxonDoc.guid + "|" + vernacularName + "|" + language
         if (loaded.contains(key)) {
             log "Duplicate name for " + taxonID + ", " + name + ": " + vernacularName + " in " + language
@@ -2283,7 +2300,11 @@ class ImportService implements GrailsConfigurationAware {
         log("Loading image lists")
         lists.each { list ->
             String drUid = list.uid
-            String imageIdName = list.imageId
+            String imageIdName = list.imageId != null ? list.imageId : list.wikiUrl // can be either imageId or wikiUrl
+            if (grailsApplication.config.getProperty("lists.useListWs", Boolean, false)) {
+                imageIdName = imageIdName?.replaceAll(' ', '_')
+            }
+
             if (drUid && (imageIdName)) {
                 try {
                     def images = listService.get(drUid, [imageIdName])
@@ -2292,7 +2313,7 @@ class ImportService implements GrailsConfigurationAware {
                         def name = item.name
                         def imageId = imageIdName ? item[imageIdName] : null
                         if (imageId) {
-                            def image = [taxonID: taxonID, name: name, imageId: imageId]
+                            def image = [taxonID: taxonID, name: name, (imageIdName): imageId]
                             if (taxonID && !imageMap.containsKey(taxonID))
                                 imageMap[taxonID] = image
                         }
@@ -2644,7 +2665,7 @@ class ImportService implements GrailsConfigurationAware {
     }
 
     /**
-     * Update a taxon with an image, along with any common nmames
+     * Update a taxon with an image, along with any common names
      *
      * @param doc The taxon document
      * @param imageId The image identifier

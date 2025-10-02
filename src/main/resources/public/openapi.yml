@@ -10,11 +10,11 @@ info:
   license:
     name: "ALA licence"
     url: "http://www.ala.org.au/"
-servers:
-  - url: /ws
-    description: Common webservices path
-  - url: /
-    description: Direct link to server
+#servers:
+#  - url: /ws
+#    description: Common webservices path
+#  - url: /
+#    description: Direct link to server
 paths:
   /search{format}:
     get:
