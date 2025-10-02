@@ -37,9 +37,6 @@
         <button id="denormalise-taxa" onclick="javascript:denormaliseTaxa()" class="btn btn-primary import-button"><g:message code="admin.button.denormalise"/></button>
     </div>
     <div>
-        <button id="align-common-name" onclick="javascript:alignCommonName()" class="btn btn-primary import-button"><g:message code="admin.button.alignCommonName"/></button>
-    </div>
-    <div>
         <button id="build-link-identifiers" onclick="javascript:buildLinkIdentifiers()" class="btn btn-primary import-button"><g:message code="admin.button.buildlinks"/></button>
     </div>
     <div>
@@ -78,9 +75,6 @@
         }
         function denormaliseTaxa(){
             loadInfo("${createLink(controller:'import', action:'denormaliseTaxa')}?online=" + $('#use-online').is(':checked'));
-        }
-        function alignCommonName(){
-            loadInfo("${createLink(controller:'import', action:'alignCommonName')}?online=" + $('#use-online').is(':checked'));
         }
 
         function removeDanglingSynonyms(){

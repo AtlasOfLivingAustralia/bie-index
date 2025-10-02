@@ -849,7 +849,7 @@ class SearchController implements GrailsConfigurationAware {
                             in = QUERY,
                             description = "Comma separated list of fields to display facets for. Available fields listed http://bie.ala.org.au/ws/indexFields.",
                             schema = @Schema(implementation = String),
-                            example = "datasetName,commonNameSingle",
+                            example = "datasetName,commonNameExact",
                             required = false
                     )
             ],

@@ -1,13 +1,12 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.util.ConservationListsSource
+import com.google.common.io.Resources
 import grails.testing.services.ServiceUnitTest
 import org.apache.solr.client.solrj.SolrClient
-import org.apache.solr.client.solrj.SolrQuery
-import org.apache.solr.client.solrj.SolrRequest
 import org.apache.solr.client.solrj.SolrServerException
+import org.apache.solr.client.solrj.impl.XMLResponseParser
 import org.apache.solr.client.solrj.response.QueryResponse
-import org.apache.solr.common.SolrDocumentList
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -17,14 +16,14 @@ import spock.lang.Unroll
 class SolrSearchServiceSpec extends Specification implements ServiceUnitTest<SolrSearchService> {
 
     SolrClient liveSolrClient
-    def listService
+    ConservationListsSource conservationListsSource
 
     def setup() {
         liveSolrClient = Mock(SolrClient)
-        listService = [conservationLists: { -> [] }] as Object
+        conservationListsSource = Mock(ConservationListsSource)
 
         service.liveSolrClient = liveSolrClient
-        service.listService = listService
+        service.conservationListsSource = conservationListsSource
     }
 
     def cleanup() {
@@ -32,41 +31,38 @@ class SolrSearchServiceSpec extends Specification implements ServiceUnitTest<Sol
 
     @Unroll
     def "test findByScientificName(#query, #exact, #incVern)"() {
-        given:
-        def documentList = new SolrDocumentList()
-        documentList.setNumFound(0)
-        documentList.setStart(0)
-
-        def queryResponse = Mock(QueryResponse) {
-            getResults() >> documentList
-            getFacetFields() >> []
-            getHeader() >> [:]
-            getHighlighting() >> [:]
-        }
+        setup:
+        def resource = Resources.getResource(resourcePath)
+        def queryResponse = new QueryResponse(new XMLResponseParser().processResponse(resource.newReader()), liveSolrClient)
+//        def rootNode = new XmlParser().parse(resource.newReader())
 
         when:
         def result = service.findByScientificName(query, [], 0, 1, 'score', 'desc', exact, incVern)
 
         then:
-        1 * liveSolrClient.query(_ as SolrQuery, _ as SolrRequest.METHOD) >> queryResponse
+        1 * liveSolrClient.query(_) >> queryResponse
         result.query == solrQ
         //TODO Test generation of SearchResultsDTO from Query Response
 
         where:
         // TODO test a name that can't be parsed by NameParser too
-        query      | exact | incVern || solrQ
-        "Macropus rufus" | true  | true    || 'idxtype:TAXON AND (text:"macropus\\ rufus" OR commonName:"macropus\\ rufus" OR guid:"macropus\\ rufus" OR scientificName:"macropus\\ rufus" OR  text:"macropus\\ rufus")'
-        "Macropus rufus" | true  | false   || 'idxtype:TAXON AND (text:"macropus\\ rufus" OR guid:"macropus\\ rufus" OR scientificName:"macropus\\ rufus")'
-        "Macropus rufus" | false | true    || 'idxtype:TAXON AND (text:macropus\\ rufus OR commonName:macropus\\ rufus OR guid:macropus\\ rufus OR  text:macropus\\ rufus)'
-        "Macropus rufus" | false | false   || 'idxtype:TAXON AND (text:macropus\\ rufus OR guid:macropus\\ rufus)'
+        // TODO generate XML files for each solrQ with appropriate start, limit, facets, etc.
+        // At the moment, the resource is from the first solr query and doesn't include facets, limits, etc
+        query      | exact | incVern | resourcePath                                       || solrQ
+        "Macropus rufus" | true  | true    | 'resources/solr-response-macropus-rufus.xml' || 'idxtype:TAXON AND (text:"macropus\\ rufus" OR commonName:"macropus\\ rufus" OR guid:"macropus\\ rufus" OR scientificName:"macropus\\ rufus" OR  text:"macropus\\ rufus")'
+        "Macropus rufus" | true  | false   | 'resources/solr-response-macropus-rufus.xml' || 'idxtype:TAXON AND (text:"macropus\\ rufus" OR guid:"macropus\\ rufus" OR scientificName:"macropus\\ rufus")'
+        "Macropus rufus" | false | true    | 'resources/solr-response-macropus-rufus.xml' || 'idxtype:TAXON AND (text:macropus\\ rufus OR commonName:macropus\\ rufus OR guid:macropus\\ rufus OR  text:macropus\\ rufus)'
+        "Macropus rufus" | false | false   | 'resources/solr-response-macropus-rufus.xml' || 'idxtype:TAXON AND (text:macropus\\ rufus OR guid:macropus\\ rufus)'
     }
 
     def "test findByScientificName with Solr Exception"() {
+        setup:
+
         when:
         def result = service.findByScientificName('Macropus Rufus', [], 0, 1, 'score', 'desc', true, true)
 
         then:
-        1 * liveSolrClient.query(_ as SolrQuery, _ as SolrRequest.METHOD) >> { throw new SolrServerException('Service Unavailable') }
+        1 * liveSolrClient.query(_) >> { throw new SolrServerException('Service Unavailable')}
         result.status == 'ERROR'
     }
 }
