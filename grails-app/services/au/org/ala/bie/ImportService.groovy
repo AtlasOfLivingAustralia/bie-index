@@ -817,11 +817,15 @@ class ImportService implements GrailsConfigurationAware {
             }
         }
         log("Committing to ${buffer.size()} documents to SOLR...")
-        if (online) {
-            log "Search for species lists may be temporarily unavailable"
+        if (buffer.isEmpty()) {
+            log("No species list documents to index, skipping delete and index.")
+        } else {
+            if (online) {
+                log "Search for species lists may be temporarily unavailable"
+            }
+            indexService.deleteFromIndex(IndexDocType.SPECIESLIST, online)
+            indexService.indexBatch(buffer, online)
         }
-        indexService.deleteFromIndex(IndexDocType.SPECIESLIST, online)
-        indexService.indexBatch(buffer, online)
         updateProgressBar(100, 100) // complete progress bar
         log "Finished species lists import"
     }

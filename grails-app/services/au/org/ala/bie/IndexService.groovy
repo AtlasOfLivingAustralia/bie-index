@@ -118,6 +118,11 @@ class IndexService implements GrailsConfigurationAware {
             buffer << solrDoc
         }
 
+        if (buffer.isEmpty()) {
+            log.debug "indexBatch called with empty document list, skipping add"
+            return
+        }
+
         //add
         client.add(buffer)
         log.debug "Doing SOLR commit for ${buffer.size()} docs"
