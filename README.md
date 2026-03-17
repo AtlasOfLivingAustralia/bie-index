@@ -1,4 +1,4 @@
-# bie-index [![Build Status](https://travis-ci.com/AtlasOfLivingAustralia/bie-index.svg?branch=master)](https://app.travis-ci.com/github/AtlasOfLivingAustralia/bie-index)
+# bie-index [![Build Status](https://api.travis-ci.com/AtlasOfLivingAustralia/bie-index.svg?branch=develop)](https://app.travis-ci.com/github/AtlasOfLivingAustralia/bie-index)
 
 bie-index is a grails web application that indexes taxonomic content in DwC-A and provides search web services for this content.
 This includes:
