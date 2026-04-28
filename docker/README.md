@@ -15,7 +15,7 @@ docker build solr8 -t bie-solr:v2
 To run the resulting image in a fresh container, use
 
 ```shell
-docker run -p 8983:8983 bie-solr:v2
+docker run -p 127.0.0.1:8983:8983 bie-solr:v2
 ```
 
 You will then need to add the cores.
