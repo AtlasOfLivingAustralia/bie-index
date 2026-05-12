@@ -339,6 +339,13 @@ class ImportController {
 
     }
 
+    def alignCommonName() {
+        def online = params.getBoolean('online', false)
+        def job = execute("alignCommonName", "admin.button.alignCommonName", { importService.alignCommonName(online) })
+        asJson (job.status())
+
+    }
+
     // Documented in openapi.yml, not migrating to annotations because it is not intended for external use.
     def buildFavourites() {
         def online = params.getBoolean('online', false)

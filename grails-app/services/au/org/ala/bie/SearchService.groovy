@@ -628,12 +628,12 @@ class SearchService {
             def batch = guidList.take(BULK_BATCH_SIZE)
             def batchSet = (batch.findAll { !resultMap.containsKey(it) }) as Set
             def matches = getTaxaBatch(batchSet)
-            if (!matches) // Error return
-                return null
-            matches.each { match ->
-                resultMap[match.guid] = match
-                if (match.linkIdentifier)
-                    resultMap[match.linkIdentifier] = match
+            if (matches) {
+                matches.each { match ->
+                    resultMap[match.guid] = match
+                    if (match.linkIdentifier)
+                        resultMap[match.linkIdentifier] = match
+                }
             }
             batch.each { guid ->
                 matchingTaxa << resultMap[guid]
@@ -805,6 +805,7 @@ class SearchService {
                             datasetURL: datasetURL
                     ]
                 },
+                commonNameSingle: taxon.commonNameSingle,
                 commonNames: commonNames.collect { commonName ->
                     def datasetURL = getDataset(commonName.datasetID, datasetMap)?.guid
                     def datasetName = getDataset(commonName.datasetID, datasetMap)?.name

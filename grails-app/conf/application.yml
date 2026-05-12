@@ -181,14 +181,22 @@ knowledgeBase:
   sectionSelector: section.article-list .list-lead > a
   articleCssSelector: .article-title a.c-link
 lists:
+  useListWs: false
   service: https://lists.ala.org.au/ws
   ui: https://lists.ala.org.au
   items: /speciesListItems/{0}?includeKVP=true&max={1}&offset={2}
-  search: /speciesList/?isAuthoritative=eq:true&max={0}&offset={1}
+  search: /speciesList?isAuthoritative=eq:true&max={0}&offset={1}
   conservation: /speciesList?isAuthoritative=eq:true&isThreatened=eq:true&max={0}&offset={1}
   show: /speciesListItem/list/{0}
   add: /createItem
   remove: /deleteItem
+#  useListWs: true
+#  service: https://lists-ws.test.ala.org.au
+#  ui: https://lists.test.ala.org.au
+#  items: /v2/speciesListItems/{0}?pageSize={1}&page={2}
+#  search: /v2/speciesList?isAuthoritative=true&pageSize={0}&page={1}
+#  conservation: /v2/speciesList?isAuthoritative=true&isThreatened=true&pageSize={0}&page={1}
+#  show: /list/{0}
 biocollect:
   service: https://biocollect.ala.org.au
   search: /ws/project/search?initiator=ala&facets=status
@@ -288,7 +296,7 @@ skin:
   orgNameLong: Atlas of Living Australia
 useLegacyAuto: false
 import:
-  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,biocollect,species-lists,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,sitemap,swap
+  sequence: collectory,taxonomy-all,vernacular,denormalise,layers,regions,localities,conservation-lists,wordpress,knowledgebase,biocollect,species-lists,favourites,weights,link-identifiers,images,occurrences,hidden-images,wiki-urls,suggest-index,sitemap,align-common-name,swap
   sequenceDaily: conservation-lists,wordpress,knowledgebase,biocollect,species-lists,favourites,suggest-index,images,hidden-images,wiki-urls,sitemap,swap
   sequenceWeekly: occurrences,layers,regions,localities,suggest-index,sitemap,swap
   # enable daily and weekly tasks
