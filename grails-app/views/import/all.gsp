@@ -43,12 +43,11 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>bie</td><td>${info.response.status.bie.index.numDocs}</td><td>${info.response.status.bie.index.version}</td><td>${info.response.status.bie.instanceDir}</td>
-                </tr>
-                <tr>
-                    <td>bie-offline</td><td>${info.response.status['bie-offline'].index.numDocs}</td><td>${info.response.status['bie-offline'].index.version}</td><td>${info.response.status['bie-offline'].instanceDir}</td>
-                </tr>
+            <g:each in="${info.response.status}" var="core" >
+               <tr>
+                   <td>${core.key}</td><td>${core.value.index.numDocs}</td><td>${core.value.index.version}</td><td>${core.value.instanceDir}</td>
+               </tr>
+            </g:each>
             </tbody>
         </table>
     </div>
