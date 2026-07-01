@@ -15,6 +15,7 @@ package au.org.ala.bie
 
 import au.org.ala.bie.indexing.IndexingInterface
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.WebUtils
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -60,7 +61,7 @@ class KnowledgeBaseService implements IndexingInterface {
         String baseUrl = grailsApplication.config.getProperty('knowledgeBase.service')
         String sectionCssSelector = grailsApplication.config.getProperty('knowledgeBase.sectionSelector')
         // do the first level scraping
-        Document doc = Jsoup.connect("${url}").timeout(10000).get()
+        Document doc = Jsoup.connect("${url}").userAgent(WebUtils.userAgent()).timeout(10000).get()
         Elements sections = doc.select(sectionCssSelector) // link to sections
 
         if (sections.size() > 0) {
@@ -71,7 +72,7 @@ class KnowledgeBaseService implements IndexingInterface {
 
                 if (pageUrl) {
                     // do the second level scraping
-                    Document sectionDoc = Jsoup.connect(baseUrl + pageUrl).timeout(10000).get()
+                    Document sectionDoc = Jsoup.connect(baseUrl + pageUrl).userAgent(WebUtils.userAgent()).timeout(10000).get()
                     String articleCssSelector = grailsApplication.config.getProperty('knowledgeBase.articleCssSelector')
                     Elements articles = sectionDoc.select(articleCssSelector) // link to KB pages
 
@@ -118,7 +119,7 @@ class KnowledgeBaseService implements IndexingInterface {
      */
     Map getResource(String url) throws IOException {
         Map doc = [:]
-        Document page = Jsoup.connect(url).timeout(10000).get()
+        Document page = Jsoup.connect(url).userAgent(WebUtils.userAgent()).timeout(10000).get()
 
         if (page) {
             doc["id"] = page.select("p.article-vote").attr("data-article-id")

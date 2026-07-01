@@ -13,6 +13,7 @@
 
 package au.org.ala.bie
 
+import au.org.ala.bie.util.WebUtils
 import grails.converters.JSON
 
 /**
@@ -40,7 +41,7 @@ class BiocollectService {
             def url = new URL(baseUrl + "&max=" + max + "&offset=" + offset)
             offset += max
 
-            def newProjects = JSON.parse(url.getText('UTF-8')).projects
+            def newProjects = JSON.parse(url.getText(WebUtils.connectionParams, 'UTF-8')).projects
             hasMore = newProjects.size() == max
 
             projects.addAll(newProjects)

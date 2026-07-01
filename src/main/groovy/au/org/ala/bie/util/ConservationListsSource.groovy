@@ -30,11 +30,13 @@ class ConservationListsSource {
     ConservationListsSource(String url) {
         try {
             URL source = this.class.getResource(url)
-            if (!source)
+            boolean remote = !source
+            if (remote)
                 source = new URL(url)
             log.info("Loading conservation lists from ${url} -> ${source}")
             JsonSlurper slurper = new JsonSlurper()
-            def config = slurper.parse(source)
+            // identify ourselves with an application User-Agent for remote loads
+            def config = remote ? slurper.parse(source, WebUtils.connectionParams) : slurper.parse(source)
             defaultSourceField = config?.defaultSourceField ?: 'status'
             defaultKingdomField = config?.defaultKingdomField ?: 'kingdom'
             defaultPhylumField = config?.defaultPhylumField ?: 'phylum'

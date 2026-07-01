@@ -2,6 +2,7 @@ package au.org.ala.bie
 
 
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.WebUtils
 import groovy.json.JsonSlurper
 
 /**
@@ -45,6 +46,7 @@ class BiocacheService {
             conn.setDoOutput(false)
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             conn.setRequestProperty("Accept-Charset", ENCODING);
+            conn.setRequestProperty("User-Agent", WebUtils.userAgent());
             return slurper.parse(conn.inputStream, ENCODING)
         } catch (SocketTimeoutException e) {
             log.error("Timed out calling web service. URL= ${url}.", e)
@@ -86,7 +88,7 @@ class BiocacheService {
             query << "dir=${Encoder.escapeQuery(dir)}"
         }
         def url = grailsApplication.config.biocache.service + grailsApplication.config.biocache.search + '?' + query.join('&')
-        def response = url.toURL().getText("UTF-8")
+        def response = url.toURL().getText(WebUtils.connectionParams, "UTF-8")
         return slurper.parseText(response)
     }
 }

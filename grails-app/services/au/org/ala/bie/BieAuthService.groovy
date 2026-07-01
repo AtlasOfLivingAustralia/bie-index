@@ -1,6 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.WebUtils
 import grails.converters.JSON
 
 class BieAuthService {
@@ -10,7 +11,7 @@ class BieAuthService {
     def checkApiKey(key) {
         // try the preferred api key store first
         def url = grailsApplication.config.security.apikey.serviceUrl + Encoder.escapeQuery(key)
-        def conn = new URL(url).openConnection()
+        def conn = WebUtils.withUserAgent(new URL(url).openConnection())
         if (conn.getResponseCode() == 200) {
             String resp = conn.content.text as String
             return JSON.parse(resp)
