@@ -111,6 +111,9 @@ search:
     join: <br>
 autocomplete:
   legacy: false
+dataQuality:
+  defaultProfile: ALA
+
 biocache:
   base: https://biocache.ala.org.au
   service: https://biocache.ala.org.au/ws

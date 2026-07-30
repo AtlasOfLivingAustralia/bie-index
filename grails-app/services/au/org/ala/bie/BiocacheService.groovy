@@ -85,6 +85,8 @@ class BiocacheService {
             query << "sort=${Encoder.escapeQuery(sort)}"
             query << "dir=${Encoder.escapeQuery(dir)}"
         }
+        def qualityProfile = grailsApplication.config.getProperty("dataQuality.defaultProfile", String, "ALA")
+        query << "qualityProfile=${Encoder.escapeQuery(qualityProfile)}"
         def url = grailsApplication.config.biocache.service + grailsApplication.config.biocache.search + '?' + query.join('&')
         def response = url.toURL().getText("UTF-8")
         return slurper.parseText(response)
