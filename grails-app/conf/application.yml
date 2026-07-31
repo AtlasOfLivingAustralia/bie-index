@@ -112,7 +112,8 @@ search:
 autocomplete:
   legacy: false
 dataQuality:
-  defaultProfile: ALA
+  includeFilter: true
+  profile: ALA
 
 biocache:
   base: https://biocache.ala.org.au
