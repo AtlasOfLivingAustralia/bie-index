@@ -1,6 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.WebUtils
 import grails.converters.JSON
 import groovy.json.JsonSlurper
 
@@ -22,7 +23,7 @@ class CollectoryService {
     def resources(String type) {
         def url = Encoder.buildServiceUrl(grailsApplication.config.collectory.service, grailsApplication.config.collectory.resources, type)
         def slurper = new JsonSlurper()
-        def json = slurper.parseText(url.getText('UTF-8'))
+        def json = slurper.parseText(url.getText(WebUtils.connectionParams, 'UTF-8'))
         return json
     }
 
@@ -35,7 +36,7 @@ class CollectoryService {
      */
     def get(url) {
         def slurper = new JsonSlurper()
-        def json = slurper.parseText(url.toURL().getText('UTF-8'))
+        def json = slurper.parseText(url.toURL().getText(WebUtils.connectionParams, 'UTF-8'))
         return json
     }
 
@@ -49,6 +50,7 @@ class CollectoryService {
                 conn.setRequestMethod("POST")
                 conn.setRequestProperty("Content-Type", "application/json")
                 conn.setRequestProperty("Content-Length", String.valueOf(bytes.length))
+                conn.setRequestProperty("User-Agent", WebUtils.userAgent())
                 conn.setDoOutput(true)
                 conn.getOutputStream().write(bytes)
 

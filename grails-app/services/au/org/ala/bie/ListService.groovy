@@ -1,6 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.WebUtils
 import groovy.json.JsonSlurper
 import org.apache.http.entity.ContentType
 import grails.converters.JSON
@@ -289,11 +290,7 @@ mutation add {
         try {
             URL urlObj = url instanceof URL ? url : new URL(url.toString())
             def connection = urlObj.openConnection()
-            def appName = grailsApplication.config.getProperty('info.app.name', String, 'bie-index')
-            def appVersion = grailsApplication.config.getProperty('info.app.version', String, '3.1')
-            log.debug("app.name: ${appName} | app.version: ${appVersion}")
-
-            connection.setRequestProperty("User-Agent", "${appName}/${appVersion}")
+            connection.setRequestProperty("User-Agent", WebUtils.userAgent())
             connection.setConnectTimeout(10000) // 10 seconds
             connection.setReadTimeout(30000)    // 30 seconds
 
@@ -317,10 +314,6 @@ mutation add {
     }
 
     Map getUserAgentHeader() {
-        def appName = grailsApplication.config.getProperty('info.app.name', String, 'bie-index')
-        def appVersion = grailsApplication.config.getProperty('info.app.version', String, '3.1')
-        log.debug("app.name: ${appName} | app.version: ${appVersion}")
-        String value = "${appName}/${appVersion}" as String
-        return ["User-Agent": value]
+        return WebUtils.userAgentHeader()
     }
 }

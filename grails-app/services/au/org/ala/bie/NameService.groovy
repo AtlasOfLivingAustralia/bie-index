@@ -15,6 +15,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.WebUtils
 import grails.config.Config
 import grails.converters.JSON
 import grails.core.support.GrailsConfigurationAware
@@ -72,7 +73,7 @@ class NameService implements GrailsConfigurationAware {
         }
         def url = new URL(this.service + "/api/searchByClassification?" + query)
         def slurper = new JsonSlurper()
-        def json = slurper.parseText(url.getText('UTF-8'))
+        def json = slurper.parseText(url.getText(WebUtils.connectionParams, 'UTF-8'))
         if (!json.success)
             return null
         def matchType = json.matchType
@@ -92,6 +93,7 @@ class NameService implements GrailsConfigurationAware {
             conn.setRequestMethod("POST")
             conn.setRequestProperty("Content-Type", "application/json")
             conn.setRequestProperty("Content-Length", String.valueOf(bytes.length))
+            conn.setRequestProperty("User-Agent", WebUtils.userAgent())
             conn.setDoOutput(true)
             conn.getOutputStream().write(bytes)
 

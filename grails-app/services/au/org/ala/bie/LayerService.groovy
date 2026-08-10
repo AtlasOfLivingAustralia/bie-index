@@ -1,6 +1,7 @@
 package au.org.ala.bie
 
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.WebUtils
 import groovy.json.JsonSlurper
 
 import java.text.MessageFormat
@@ -19,7 +20,7 @@ class LayerService {
     List layers() {
         def url = Encoder.buildServiceUrl(grailsApplication.config.layers.service, grailsApplication.config.layers.layers)
         def slurper = new JsonSlurper()
-        def json = slurper.parseText(url.getText('UTF-8'))
+        def json = slurper.parseText(url.getText(WebUtils.connectionParams, 'UTF-8'))
         return json
     }
     /**
@@ -32,7 +33,7 @@ class LayerService {
     def get(uid) {
         def url = Encoder.buildServiceUrl(grailsApplication.config.layers.service, grailsApplication.config.layers.layer, uid)
         def slurper = new JsonSlurper()
-        def json = slurper.parseText(url.getText('UTF-8'))
+        def json = slurper.parseText(url.getText(WebUtils.connectionParams, 'UTF-8'))
         return json
     }
 
@@ -48,7 +49,7 @@ class LayerService {
         def url = Encoder.buildServiceUrl(grailsApplication.config.layers.service,  grailsApplication.config.layers.objects, uid)
         def file = new File(tempFilePath)
         def stream = file.newOutputStream()
-        stream << url.openStream()
+        stream << WebUtils.withUserAgent(url.openConnection()).getInputStream()
         stream.flush()
         stream.close()
         return file

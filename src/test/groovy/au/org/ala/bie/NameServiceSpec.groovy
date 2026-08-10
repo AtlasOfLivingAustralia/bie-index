@@ -110,4 +110,20 @@ class NameServiceSpec extends Specification implements ServiceUnitTest<NameServi
         then:
         result == null
     }
+
+    void "outbound GET requests send an application User-Agent (not the JVM default)"() {
+        given:
+        wireMockServer.stubFor(WireMock.get(urlPathEqualTo("/api/searchByClassification"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody('{"success": false}')))
+
+        when:
+        service.search("Anything", null, null, null, null, null, null)
+
+        then: 'the request carried our application/version User-Agent'
+        wireMockServer.verify(getRequestedFor(urlPathEqualTo("/api/searchByClassification"))
+                .withHeader("User-Agent", equalTo(au.org.ala.bie.util.WebUtils.userAgent())))
+    }
 }

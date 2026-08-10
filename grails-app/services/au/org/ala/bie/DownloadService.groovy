@@ -16,6 +16,7 @@ package au.org.ala.bie
 import au.com.bytecode.opencsv.CSVReader
 import au.com.bytecode.opencsv.CSVWriter
 import au.org.ala.bie.util.Encoder
+import au.org.ala.bie.util.WebUtils
 
 class DownloadService {
 
@@ -55,7 +56,7 @@ class DownloadService {
                 Encoder.escapeQuery(fields) + "&csv.header=false&rows=" + grailsApplication.config.downloadMaxRows +
                 "&q=${q}${fqs}"
 
-        def connection = new URL(queryUrl).openConnection()
+        def connection = WebUtils.withUserAgent(new URL(queryUrl).openConnection())
         CSVReader csv = new CSVReader(new InputStreamReader(connection.getInputStream()))
         String [][] all = csv.readAll()
 

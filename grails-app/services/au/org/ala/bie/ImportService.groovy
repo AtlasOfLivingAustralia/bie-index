@@ -19,6 +19,7 @@ import au.org.ala.bie.indexing.WeightBuilder
 import au.org.ala.bie.search.IndexDocType
 import au.org.ala.bie.util.Encoder
 import au.org.ala.bie.util.TitleCapitaliser
+import au.org.ala.bie.util.WebUtils
 import au.org.ala.names.model.ALAParsedName
 import au.org.ala.names.model.RankType
 import au.org.ala.names.model.TaxonomicType
@@ -3274,7 +3275,7 @@ class ImportService implements GrailsConfigurationAware {
      */
     private String getStringForUrl(URL url) throws IOException {
         String output = ""
-        def inStm = url.openStream()
+        def inStm = WebUtils.withUserAgent(url.openConnection()).getInputStream()
         try {
             output = IOUtils.toString(inStm)
         } finally {
@@ -3323,9 +3324,11 @@ class ImportService implements GrailsConfigurationAware {
     private getConfigFile(String url) {
         //url = URLEncoder.encode(url, "UTF-8")
         URL source = this.class.getResource(url)
-        if (source == null)
-            source = new URL(url)
         JsonSlurper slurper = new JsonSlurper()
+        if (source == null) {
+            // remote URL - identify ourselves with an application User-Agent
+            return slurper.parse(new URL(url), WebUtils.connectionParams)
+        }
         return slurper.parse(source)
      }
 
