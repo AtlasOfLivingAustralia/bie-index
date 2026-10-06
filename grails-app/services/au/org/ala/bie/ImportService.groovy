@@ -226,7 +226,7 @@ class ImportService implements GrailsConfigurationAware {
     def importAll(String [] sequence, boolean online) {
         log "Starting import of all data"
         for (String step : sequence) {
-            if (!jobService.current || jobService.current.cancelled) {
+            if (jobService.current?.cancelled) {
                 log "Cancelled"
                 return
             }
