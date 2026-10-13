@@ -1,9 +1,11 @@
 package bie.index
 
 import grails.util.Holders
+import groovy.util.logging.Slf4j
 import org.apache.commons.lang3.time.DateUtils
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 
+@Slf4j
 class BootStrap {
     def messageSource
     ThreadPoolTaskScheduler threadPoolTaskScheduler
@@ -37,8 +39,8 @@ class BootStrap {
                         def combined = new ArrayList(updateSteps)
                         if (importService.importWeeklySequence?.contains('swap')) {
                             combined << 'swap'
-                            // repeat weekly + daily updates after swap to ensure updates are applied to both indexes
-                            combined.addAll(updateSteps)
+                            // repeat weekly updates after swap to ensure updates are applied to both indexes. no swap this time.
+                            combined.addAll(weeklySteps)
                         } else if (importService.importDailySequence?.contains('swap')) {
                             combined << 'swap'
                         }
@@ -48,7 +50,14 @@ class BootStrap {
                         sequence = importService.importDailySequence
                         title = "Scheduled Daily Import"
                     }
-                    jobService.create(sequence as Set, title) {
+                    // marker type so any scheduled run blocks the next, whichever sequence it used
+                    def types = (sequence as Set) + 'scheduled-import'
+                    def running = jobService.existing(types)
+                    if (running) {
+                        log.warn("Skipping ${title}: a previous job is still running: ${running.title}")
+                        return
+                    }
+                    jobService.create(types, title) {
                         importService.importAll(sequence, false)
                     }
                 }

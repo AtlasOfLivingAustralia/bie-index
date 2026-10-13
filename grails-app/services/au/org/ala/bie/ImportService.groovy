@@ -785,8 +785,22 @@ class ImportService implements GrailsConfigurationAware {
                         if (item == 'itemCount') {
                             value = list['rowCount']
                         } else if (item == 'dateCreated') {
-                            // convert from long to string
-                            value = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(new Date(value))
+                            // current API returns an ISO-8601 string, e.g. 2026-02-17T01:37:16.880Z
+                            Date created = null
+                            try {
+                                created = Date.from(java.time.Instant.parse(value.toString()))
+                            } catch (Exception e1) {
+                                // older API returned epoch milliseconds as a long
+                                try {
+                                    created = new Date(value as long)
+                                } catch (Exception e2) {
+                                    log.warn("Unable to parse dateCreated <${value}> for list ${id} - item skipped")
+                                }
+                            }
+                            if (created == null) {
+                                return // skip this item
+                            }
+                            value = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(created)
                         } else if (item != 'region' && value == null) {
                             // use 'false' when null for 'isAuthoritative', 'isInvasive', 'isThreatened'
                             value = 'false'
